@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Tools</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-layout">
+        <header class="header">
+            <div class="container">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <h1>Tools</h1>
+                    <div class="search-container">
+                        <input type="text" class="search-input" id="searchInput" placeholder="Tìm kiếm tool...">
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="dashboard" id="toolsGrid">
+                <!-- Category sections sẽ được render bằng JavaScript -->
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="container">
+                Dashboard Tools © 2024
+            </div>
+        </footer>
+    </div>
+
+    <!-- Search Overlay -->
+    <div class="search-overlay" id="searchOverlay">
+        <div class="search-box">
+            <input type="text" class="search-box-input" id="searchBoxInput" placeholder="Tìm kiếm tool...">
+            <div class="search-results" id="searchResults">
+                <div class="search-hint">Gõ để tìm kiếm tools...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="toolModal">
+        <div class="modal-content">
+            <div class="modal-body">
+                <iframe id="toolIframe" src="" frameborder="0"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
