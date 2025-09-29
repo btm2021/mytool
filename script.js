@@ -15,6 +15,14 @@ const tools = [
         category: 'Trading',
         icon: '📊',
         url: '/mytool/a/pnlcalc/'
+    },
+     {
+        id: 'Chatgpt',
+        title: 'ChatGPT',
+        description: 'ChatGPT',
+        category: 'chat',
+        icon: '📊',
+        url: 'https://chatgpt.com/'
     }
 ];
 
