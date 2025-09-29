@@ -2,7 +2,7 @@
 const tools = [
     {
         id: 'Backtest',
-        title: 'Build Strategy Trading',
+        title: 'Build Strategy Trading1',
         description: 'Xây dựng Strategy',
         category: 'Trading',
         icon: '📊',
