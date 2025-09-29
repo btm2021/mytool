@@ -9,6 +9,14 @@ const tools = [
         url: '/mytool/a/replay/'
     },
     {
+        id: 'Tradingview',
+        title: 'Tradingview',
+        description: 'Tradingview',
+        category: 'Trading',
+        icon: '📊',
+        url: 'https://vn.tradingview.com/chart/JMJyafji/?symbol=BINANCE%3APUMPUSDT.P'
+    },
+    {
         id: 'PNL Calculator',
         title: 'Pnl Calulator',
         description: 'Tính Pnl',
@@ -16,14 +24,39 @@ const tools = [
         icon: '📊',
         url: '/mytool/a/pnlcalc/'
     },
-     {
+    {
         id: 'Chatgpt',
         title: 'ChatGPT',
         description: 'ChatGPT',
-        category: 'chat',
+        category: 'tool',
         icon: '📊',
         url: 'https://chatgpt.com/'
+    },
+    {
+        id: 'Claude',
+        title: 'Claude',
+        description: 'Claude',
+        category: 'tool',
+        icon: '📊',
+        url: 'https://claude.ai/'
+    },
+    {
+        id: 'Reddit',
+        title: 'Reddit',
+        description: 'Reddit',
+        category: 'tool',
+        icon: '📊',
+        url: 'https://reddit.com/'
     }
+];
+
+// Danh sách các câu trích dẫn
+const quotes = [
+    "No pain, no gain.",
+    "Stay hungry, stay foolish.",
+    "The only way to do great work is to love what you do.",
+    "Strive for progress, not perfection.",
+    "The future belongs to those who believe in the beauty of their dreams."
 ];
 
 class Dashboard {
@@ -42,9 +75,55 @@ class Dashboard {
         this.init();
     }
 
+    /**
+     * Generates a two-letter initial from a tool ID and wraps it in a styled div.
+     * @param {string} id The tool ID.
+     * @returns {string} HTML string for the icon.
+     */
+    createIcon(id) {
+        const parts = id.split(/[\s-]+/); // Split by space or hyphen
+        let initials = '';
+        if (parts.length > 1) {
+            initials = (parts[0][0] || '') + (parts[1][0] || '');
+        } else {
+            initials = id.substring(0, 2);
+        }
+        initials = initials.toUpperCase();
+
+        // Simple hash function to get a color from the ID
+        let hash = 0;
+        for (let i = 0; i < id.length; i++) {
+            hash = id.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const h = hash % 360;
+        const color = `hsl(${h}, 65%, 70%)`;
+
+        return `<div class="generated-icon" style="background-color: ${color};">${initials}</div>`;
+    }
+
     init() {
         this.renderTools();
         this.bindEvents();
+        this.displayDateTime();
+        this.displayQuote();
+        setInterval(() => this.displayQuote(), 5 * 60 * 1000); // Cập nhật quote mỗi 5 phút
+    }
+
+    displayDateTime() {
+        const now = new Date();
+        const days = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+        const dayOfWeek = days[now.getDay()];
+        const day = now.getDate();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+        const dateString = `${dayOfWeek} ${day}/${month}/${year}`;
+        document.getElementById('currentDate').textContent = dateString;
+    }
+
+    displayQuote() {
+        const quoteElement = document.getElementById('quote');
+        const randomIndex = Math.floor(Math.random() * quotes.length);
+        quoteElement.textContent = `"${quotes[randomIndex]}"`;
     }
 
     renderTools(toolsToRender = this.filteredTools) {
@@ -59,7 +138,7 @@ class Dashboard {
                     ${categoryTools.map(tool => `
                         <div class="tool-card" data-tool-id="${tool.id}">
                             <div class="tool-content">
-                                <div class="tool-icon">${tool.icon}</div>
+                                <div class="tool-icon">${this.createIcon(tool.id)}</div>
                                 <div class="tool-info">
                                     <div class="tool-title">${tool.title}</div>
                                     <div class="tool-description">${tool.description}</div>
@@ -169,11 +248,18 @@ class Dashboard {
         const tool = tools.find(t => t.id === toolId);
         if (!tool) return;
 
-        this.toolIframe.src = tool.url;
-        this.modal.style.display = 'block';
+        // Kiểm tra xem URL có phải là link ngoài không
+        const isExternal = tool.url.startsWith('http://') || tool.url.startsWith('https://');
 
-        // Disable body scroll
-        document.body.style.overflow = 'hidden';
+        if (isExternal) {
+            // Mở link ngoài trong tab mới
+            window.open(tool.url, '_blank');
+        } else {
+            // Mở link nội bộ trong modal iframe
+            this.toolIframe.src = tool.url;
+            this.modal.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // Disable body scroll
+        }
     }
 
     closeModal() {
@@ -234,7 +320,7 @@ class Dashboard {
 
         this.searchResults.innerHTML = results.map((tool, index) => `
             <div class="search-result-item ${index === 0 ? 'selected' : ''}" data-tool-id="${tool.id}" data-index="${index}">
-                <div class="search-result-icon">${tool.icon}</div>
+                <div class="search-result-icon">${this.createIcon(tool.id)}</div>
                 <div class="search-result-info">
                     <div class="search-result-title">${tool.title}</div>
                     <div class="search-result-description">${tool.description}</div>
@@ -293,6 +379,70 @@ class Dashboard {
 // Khởi tạo dashboard khi DOM loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new Dashboard();
+
+    particlesJS('particles-js', {
+        "particles": {
+            "number": {
+                "value": 80,
+                "density": {
+                    "enable": true,
+                    "value_area": 800
+                }
+            },
+            "color": {
+                "value": "#dddddd"
+            },
+            "shape": {
+                "type": "circle",
+            },
+            "opacity": {
+                "value": 0.5,
+                "random": false,
+            },
+            "size": {
+                "value": 3,
+                "random": true,
+            },
+            "line_linked": {
+                "enable": true,
+                "distance": 150,
+                "color": "#e0e0e0",
+                "opacity": 0.4,
+                "width": 1
+            },
+            "move": {
+                "enable": true,
+                "speed": 2,
+                "direction": "none",
+                "random": false,
+                "straight": false,
+                "out_mode": "out",
+                "bounce": false,
+            }
+        },
+        "interactivity": {
+            "detect_on": "canvas",
+            "events": {
+                "onhover": {
+                    "enable": true,
+                    "mode": "grab"
+                },
+                "onclick": {
+                    "enable": false,
+                },
+                "resize": true
+            },
+            "modes": {
+                "grab": {
+                    "distance": 140,
+                    "line_linked": {
+                        "opacity": 1
+                    }
+                },
+            }
+        },
+        "retina_detect": true
+    });
 });
 
 // Utility function để thêm tool mới

@@ -7,13 +7,19 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div id="particles-js"></div>
     <div class="app-layout">
         <header class="header">
             <div class="container">
-                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                    <h1>Tools</h1>
-                    <div class="search-container">
-                        <input type="text" class="search-input" id="searchInput" placeholder="Tìm kiếm tool...">
+                <div class="header-content">
+                    <div class="header-left">
+                        <h1>Tools</h1>
+                    </div>
+                    <div class="header-center">
+                        <span id="quote" class="quote"></span>
+                    </div>
+                    <div class="header-right">
+                        <span id="currentDate"></span>
                     </div>
                 </div>
             </div>
@@ -51,6 +57,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
