@@ -1,52 +1,20 @@
 // Cấu hình các tools - bạn có thể thêm/sửa các tool ở đây
 const tools = [
     {
-        id: 'tool1',
+        id: 'Backtest',
         title: 'Build Strategy Trading',
         description: 'Xây dựng Strategy',
         category: 'Trading',
         icon: '📊',
-        url: 'https://btm2021.github.io/statbuid/'
+        url: '/a/replay'
     },
-    {
-        id: 'tool2',
-        title: 'Project Management',
-        description: 'Quản lý dự án và task',
-        category: 'Management',
-        icon: '📋',
-        url: 'https://example.com/project'
-    },
-    {
-        id: 'tool3',
-        title: 'Code Editor',
-        description: 'Chỉnh sửa code online',
-        category: 'Development',
-        icon: '💻',
-        url: 'https://example.com/editor'
-    },
-    {
-        id: 'tool4',
-        title: 'Database Admin',
-        description: 'Quản lý cơ sở dữ liệu',
-        category: 'Database',
-        icon: '🗄️',
-        url: 'https://example.com/database'
-    },
-    {
-        id: 'tool5',
-        title: 'API Testing',
-        description: 'Test và debug API',
-        category: 'Development',
-        icon: '🔧',
-        url: 'https://example.com/api'
-    },
-    {
-        id: 'tool6',
-        title: 'Monitoring',
-        description: 'Giám sát hệ thống',
-        category: 'Operations',
-        icon: '📈',
-        url: 'https://example.com/monitoring'
+     {
+        id: 'PNL Calculator',
+        title: 'Pnl Calulator',
+        description: 'Tính Pnl',
+        category: 'Trading',
+        icon: '📊',
+        url: '/a/pnlcalc'
     }
 ];
 

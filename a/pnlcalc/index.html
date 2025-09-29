@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PNL Calculator - Binance Style</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>PNL Calculator</h1>
+        <form id="pnl-form">
+            <div class="form-group">
+                <label for="symbol">Symbol:</label>
+                <input type="text" id="symbol" value="IMXUSDT" required>
+            </div>
+            <div class="form-group">
+                <label for="current-price">Entry Price:</label>
+                <input type="number" id="current-price" step="0.000001" value="0.42" required>
+            </div>
+            <div class="form-group">
+                <label for="investment-amount">Investment Amount (USDT):</label>
+                <input type="number" id="investment-amount" step="0.01" value="200" required>
+            </div>
+            <div class="form-group">
+                <label for="leverage">Leverage:</label>
+                <input type="range" id="leverage" min="1" max="50" value="20" list="leverage-options" required>
+                <datalist id="leverage-options">
+                    <option value="1">1x</option>
+                    <option value="5">5x</option>
+                    <option value="15">15x</option>
+                    <option value="20">20x</option>
+                    <option value="25">25x</option>
+                    <option value="50">50x</option>
+                </datalist>
+            </div>
+            <div class="form-group">
+                <label>Side:</label>
+                <div class="radio-group">
+                    <input type="radio" id="long" name="side" value="long" checked>
+                    <label for="long">Long</label>
+                    <input type="radio" id="short" name="side" value="short">
+                    <label for="short">Short</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="closing-price">Close Price:</label>
+                <input type="number" id="closing-price" step="0.000001" required>
+            </div>
+            <button type="submit">Calculate PNL</button>
+        </form>
+        <div id="results" class="results hidden">
+            <h2>Results</h2>
+            <p><strong>Quantity (Coins):</strong> <span id="quantity"></span></p>
+            <p><strong>PNL (USDT):</strong> <span id="pnl"></span></p>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
