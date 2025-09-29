@@ -6,7 +6,7 @@ const tools = [
         description: 'Xây dựng Strategy',
         category: 'Trading',
         icon: '📊',
-        url: '/a/replay/'
+        url: '/mytool/a/replay/'
     },
     {
         id: 'PNL Calculator',
