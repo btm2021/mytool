@@ -6,15 +6,15 @@ const tools = [
         description: 'Xây dựng Strategy',
         category: 'Trading',
         icon: '📊',
-        url: '/a/replay'
+        url: '/a/replay/'
     },
-     {
+    {
         id: 'PNL Calculator',
         title: 'Pnl Calulator',
         description: 'Tính Pnl',
         category: 'Trading',
         icon: '📊',
-        url: '/a/pnlcalc'
+        url: '/a/pnlcalc/'
     }
 ];
 
