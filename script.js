@@ -2,8 +2,8 @@
 const tools = [
     {
         id: 'Backtest',
-        title: 'Build Strategy Trading2',
-        description: 'Xây dựng Strategy',
+        title: 'Relay chart',
+        description: 'Backtest chart',
         category: 'Trading',
         icon: '📊',
         url: '/mytool/a/replay/'
@@ -14,7 +14,7 @@ const tools = [
         description: 'Tính Pnl',
         category: 'Trading',
         icon: '📊',
-        url: '/a/pnlcalc/'
+        url: '/mytool/a/pnlcalc/'
     }
 ];
 
