@@ -286,6 +286,38 @@
                     </div>
                 </div>
                 
+                <div class="settings-section">
+                    <h3>Donchian Channel Settings</h3>
+                    <div class="setting-group">
+                        <label for="donchian-length">Length:</label>
+                        <input type="number" id="donchian-length" value="50" min="1" max="200">
+                    </div>
+                    <div class="setting-group">
+                        <label for="donchian-upper-color">Upper Color:</label>
+                        <input type="color" id="donchian-upper-color" value="#0000ff">
+                    </div>
+                    <div class="setting-group">
+                        <label for="donchian-lower-color">Lower Color:</label>
+                        <input type="color" id="donchian-lower-color" value="#0000ff">
+                    </div>
+                    <div class="setting-group">
+                        <label for="donchian-middle-color">Middle Color:</label>
+                        <input type="color" id="donchian-middle-color" value="#0000ff">
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>Tenkansen (Baseline) Settings</h3>
+                    <div class="setting-group">
+                        <label for="tenkansen-length">Length:</label>
+                        <input type="number" id="tenkansen-length" value="50" min="1" max="200">
+                    </div>
+                    <div class="setting-group">
+                        <label for="tenkansen-color">Color:</label>
+                        <input type="color" id="tenkansen-color" value="#ffa500">
+                    </div>
+                </div>
+                
                 <div class="settings-controls">
                     <button id="resetSettingsBtn">Reset to Default</button>
                     <button id="applySettingsBtn">Apply Settings</button>
@@ -298,6 +330,8 @@
     <script src="symbol-selector.js"></script>
     <script src="botatr.js"></script>
     <script src="vsr-indicator.js"></script>
+    <script src="donchian.js"></script>
+    <script src="tenkansen.js"></script>
     <script src="chart-manager.js"></script>
     <script src="replay-engine.js"></script>
     <script src="backtest-engine.js"></script>

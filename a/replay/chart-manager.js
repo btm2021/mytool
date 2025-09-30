@@ -107,6 +107,41 @@ class ChartManager {
             crosshairMarkerVisible: true,
         });
 
+        // Create Donchian Channel series
+        this.donchianUpperSeries = this.chart.addLineSeries({
+            color: 'rgba(0, 0, 255, 0.8)',
+            lineWidth: 1,
+            title: 'Donchian Upper',
+            priceLineVisible: false,
+            axisLabelVisible: false,
+        });
+
+        this.donchianLowerSeries = this.chart.addLineSeries({
+            color: 'rgba(0, 0, 255, 0.8)',
+            lineWidth: 1,
+            title: 'Donchian Lower',
+            priceLineVisible: false,
+            axisLabelVisible: false,
+        });
+
+        this.donchianMiddleSeries = this.chart.addLineSeries({
+            color: 'rgba(0, 0, 255, 0.5)',
+            lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dotted,
+            title: 'Donchian Middle',
+            priceLineVisible: false,
+            axisLabelVisible: false,
+        });
+
+        // Create Tenkan-sen series
+        this.tenkansenSeries = this.chart.addLineSeries({
+            color: 'rgba(255, 165, 0, 0.8)',
+            lineWidth: 1,
+            title: 'Tenkan-sen',
+            priceLineVisible: false,
+            axisLabelVisible: false,
+        });
+
         // Handle resize
         this.handleResize();
         window.addEventListener('resize', () => this.handleResize());
@@ -139,6 +174,18 @@ class ChartManager {
         }
         if (this.vsrLowerLineSeries) {
             this.vsrLowerLineSeries.setData([]);
+        }
+        if (this.donchianUpperSeries) {
+            this.donchianUpperSeries.setData([]);
+        }
+        if (this.donchianLowerSeries) {
+            this.donchianLowerSeries.setData([]);
+        }
+        if (this.donchianMiddleSeries) {
+            this.donchianMiddleSeries.setData([]);
+        }
+        if (this.tenkansenSeries) {
+            this.tenkansenSeries.setData([]);
         }
     }
 
@@ -362,6 +409,38 @@ class ChartManager {
         }
     }
 
+    setDonchianData(data, colors = null) {
+        if (colors) {
+            if (this.donchianUpperSeries && colors.upper) {
+                this.donchianUpperSeries.applyOptions({ color: colors.upper });
+            }
+            if (this.donchianLowerSeries && colors.lower) {
+                this.donchianLowerSeries.applyOptions({ color: colors.lower });
+            }
+            if (this.donchianMiddleSeries && colors.middle) {
+                this.donchianMiddleSeries.applyOptions({ color: colors.middle });
+            }
+        }
+        if (this.donchianUpperSeries && data.upper) {
+            this.donchianUpperSeries.setData(data.upper);
+        }
+        if (this.donchianLowerSeries && data.lower) {
+            this.donchianLowerSeries.setData(data.lower);
+        }
+        if (this.donchianMiddleSeries && data.middle) {
+            this.donchianMiddleSeries.setData(data.middle);
+        }
+    }
+
+    setTenkansenData(data, color = null) {
+        if (color && this.tenkansenSeries) {
+            this.tenkansenSeries.applyOptions({ color: color });
+        }
+        if (this.tenkansenSeries && data.tenkansen) {
+            this.tenkansenSeries.setData(data.tenkansen);
+        }
+    }
+
 
     // Fit chart content to visible area
     fitContent() {
@@ -385,6 +464,10 @@ class ChartManager {
             this.trail2Series = null;
             this.vsrUpperLineSeries = null;
             this.vsrLowerLineSeries = null;
+            this.donchianUpperSeries = null;
+            this.donchianLowerSeries = null;
+            this.donchianMiddleSeries = null;
+            this.tenkansenSeries = null;
         }
         window.removeEventListener('resize', this.handleResize);
     }

@@ -21,6 +21,18 @@ class TradingApp {
                 vsr: {
                     length: 10,
                     threshold: 10
+                },
+                donchian: {
+                    length: 50,
+                    colors: {
+                        upper: 'rgba(0, 0, 255, 0.8)',
+                        lower: 'rgba(0, 0, 255, 0.8)',
+                        middle: 'rgba(0, 0, 255, 0.5)'
+                    }
+                },
+                tenkansen: {
+                    length: 50,
+                    color: 'rgba(255, 165, 0, 0.8)'
                 }
             };
 
@@ -500,6 +512,22 @@ class TradingApp {
             this.chartManager.setVSRUpperLineData(vsrData.upper);
             this.chartManager.setVSRLowerLineData(vsrData.lower);
 
+            // Calculate and show Donchian Channel
+            const donchian = new DonchianIndicator(
+                this.indicatorSettings.donchian.length,
+                this.indicatorSettings.donchian.colors
+            );
+            const donchianData = donchian.calculateArray(data);
+            this.chartManager.setDonchianData(donchianData, this.indicatorSettings.donchian.colors);
+
+            // Calculate and show Tenkan-sen
+            const tenkansen = new TenkansenIndicator(
+                this.indicatorSettings.tenkansen.length,
+                this.indicatorSettings.tenkansen.color
+            );
+            const tenkansenData = tenkansen.calculateArray(data);
+            this.chartManager.setTenkansenData(tenkansenData, this.indicatorSettings.tenkansen.color);
+
             this.chartManager.fitContent();
 
             this.updateStatus(`${symbol} ${timeframe} - ${data.length} nến`, 'success');
@@ -837,8 +865,8 @@ class TradingApp {
                     return [
                         index + 1,
                         entry.side,
-                        `"${entryDate}"`,
-                        `"${exitDate}"`,
+                        `"${entryDate}"`, 
+                        `"${exitDate}"`, 
                         entry.entryPrice?.toFixed(4) || 'N/A',
                         entry.exitPrice?.toFixed(4) || 'N/A',
                         entry.coinAmount?.toFixed(6) || 'N/A',
@@ -1346,6 +1374,14 @@ class TradingApp {
         document.getElementById('bot-atr-multiplier').value = this.indicatorSettings.botATR.atrMultiplier;
         document.getElementById('vsr-length').value = this.indicatorSettings.vsr.length;
         document.getElementById('vsr-threshold').value = this.indicatorSettings.vsr.threshold;
+        document.getElementById('donchian-length').value = this.indicatorSettings.donchian.length;
+        document.getElementById('tenkansen-length').value = this.indicatorSettings.tenkansen.length;
+        
+        // Populate color values
+        document.getElementById('donchian-upper-color').value = this.rgbaToHex(this.indicatorSettings.donchian.colors.upper);
+        document.getElementById('donchian-lower-color').value = this.rgbaToHex(this.indicatorSettings.donchian.colors.lower);
+        document.getElementById('donchian-middle-color').value = this.rgbaToHex(this.indicatorSettings.donchian.colors.middle);
+        document.getElementById('tenkansen-color').value = this.rgbaToHex(this.indicatorSettings.tenkansen.color);
 
         // Show modal
         const modal = document.getElementById('indicatorSettingsModal');
@@ -1402,6 +1438,18 @@ class TradingApp {
             vsr: {
                 length: 10,
                 threshold: 10
+            },
+            donchian: {
+                length: 50,
+                colors: {
+                    upper: 'rgba(0, 0, 255, 0.8)',
+                    lower: 'rgba(0, 0, 255, 0.8)',
+                    middle: 'rgba(0, 0, 255, 0.5)'
+                }
+            },
+            tenkansen: {
+                length: 50,
+                color: 'rgba(255, 165, 0, 0.8)'
             }
         };
 
@@ -1411,6 +1459,12 @@ class TradingApp {
         document.getElementById('bot-atr-multiplier').value = 2.0;
         document.getElementById('vsr-length').value = 10;
         document.getElementById('vsr-threshold').value = 10;
+        document.getElementById('donchian-length').value = 50;
+        document.getElementById('tenkansen-length').value = 50;
+        document.getElementById('donchian-upper-color').value = '#0000ff';
+        document.getElementById('donchian-lower-color').value = '#0000ff';
+        document.getElementById('donchian-middle-color').value = '#0000ff';
+        document.getElementById('tenkansen-color').value = '#ffa500';
 
         this.updateStatus('Settings reset to default', 'info');
     }
@@ -1423,6 +1477,14 @@ class TradingApp {
         const botAtrMultiplier = parseFloat(document.getElementById('bot-atr-multiplier').value);
         const vsrLength = parseInt(document.getElementById('vsr-length').value);
         const vsrThreshold = parseInt(document.getElementById('vsr-threshold').value);
+        const donchianLength = parseInt(document.getElementById('donchian-length').value);
+        const tenkansenLength = parseInt(document.getElementById('tenkansen-length').value);
+        
+        // Get color values
+        const donchianUpperColor = this.hexToRgba(document.getElementById('donchian-upper-color').value, 0.8);
+        const donchianLowerColor = this.hexToRgba(document.getElementById('donchian-lower-color').value, 0.8);
+        const donchianMiddleColor = this.hexToRgba(document.getElementById('donchian-middle-color').value, 0.5);
+        const tenkansenColor = this.hexToRgba(document.getElementById('tenkansen-color').value, 0.8);
 
         // Validate values
         if (botEmaLength < 1 || botEmaLength > 200) {
@@ -1445,6 +1507,14 @@ class TradingApp {
             this.updateStatus('VSR Threshold must be between 1 and 100', 'error');
             return;
         }
+        if (donchianLength < 1 || donchianLength > 200) {
+            this.updateStatus('Donchian Length must be between 1 and 200', 'error');
+            return;
+        }
+        if (tenkansenLength < 1 || tenkansenLength > 200) {
+            this.updateStatus('Tenkan-sen Length must be between 1 and 200', 'error');
+            return;
+        }
 
         // Update settings
         this.indicatorSettings.botATR.emaLength = botEmaLength;
@@ -1452,6 +1522,12 @@ class TradingApp {
         this.indicatorSettings.botATR.atrMultiplier = botAtrMultiplier;
         this.indicatorSettings.vsr.length = vsrLength;
         this.indicatorSettings.vsr.threshold = vsrThreshold;
+        this.indicatorSettings.donchian.length = donchianLength;
+        this.indicatorSettings.donchian.colors.upper = donchianUpperColor;
+        this.indicatorSettings.donchian.colors.lower = donchianLowerColor;
+        this.indicatorSettings.donchian.colors.middle = donchianMiddleColor;
+        this.indicatorSettings.tenkansen.length = tenkansenLength;
+        this.indicatorSettings.tenkansen.color = tenkansenColor;
 
         // Close modal
         this.closeSettingsModal();
@@ -1489,6 +1565,22 @@ class TradingApp {
             this.chartManager.setVSRUpperLineData(vsrData.upper);
             this.chartManager.setVSRLowerLineData(vsrData.lower);
 
+            // Recalculate Donchian Channel
+            const donchian = new DonchianIndicator(
+                this.indicatorSettings.donchian.length,
+                this.indicatorSettings.donchian.colors
+            );
+            const donchianData = donchian.calculateArray(this.currentData);
+            this.chartManager.setDonchianData(donchianData, this.indicatorSettings.donchian.colors);
+
+            // Recalculate Tenkan-sen
+            const tenkansen = new TenkansenIndicator(
+                this.indicatorSettings.tenkansen.length,
+                this.indicatorSettings.tenkansen.color
+            );
+            const tenkansenData = tenkansen.calculateArray(this.currentData);
+            this.chartManager.setTenkansenData(tenkansenData, this.indicatorSettings.tenkansen.color);
+
             // Update replay engine with new settings
             this.replayEngine.botATR = new BotATRIndicator(
                 this.indicatorSettings.botATR.emaLength,
@@ -1505,6 +1597,38 @@ class TradingApp {
             console.error('Error reloading indicators:', error);
             this.updateStatus('Error applying settings: ' + error.message, 'error');
         }
+    }
+
+    // Helper function to convert hex color to rgba
+    hexToRgba(hex, alpha = 1) {
+        // Remove # if present
+        hex = hex.replace('#', '');
+        
+        // Parse hex values
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // Helper function to convert rgba to hex
+    rgbaToHex(rgba) {
+        // Extract RGB values from rgba string
+        const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (!match) return '#000000';
+        
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        
+        // Convert to hex
+        const toHex = (n) => {
+            const hex = n.toString(16);
+            return hex.length === 1 ? '0' + hex : hex;
+        };
+        
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
     }
 }
 
