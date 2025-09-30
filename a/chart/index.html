@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binance Futures Chart - TradingView</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div id="tv_chart_container"></div>
+    
+    <!-- TradingView Charting Library -->
+    <script src="charting_library/charting_library.standalone.js"></script>
+    
+    <!-- Binance Datafeed -->
+    <script src="datafeed.js"></script>
+    
+    <!-- Custom Indicators - DISABLED FOR DEBUGGING -->
+    <!-- <script src="customindicators.js?v=6"></script> -->
+    
+    <!-- Clear ALL localStorage for debugging -->
+    <script>
+        localStorage.clear();
+        console.log('Cleared ALL localStorage for debugging');
+    </script>
+    
+    <!-- Main Application -->
+    <script src="app.js?v=7"></script>
+</body>
+</html>
