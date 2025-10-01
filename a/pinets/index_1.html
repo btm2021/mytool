@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PineScript to Pinets Converter</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>🌲 PineScript → Pinets Converter</h1>
+      <p>Chuyển đổi code PineScript sang định dạng Pinets</p>
+      <p class="subtitle">Sử dụng PEG.js parser chạy ngay trong trình duyệt</p>
+    </header>
+
+    <!-- Status Bar -->
+    <div id="status" class="status"></div>
+
+    <!-- Main Content -->
+    <div class="content">
+      <!-- Input Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>📝 PineScript Input</span>
+          <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.9;">Ctrl+Enter để convert</span>
+        </div>
+        <div class="panel-body">
+          <textarea 
+            id="pineInput" 
+            placeholder="Paste your PineScript code here...
+
+Example:
+indicator(&quot;My Indicator&quot;, overlay=true)
+length = input.int(9, &quot;Length&quot;)
+ema = ta.ema(close, length)
+plot(ema, &quot;EMA&quot;, color=color.blue)"
+          ></textarea>
+          <div class="button-group">
+            <button id="convertBtn" class="btn-primary">
+              🔄 Convert to Pinets
+            </button>
+            <button id="exampleBtn" class="btn-secondary">
+              📋 Load Example
+            </button>
+            <button id="clearBtn" class="btn-outline">
+              🗑️ Clear
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Output Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>✨ Pinets Output</span>
+        </div>
+        <div class="panel-body">
+          <pre id="output">// Kết quả sẽ hiển thị ở đây...</pre>
+          <div class="button-group">
+            <button id="copyBtn" class="btn-success">
+              📋 Copy to Clipboard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features Section -->
+    <section class="features">
+      <h2>🎯 Các tính năng hỗ trợ</h2>
+      <div class="features-grid">
+        <div class="feature-item">
+          <h3>📊 Indicator Declaration</h3>
+          <p>Chuyển đổi <code>indicator(...)</code> thành <code>context.indicator(...)</code></p>
+        </div>
+        <div class="feature-item">
+          <h3>🎛️ Input Functions</h3>
+          <p>Hỗ trợ <code>input.int</code>, <code>input.float</code>, <code>input.bool</code> → <code>Input.*</code></p>
+        </div>
+        <div class="feature-item">
+          <h3>📈 Technical Analysis</h3>
+          <p>Giữ nguyên các hàm <code>ta.ema</code>, <code>ta.sma</code>, <code>ta.rsi</code>, etc.</p>
+        </div>
+        <div class="feature-item">
+          <h3>🎨 Plot Functions</h3>
+          <p>Chuyển đổi <code>plot(...)</code> thành <code>context.plot(...)</code></p>
+        </div>
+        <div class="feature-item">
+          <h3>🔢 Variables & Series</h3>
+          <p>Tự động thêm <code>const</code> cho các biến assignment</p>
+        </div>
+        <div class="feature-item">
+          <h3>⚡ Logic Operators</h3>
+          <p>Chuyển đổi <code>and/or/not</code> thành <code>&&/||/!</code></p>
+        </div>
+        <div class="feature-item">
+          <h3>🎨 Color Literals</h3>
+          <p>Chuyển <code>color.red</code> thành <code>"red"</code></p>
+        </div>
+        <div class="feature-item">
+          <h3>📐 Math & Comparison</h3>
+          <p>Hỗ trợ đầy đủ toán tử: <code>+, -, *, /, >, <, ==, !=</code></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Built with PEG.js • Pure JavaScript • No Backend Required</p>
+      <p style="margin-top: 0.5rem; font-size: 0.75rem;">
+        © 2025 PineScript to Pinets Converter
+      </p>
+    </footer>
+  </div>
+
+  <!-- Scripts -->
+  <!-- Load PEG.js from CDN (browser-compatible version) -->
+  <script src="https://cdn.jsdelivr.net/npm/pegjs@0.10.0/peg.min.js"></script>
+  <script src="grammar.js"></script>
+  <script src="generator.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
