@@ -1,31 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Binance Futures Chart - TradingView</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <title>Binance Futures Chart</title>
+    <link rel="stylesheet" href="charting_library/style.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
+
     <div id="tv_chart_container"></div>
-    
-    <!-- TradingView Charting Library -->
+
+    <script src="polyfills.js"></script>
     <script src="charting_library/charting_library.standalone.js"></script>
-    
-    <!-- Binance Datafeed -->
+    <script src="customindicators.js"></script>
+    <script src="bundle.js"></script>
+    <script src="datasources/binance-future.js"></script>
+    <script src="datasources/binance-spot.js"></script>
+    <script src="datasources/bybit-future.js"></script>
+    <script src="datasources/bybit-spot.js"></script>
+    <script src="datasources/okx.js"></script>
     <script src="datafeed.js"></script>
-    
-    <!-- Custom Indicators - DISABLED FOR DEBUGGING -->
-    <!-- <script src="customindicators.js?v=6"></script> -->
-    
-    <!-- Clear ALL localStorage for debugging -->
-    <script>
-        localStorage.clear();
-        console.log('Cleared ALL localStorage for debugging');
-    </script>
-    
-    <!-- Main Application -->
-    <script src="app.js?v=7"></script>
+    <script src="app.js"></script>
 </body>
+
 </html>

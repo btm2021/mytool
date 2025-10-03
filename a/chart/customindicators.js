@@ -397,12 +397,11 @@ function createVSRIndicator(PineJS) {
 // REGISTER INDICATORS
 // ============================================================================
 
-// TEMPORARILY DISABLED FOR DEBUGGING
-// window.createCustomIndicators = function(PineJS) {
-//     return [
-//         createTrailIndicator(PineJS),
-//         createVSRIndicator(PineJS)
-//     ];
-// };
+window.createCustomIndicators = function(PineJS) {
+    return [
+        createTrailIndicator(PineJS),
+        createVSRIndicator(PineJS)
+    ];
+};
 
-console.log('Custom Indicators module loaded (DISABLED FOR DEBUGGING)');
+console.log('Custom Indicators module loaded');
