@@ -403,5 +403,3 @@ window.createCustomIndicators = function(PineJS) {
         createVSRIndicator(PineJS)
     ];
 };
-
-console.log('Custom Indicators module loaded');

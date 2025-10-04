@@ -9,10 +9,11 @@ async function initChart(symbol = 'BTCUSDT') {
         library_path: 'charting_library/',
         locale: 'vi',
         disabled_features: [
-            'use_localstorage_for_settings'
+            'open_account_manager',
+            'show_object_tree',
+            'study_templates'
         ],
         enabled_features: [
-            'study_templates',
             'side_toolbar_in_fullscreen_mode',
             'header_symbol_search'
         ],
@@ -36,22 +37,12 @@ async function initChart(symbol = 'BTCUSDT') {
     tvWidget = new TradingView.widget(widgetOptions);
 
     tvWidget.onChartReady(() => {
-        console.log('Chart ready');
-
         if (typeof createCustomIndicators === 'function') {
             tvWidget.activeChart().createStudy('ATR Trailing Stop', false, false, {
                 atr_length: 14,
                 atr_mult: 2.0,
                 ema_length: 30
             });
-
-            // tvWidget.activeChart().createStudy('VSR - Volume Support Resistance', false, false, {
-            //     vsr_length: 10,
-            //     vsr_threshold: 10.0,
-            //     show_vsr: true
-            // });
-
-            console.log('Custom indicators loaded');
         }
     });
 }

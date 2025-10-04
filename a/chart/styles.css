@@ -14,3 +14,82 @@ body {
     width: 100vw;
     height: 100vh;
 }
+
+/* Fix TradingView Header Layout - Specific selectors */
+body > div.js-rootresizer__contents.layout-with-border-radius > div.layout__area--top {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 48px !important;
+}
+
+body > div.js-rootresizer__contents.layout-with-border-radius > div.layout__area--top > div {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+}
+
+body > div.js-rootresizer__contents.layout-with-border-radius > div.layout__area--top > div > div {
+    display: flex !important;
+    align-items: center !important;
+}
+
+body > div.js-rootresizer__contents.layout-with-border-radius > div.layout__area--top > div > div > div:nth-child(1) {
+    display: flex !important;
+    align-items: center !important;
+}
+
+body > div.js-rootresizer__contents.layout-with-border-radius > div.layout__area--top > div > div > div:nth-child(1) > div {
+    display: flex !important;
+    align-items: center !important;
+}
+
+body > div.js-rootresizer__contents.layout-with-border-radius > div.layout__area--top > div > div > div:nth-child(1) > div > div {
+    display: flex !important;
+    align-items: center !important;
+}
+
+body > div.js-rootresizer__contents.layout-with-border-radius > div.layout__area--top > div > div > div:nth-child(1) > div > div > div {
+    display: flex !important;
+    align-items: center !important;
+}
+
+body > div.js-rootresizer__contents.layout-with-border-radius > div.layout__area--top > div > div > div:nth-child(1) > div > div > div > div {
+    display: flex !important;
+    align-items: center !important;
+}
+
+body > div.js-rootresizer__contents.layout-with-border-radius > div.layout__area--top > div > div > div:nth-child(1) > div > div > div > div > div {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+/* Fix all nested divs in header */
+.layout__area--top div {
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* Fix buttons and controls */
+.layout__area--top button,
+.layout__area--top [class*="button"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 28px !important;
+}
+
+/* Fix text elements */
+.layout__area--top span,
+.layout__area--top [class*="text"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1.5 !important;
+}
+
+/* Fix SVG icons */
+.layout__area--top svg {
+    display: block !important;
+    flex-shrink: 0 !important;
+    vertical-align: middle !important;
+}
