@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Logo Map</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #131722;
+            color: #d1d4dc;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #2962ff;
+        }
+        
+        .stats {
+            background: #1e222d;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 10px;
+        }
+        
+        .stat-item {
+            background: #2a2e39;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #089981;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #787b86;
+            margin-top: 5px;
+        }
+        
+        .test-section {
+            background: #1e222d;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .logo-test {
+            text-align: center;
+            padding: 10px;
+            background: #2a2e39;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .logo-test:hover {
+            background: #363a45;
+            transform: scale(1.05);
+        }
+        
+        .logo-test img {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 8px;
+        }
+        
+        .logo-test .name {
+            font-size: 11px;
+            color: #787b86;
+            word-break: break-all;
+        }
+        
+        .logo-test .ext {
+            font-size: 10px;
+            color: #2962ff;
+            margin-top: 4px;
+        }
+        
+        .logo-test.success {
+            border: 2px solid #089981;
+        }
+        
+        .logo-test.error {
+            border: 2px solid #f23645;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            background: #2a2e39;
+            border: 1px solid #363a45;
+            border-radius: 4px;
+            color: #d1d4dc;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: #2962ff;
+        }
+        
+        .info {
+            background: #2a2e39;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 12px;
+            color: #787b86;
+        }
+        
+        .success-text {
+            color: #089981;
+        }
+        
+        .error-text {
+            color: #f23645;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗺️ Logo Map Test</h1>
+    
+    <div class="stats">
+        <h2>Statistics</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="crypto-count">-</div>
+                <div class="stat-label">Crypto Logos</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="provider-count">-</div>
+                <div class="stat-label">Provider Logos</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="svg-count">-</div>
+                <div class="stat-label">SVG Files</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="png-count">-</div>
+                <div class="stat-label">PNG Files</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Popular Crypto Logos</h2>
+        <input type="text" class="search-box" id="crypto-search" placeholder="Search crypto (e.g. BTC, ETH, DOGE)...">
+        <div class="info">
+            <span class="success-text" id="crypto-loaded">0</span> loaded / 
+            <span class="error-text" id="crypto-failed">0</span> failed
+        </div>
+        <div class="test-grid" id="crypto-grid"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Exchange Logos</h2>
+        <div class="test-grid" id="provider-grid"></div>
+    </div>
+
+    <script src="logo-maps.js"></script>
+    <script>
+        // Popular cryptos to test
+        const popularCryptos = [
+            'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'DOT',
+            'MATIC', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'BCH', 'ETC',
+            'SHIB', 'PEPE', 'ARB', 'OP', 'APT', 'SUI', 'SEI', 'TIA',
+            'INJ', 'FET', 'NEAR', 'IMX', 'STX', 'RUNE', 'AAVE', 'MKR',
+            'ALGO', 'SAND', 'MANA', 'AXS', 'FIL', 'ICP', 'VET', 'THETA'
+        ];
+
+        let cryptoLoaded = 0;
+        let cryptoFailed = 0;
+
+        // Update stats
+        function updateStats() {
+            if (typeof LOGO_MAPS === 'undefined') {
+                alert('LOGO_MAPS not loaded!');
+                return;
+            }
+
+            const cryptoKeys = Object.keys(LOGO_MAPS.crypto);
+            const providerKeys = Object.keys(LOGO_MAPS.provider);
+            
+            let svgCount = 0;
+            let pngCount = 0;
+            
+            cryptoKeys.forEach(key => {
+                const file = LOGO_MAPS.crypto[key];
+                if (file.endsWith('.svg')) svgCount++;
+                else if (file.endsWith('.png')) pngCount++;
+            });
+            
+            providerKeys.forEach(key => {
+                const file = LOGO_MAPS.provider[key];
+                if (file.endsWith('.svg')) svgCount++;
+                else if (file.endsWith('.png')) pngCount++;
+            });
+
+            document.getElementById('crypto-count').textContent = cryptoKeys.length;
+            document.getElementById('provider-count').textContent = providerKeys.length;
+            document.getElementById('svg-count').textContent = svgCount;
+            document.getElementById('png-count').textContent = pngCount;
+        }
+
+        // Render crypto logos
+        function renderCryptoLogos(filter = '') {
+            const grid = document.getElementById('crypto-grid');
+            grid.innerHTML = '';
+            cryptoLoaded = 0;
+            cryptoFailed = 0;
+
+            let cryptosToShow = popularCryptos;
+            if (filter) {
+                cryptosToShow = Object.keys(LOGO_MAPS.crypto)
+                    .filter(key => key.includes(filter.toUpperCase()))
+                    .slice(0, 50);
+            }
+
+            cryptosToShow.forEach(symbol => {
+                const file = LOGO_MAPS.crypto[symbol];
+                if (!file) return;
+
+                const item = document.createElement('div');
+                item.className = 'logo-test';
+                
+                const img = document.createElement('img');
+                img.src = `images/crypto/${file}`;
+                img.alt = symbol;
+                
+                img.onload = function() {
+                    item.classList.add('success');
+                    cryptoLoaded++;
+                    updateCounters();
+                };
+                
+                img.onerror = function() {
+                    item.classList.add('error');
+                    this.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="18" font-size="18">❌</text></svg>';
+                    cryptoFailed++;
+                    updateCounters();
+                };
+                
+                const name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = symbol;
+                
+                const ext = document.createElement('div');
+                ext.className = 'ext';
+                ext.textContent = file.split('.').pop().toUpperCase();
+                
+                item.appendChild(img);
+                item.appendChild(name);
+                item.appendChild(ext);
+                grid.appendChild(item);
+            });
+        }
+
+        // Render provider logos
+        function renderProviderLogos() {
+            const grid = document.getElementById('provider-grid');
+            grid.innerHTML = '';
+
+            Object.keys(LOGO_MAPS.provider).forEach(provider => {
+                const file = LOGO_MAPS.provider[provider];
+                
+                const item = document.createElement('div');
+                item.className = 'logo-test';
+                
+                const img = document.createElement('img');
+                img.src = `images/provider/${file}`;
+                img.alt = provider;
+                
+                img.onload = function() {
+                    item.classList.add('success');
+                };
+                
+                img.onerror = function() {
+                    item.classList.add('error');
+                    this.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="18" font-size="18">❌</text></svg>';
+                };
+                
+                const name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = provider;
+                
+                const ext = document.createElement('div');
+                ext.className = 'ext';
+                ext.textContent = file.split('.').pop().toUpperCase();
+                
+                item.appendChild(img);
+                item.appendChild(name);
+                item.appendChild(ext);
+                grid.appendChild(item);
+            });
+        }
+
+        function updateCounters() {
+            document.getElementById('crypto-loaded').textContent = cryptoLoaded;
+            document.getElementById('crypto-failed').textContent = cryptoFailed;
+        }
+
+        // Search functionality
+        document.getElementById('crypto-search').addEventListener('input', (e) => {
+            renderCryptoLogos(e.target.value);
+        });
+
+        // Initialize
+        updateStats();
+        renderCryptoLogos();
+        renderProviderLogos();
+    </script>
+</body>
+</html>

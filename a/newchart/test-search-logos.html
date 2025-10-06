@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Search Logos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #131722;
+            color: #d1d4dc;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #2962ff;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 15px;
+            background: #1e222d;
+            border: 2px solid #2a2e39;
+            border-radius: 8px;
+            color: #d1d4dc;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: #2962ff;
+        }
+        
+        .results {
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            background: #1e222d;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .result-item:hover {
+            background: #2a2e39;
+            transform: translateX(5px);
+        }
+        
+        .logos {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #2a2e39;
+            padding: 4px;
+        }
+        
+        .info {
+            flex: 1;
+        }
+        
+        .symbol {
+            font-size: 16px;
+            font-weight: bold;
+            color: #d1d4dc;
+        }
+        
+        .description {
+            font-size: 13px;
+            color: #787b86;
+            margin-top: 4px;
+        }
+        
+        .exchange {
+            font-size: 12px;
+            color: #2962ff;
+            background: rgba(41, 98, 255, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #787b86;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #787b86;
+        }
+        
+        .stats {
+            background: #1e222d;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #089981;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #787b86;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Search Logos Test</h1>
+    
+    <p style="color: #787b86;">
+        Test search functionality với logos. Gõ symbol name để search (e.g. BTC, ETH, DOGE)
+    </p>
+    
+    <input 
+        type="text" 
+        class="search-box" 
+        id="search-input" 
+        placeholder="Search symbols... (leave empty to see all)"
+        autofocus
+    >
+    
+    <div class="stats">
+        <div>
+            <div class="stat-value" id="result-count">0</div>
+            <div class="stat-label">Results</div>
+        </div>
+        <div>
+            <div class="stat-value" id="logo-count">0</div>
+            <div class="stat-label">With Logos</div>
+        </div>
+    </div>
+    
+    <div class="results" id="results"></div>
+
+    <script src="logo-maps.js"></script>
+    <script>
+        // Simulate datafeed
+        class TestDatafeed {
+            getLocalLogoUrls(baseAsset, exchange) {
+                const logos = [];
+                
+                if (typeof LOGO_MAPS === 'undefined') {
+                    return [`images/crypto/${baseAsset.toUpperCase()}.svg`];
+                }
+                
+                const cryptoKey = baseAsset.toUpperCase();
+                if (LOGO_MAPS.crypto[cryptoKey]) {
+                    const cryptoFile = LOGO_MAPS.crypto[cryptoKey];
+                    logos.push(`images/crypto/${cryptoFile}`);
+                } else {
+                    logos.push(`images/crypto/${cryptoKey}.svg`);
+                }
+                
+                const exchangeMap = {
+                    'BINANCE': 'BINANCE',
+                    'OKX': 'OKX',
+                    'BYBIT': 'BYBIT'
+                };
+                
+                const providerKey = exchangeMap[exchange];
+                if (providerKey && LOGO_MAPS.provider[providerKey]) {
+                    const providerFile = LOGO_MAPS.provider[providerKey];
+                    logos.push(`images/provider/${providerFile}`);
+                }
+                
+                return logos;
+            }
+
+            searchSymbols(userInput, exchange, callback) {
+                const searchExchange = exchange || 'BINANCE';
+                const url = `https://fapi.binance.com/fapi/v1/exchangeInfo`;
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        let symbols = data.symbols.filter(s => s.status === 'TRADING');
+
+                        if (userInput && userInput.trim() !== '') {
+                            symbols = symbols.filter(s =>
+                                s.symbol.includes(userInput.toUpperCase())
+                            );
+                        }
+
+                        symbols = symbols
+                            .slice(0, 50)
+                            .map(s => {
+                                const baseAsset = s.baseAsset || s.symbol.replace('USDT', '').replace('BUSD', '').replace('USDC', '');
+                                const logoUrls = this.getLocalLogoUrls(baseAsset, searchExchange);
+                                
+                                return {
+                                    symbol: s.symbol,
+                                    full_name: `${searchExchange}:${s.symbol}`,
+                                    description: s.baseAsset + '/' + s.quoteAsset,
+                                    exchange: searchExchange,
+                                    type: 'crypto',
+                                    logo_urls: logoUrls
+                                };
+                            });
+
+                        callback(symbols);
+                    })
+                    .catch(error => {
+                        console.error('Search error:', error);
+                        callback([]);
+                    });
+            }
+        }
+
+        const datafeed = new TestDatafeed();
+        let searchTimeout;
+
+        function renderResults(symbols) {
+            const resultsDiv = document.getElementById('results');
+            const resultCount = document.getElementById('result-count');
+            const logoCount = document.getElementById('logo-count');
+            
+            if (symbols.length === 0) {
+                resultsDiv.innerHTML = '<div class="no-results">No results found</div>';
+                resultCount.textContent = '0';
+                logoCount.textContent = '0';
+                return;
+            }
+
+            let withLogos = 0;
+            
+            resultsDiv.innerHTML = symbols.map(s => {
+                if (s.logo_urls && s.logo_urls.length > 0) {
+                    withLogos++;
+                }
+                
+                const logosHtml = (s.logo_urls || []).map(url => 
+                    `<img src="${url}" class="logo" alt="logo" onerror="this.style.display='none'">`
+                ).join('');
+                
+                return `
+                    <div class="result-item" onclick="selectSymbol('${s.symbol}')">
+                        <div class="logos">
+                            ${logosHtml || '<div class="logo">?</div>'}
+                        </div>
+                        <div class="info">
+                            <div class="symbol">${s.symbol}</div>
+                            <div class="description">${s.description}</div>
+                        </div>
+                        <div class="exchange">${s.exchange}</div>
+                    </div>
+                `;
+            }).join('');
+
+            resultCount.textContent = symbols.length;
+            logoCount.textContent = withLogos;
+        }
+
+        function performSearch(query) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">Searching...</div>';
+            
+            datafeed.searchSymbols(query, 'BINANCE', (symbols) => {
+                renderResults(symbols);
+            });
+        }
+
+        function selectSymbol(symbol) {
+            alert(`Selected: ${symbol}\n\nIn real app, this would load the chart.`);
+        }
+
+        // Search on input
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                performSearch(e.target.value);
+            }, 300);
+        });
+
+        // Initial search (empty = show all)
+        performSearch('');
+    </script>
+</body>
+</html>
