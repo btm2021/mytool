@@ -615,6 +615,16 @@ function getBinanceConfigFromURL() {
     };
 }
 
+// Get News Provider Configuration from URL parameters
+function getNewsConfigFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return {
+        apiEndpoint: urlParams.get('newsApi') || '',
+        useMockData: urlParams.get('newsApi') ? false : true,
+        language: urlParams.get('newsLang') || 'en'
+    };
+}
+
 // Initialize TradingView
 function initTradingView() {
     // Khởi tạo Supabase adapter
@@ -633,6 +643,11 @@ function initTradingView() {
 
     // Khởi tạo Binance Broker với config từ URL
     const binanceBroker = new BinanceBroker(binanceConfig);
+
+    // Khởi tạo News Provider với config từ URL
+    const newsConfig = getNewsConfigFromURL();
+    const newsProvider = new NewsProvider(newsConfig);
+    console.log('News provider initialized:', newsConfig);
 
     const widgetOptions = {
         symbol: 'BINANCE:BTCUSDT',
@@ -689,13 +704,18 @@ function initTradingView() {
         charts_storage_url: 'supabase',
         client_id: 'tradingview_app',
         user_id: 'public_user',
+        // News provider
+        news_provider: (symbol, callback) => {
+            newsProvider.getNews(symbol, callback);
+        },
         widgetbar: {
-            details: true,
+            details: false,
             watchlist: true,
             watchlist_settings: {
-
                 readonly: false
-            }
+            },
+            datawindow: true,
+            news: true
         },
     };
 

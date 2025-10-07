@@ -1,40 +1,37 @@
-// Binance Futures Broker Implementation with Real API
+// Binance Futures Broker Implementation with WebSocket
 class BinanceBroker {
     constructor(config = {}) {
         this._host = null;
-        this._connectionStatus = 3; // Disconnected initially
+        this._connectionStatus = 3;
         this._currentAccountId = 'binance_1';
-
-        // API Configuration
+        
         this._config = {
             apiKey: config.apiKey || '',
             apiSecret: config.apiSecret || '',
             testnet: config.testnet || false
         };
-
-        this._baseUrl = this._config.testnet
+        
+        this._baseUrl = this._config.testnet 
             ? 'https://testnet.binancefuture.com'
             : 'https://fapi.binance.com';
-
-        // Data cache
+        
+        this._wsBaseUrl = this._config.testnet
+            ? 'wss://stream.binancefuture.com'
+            : 'wss://fstream.binance.com';
+        
         this._orders = [];
         this._positions = [];
         this._executions = [];
-        this._accountData = {
-            balance: 0,
-            equity: 0,
-            marginUsed: 0,
-            marginAvailable: 0
-        };
-
-        // Auto-refresh intervals
-        this._refreshInterval = null;
-
-        // Initialize connection if API key provided
+        this._accountData = { balance: 0, equity: 0, marginUsed: 0, marginAvailable: 0 };
+        
+        this._userDataWs = null;
+        this._listenKey = null;
+        this._keepAliveInterval = null;
+        
         if (this._config.apiKey && this._config.apiSecret) {
             this._connect();
         } else {
-            console.warn('Binance API credentials not provided, using demo data');
+            console.warn('No API credentials, using demo data');
             this._useDemoData();
         }
     }
@@ -53,57 +50,199 @@ class BinanceBroker {
             { id: 'demo_e1', symbol: 'BTCUSDT', price: 96000, qty: 0.05, side: 1, time: Date.now() - 3600000 },
             { id: 'demo_e2', symbol: 'ETHUSDT', price: 3550, qty: 2, side: -1, time: Date.now() - 7200000 }
         ];
-        this._accountData = {
-            balance: 10000,
-            equity: 10500,
-            marginUsed: 500,
-            marginAvailable: 10000
-        };
+        this._accountData = { balance: 10000, equity: 10500, marginUsed: 500, marginAvailable: 10000 };
     }
 
     async _connect() {
         try {
-            this._connectionStatus = 2; // Connecting
+            this._connectionStatus = 2;
             console.log('Connecting to Binance Futures...');
-
-            // Test connection
+            
+            // Fetch initial data once
             await this._fetchAccountInfo();
-
-            this._connectionStatus = 1; // Connected
-            console.log('Connected to Binance Futures');
-
-            // Start auto-refresh
-            this._startAutoRefresh();
-
+            await this._fetchOpenOrders();
+            await this._fetchPositions();
+            
+            // Start WebSocket for realtime updates
+            await this._startUserDataStream();
+            
+            this._connectionStatus = 1;
+            console.log('Connected to Binance Futures with WebSocket');
+            
             if (this._host) {
                 this._host.connectionStatusUpdate(this._connectionStatus);
             }
         } catch (error) {
-            console.error('Failed to connect to Binance:', error);
-            this._connectionStatus = 4; // Error
+            console.error('Failed to connect:', error);
+            this._connectionStatus = 4;
             if (this._host) {
                 this._host.connectionStatusUpdate(this._connectionStatus);
             }
         }
     }
 
-    _startAutoRefresh() {
-        // Refresh data every 3 seconds
-        this._refreshInterval = setInterval(() => {
-            this._fetchAccountInfo();
-            this._fetchOpenOrders();
-            this._fetchPositions();
-        }, 3000);
-    }
-
-    _stopAutoRefresh() {
-        if (this._refreshInterval) {
-            clearInterval(this._refreshInterval);
-            this._refreshInterval = null;
+    async _startUserDataStream() {
+        try {
+            // Get listen key
+            const response = await fetch(`${this._baseUrl}/fapi/v1/listenKey`, {
+                method: 'POST',
+                headers: { 'X-MBX-APIKEY': this._config.apiKey }
+            });
+            const data = await response.json();
+            this._listenKey = data.listenKey;
+            
+            console.log('Listen key obtained');
+            
+            // Connect WebSocket
+            this._userDataWs = new WebSocket(`${this._wsBaseUrl}/ws/${this._listenKey}`);
+            
+            this._userDataWs.onopen = () => {
+                console.log('User Data Stream connected');
+            };
+            
+            this._userDataWs.onmessage = (event) => {
+                this._handleUserDataUpdate(JSON.parse(event.data));
+            };
+            
+            this._userDataWs.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            this._userDataWs.onclose = () => {
+                console.log('WebSocket closed, reconnecting...');
+                setTimeout(() => this._startUserDataStream(), 5000);
+            };
+            
+            // Keep alive every 30 minutes
+            this._keepAliveInterval = setInterval(() => {
+                this._keepAliveListenKey();
+            }, 30 * 60 * 1000);
+            
+        } catch (error) {
+            console.error('Error starting user data stream:', error);
         }
     }
 
-    // Generate signature for authenticated requests
+    async _keepAliveListenKey() {
+        try {
+            await fetch(`${this._baseUrl}/fapi/v1/listenKey`, {
+                method: 'PUT',
+                headers: { 'X-MBX-APIKEY': this._config.apiKey }
+            });
+            console.log('Listen key kept alive');
+        } catch (error) {
+            console.error('Error keeping listen key alive:', error);
+        }
+    }
+
+    _handleUserDataUpdate(data) {
+        const eventType = data.e;
+        
+        if (eventType === 'ACCOUNT_UPDATE') {
+            // Account update
+            console.log('Account update received');
+            this._handleAccountUpdate(data);
+        } else if (eventType === 'ORDER_TRADE_UPDATE') {
+            // Order update
+            console.log('Order update received');
+            this._handleOrderUpdate(data);
+        }
+    }
+
+    _handleAccountUpdate(data) {
+        // Update account balance
+        if (data.a && data.a.B) {
+            data.a.B.forEach(balance => {
+                if (balance.a === 'USDT') {
+                    this._accountData.balance = parseFloat(balance.wb);
+                    this._accountData.equity = parseFloat(balance.cw);
+                    this._accountData.marginAvailable = parseFloat(balance.ab);
+                }
+            });
+            
+            if (this._host) {
+                this._host.equityUpdate(this._accountData.equity);
+                this._host.marginAvailableUpdate(this._accountData.marginAvailable);
+            }
+        }
+        
+        // Update positions
+        if (data.a && data.a.P) {
+            data.a.P.forEach(pos => {
+                const qty = Math.abs(parseFloat(pos.pa));
+                if (qty > 0) {
+                    const side = parseFloat(pos.pa) > 0 ? 1 : -1;
+                    const avgPrice = parseFloat(pos.ep);
+                    const unrealizedPnl = parseFloat(pos.up);
+                    const plPercent = (unrealizedPnl / (avgPrice * qty)) * 100;
+                    
+                    const position = {
+                        id: pos.s + '_' + side,
+                        symbol: pos.s,
+                        side: side,
+                        qty: qty,
+                        avgPrice: avgPrice,
+                        pl: unrealizedPnl,
+                        plPercent: plPercent
+                    };
+                    
+                    const idx = this._positions.findIndex(p => p.id === position.id);
+                    if (idx !== -1) {
+                        this._positions[idx] = position;
+                    } else {
+                        this._positions.push(position);
+                    }
+                    
+                    if (this._host) {
+                        this._host.positionUpdate(position);
+                    }
+                } else {
+                    // Position closed
+                    const idx = this._positions.findIndex(p => p.symbol === pos.s);
+                    if (idx !== -1) {
+                        this._positions.splice(idx, 1);
+                    }
+                }
+            });
+        }
+    }
+
+    _handleOrderUpdate(data) {
+        const o = data.o;
+        const order = {
+            id: o.i.toString(),
+            symbol: o.s,
+            type: this._mapOrderType(o.o),
+            side: o.S === 'BUY' ? 1 : -1,
+            qty: parseFloat(o.q),
+            price: parseFloat(o.p),
+            status: this._mapOrderStatus(o.X),
+            filledQty: parseFloat(o.z),
+            avgPrice: parseFloat(o.ap || 0),
+            time: o.T
+        };
+        
+        const idx = this._orders.findIndex(ord => ord.id === order.id);
+        
+        if (order.status === 2 || order.status === 1 || order.status === 5) {
+            // Filled, Canceled, or Rejected - remove from orders
+            if (idx !== -1) {
+                this._orders.splice(idx, 1);
+            }
+        } else {
+            // Working order - update or add
+            if (idx !== -1) {
+                this._orders[idx] = order;
+            } else {
+                this._orders.push(order);
+            }
+        }
+        
+        if (this._host) {
+            this._host.orderUpdate(order);
+        }
+    }
+
     _generateSignature(queryString) {
         if (typeof CryptoJS === 'undefined') {
             console.error('CryptoJS not loaded');
@@ -112,52 +251,48 @@ class BinanceBroker {
         return CryptoJS.HmacSHA256(queryString, this._config.apiSecret).toString();
     }
 
-    // Make authenticated API request
-    async _apiRequest(endpoint, params = {}) {
+    async _apiRequest(endpoint, params = {}, method = 'GET') {
         const timestamp = Date.now();
         const queryParams = { ...params, timestamp };
-
+        
         const queryString = Object.keys(queryParams)
             .map(key => `${key}=${queryParams[key]}`)
             .join('&');
-
+        
         const signature = this._generateSignature(queryString);
         const url = `${this._baseUrl}${endpoint}?${queryString}&signature=${signature}`;
-
+        
         const response = await fetch(url, {
-            headers: {
-                'X-MBX-APIKEY': this._config.apiKey
-            }
+            method: method,
+            headers: { 'X-MBX-APIKEY': this._config.apiKey }
         });
-
+        
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.msg || 'API request failed');
         }
-
+        
         return response.json();
     }
 
-    // Fetch account information
     async _fetchAccountInfo() {
         try {
             const data = await this._apiRequest('/fapi/v2/account');
-
-            // Update account data
+            
             const totalBalance = parseFloat(data.totalWalletBalance || 0);
             const totalUnrealizedProfit = parseFloat(data.totalUnrealizedProfit || 0);
             const totalMarginBalance = parseFloat(data.totalMarginBalance || 0);
             const availableBalance = parseFloat(data.availableBalance || 0);
-
+            
             this._accountData = {
                 balance: totalBalance,
                 equity: totalMarginBalance,
                 marginUsed: totalBalance - availableBalance,
                 marginAvailable: availableBalance
             };
-
-            console.log('Account info updated:', this._accountData);
-
+            
+            console.log('Account info fetched:', this._accountData);
+            
             if (this._host) {
                 this._host.equityUpdate(this._accountData.equity);
                 this._host.marginAvailableUpdate(this._accountData.marginAvailable);
@@ -167,11 +302,10 @@ class BinanceBroker {
         }
     }
 
-    // Fetch open orders
     async _fetchOpenOrders() {
         try {
             const data = await this._apiRequest('/fapi/v1/openOrders');
-
+            
             this._orders = data.map(order => ({
                 id: order.orderId.toString(),
                 symbol: order.symbol,
@@ -184,26 +318,17 @@ class BinanceBroker {
                 avgPrice: parseFloat(order.avgPrice || 0),
                 time: order.time
             }));
-
-            console.log('Orders updated:', this._orders.length);
-
-            // Update each order individually
-            if (this._host) {
-                this._orders.forEach(order => {
-                    this._host.orderUpdate(order);
-                });
-            }
+            
+            console.log('Orders fetched:', this._orders.length);
         } catch (error) {
             console.error('Error fetching orders:', error);
         }
     }
 
-    // Fetch positions
     async _fetchPositions() {
         try {
             const data = await this._apiRequest('/fapi/v2/positionRisk');
-
-            // Filter only positions with non-zero amount
+            
             this._positions = data
                 .filter(pos => parseFloat(pos.positionAmt) !== 0)
                 .map(pos => {
@@ -212,7 +337,7 @@ class BinanceBroker {
                     const avgPrice = parseFloat(pos.entryPrice);
                     const unrealizedPnl = parseFloat(pos.unRealizedProfit);
                     const plPercent = (unrealizedPnl / (avgPrice * qty)) * 100;
-
+                    
                     return {
                         id: pos.symbol + '_' + side,
                         symbol: pos.symbol,
@@ -223,25 +348,16 @@ class BinanceBroker {
                         plPercent: plPercent
                     };
                 });
-
-            console.log('Positions updated:', this._positions.length);
-
-            // Update each position individually
-            if (this._host) {
-                this._positions.forEach(position => {
-                    this._host.positionUpdate(position);
-                });
-            }
+            
+            console.log('Positions fetched:', this._positions.length);
         } catch (error) {
             console.error('Error fetching positions:', error);
         }
     }
 
-    // Fetch trade history (executions)
     async _fetchTradeHistory(symbol) {
         try {
             const data = await this._apiRequest('/fapi/v1/userTrades', { symbol, limit: 50 });
-
             return data.map(trade => ({
                 id: trade.id.toString(),
                 symbol: trade.symbol,
@@ -256,28 +372,18 @@ class BinanceBroker {
         }
     }
 
-    // Map Binance order type to TradingView type
     _mapOrderType(binanceType) {
         const typeMap = {
-            'LIMIT': 2,
-            'MARKET': 1,
-            'STOP': 3,
-            'STOP_MARKET': 3,
-            'TAKE_PROFIT': 3,
-            'TAKE_PROFIT_MARKET': 3
+            'LIMIT': 2, 'MARKET': 1, 'STOP': 3, 'STOP_MARKET': 3,
+            'TAKE_PROFIT': 3, 'TAKE_PROFIT_MARKET': 3
         };
         return typeMap[binanceType] || 2;
     }
 
-    // Map Binance order status to TradingView status
     _mapOrderStatus(binanceStatus) {
         const statusMap = {
-            'NEW': 6,           // Working
-            'PARTIALLY_FILLED': 6, // Working
-            'FILLED': 2,        // Filled
-            'CANCELED': 1,      // Canceled
-            'REJECTED': 5,      // Rejected
-            'EXPIRED': 1        // Canceled
+            'NEW': 6, 'PARTIALLY_FILLED': 6, 'FILLED': 2,
+            'CANCELED': 1, 'REJECTED': 5, 'EXPIRED': 1
         };
         return statusMap[binanceStatus] || 6;
     }
@@ -435,16 +541,15 @@ class BinanceBroker {
                 type: order.type === 1 ? 'MARKET' : 'LIMIT',
                 quantity: order.qty
             };
-
+            
             if (order.type === 2) {
                 params.price = order.limitPrice;
                 params.timeInForce = 'GTC';
             }
-
-            const result = await this._apiRequest('/fapi/v1/order', params);
-
-            await this._fetchOpenOrders();
-
+            
+            const result = await this._apiRequest('/fapi/v1/order', params, 'POST');
+            console.log('Order placed:', result.orderId);
+            
             return { orderId: result.orderId.toString() };
         } catch (error) {
             console.error('Error placing order:', error);
@@ -454,13 +559,11 @@ class BinanceBroker {
 
     async modifyOrder(order) {
         try {
-            // Cancel old order
             await this._apiRequest('/fapi/v1/order', {
                 symbol: order.symbol,
                 orderId: order.id
-            });
-
-            // Place new order
+            }, 'DELETE');
+            
             await this.placeOrder(order);
         } catch (error) {
             console.error('Error modifying order:', error);
@@ -472,13 +575,13 @@ class BinanceBroker {
         try {
             const order = this._orders.find(o => o.id === orderId);
             if (!order) return;
-
+            
             await this._apiRequest('/fapi/v1/order', {
                 symbol: order.symbol,
                 orderId: orderId
-            });
-
-            await this._fetchOpenOrders();
+            }, 'DELETE');
+            
+            console.log('Order canceled:', orderId);
         } catch (error) {
             console.error('Error canceling order:', error);
             throw error;
@@ -489,16 +592,15 @@ class BinanceBroker {
         try {
             const position = this._positions.find(p => p.id === positionId);
             if (!position) return;
-
-            // Place market order in opposite direction
+            
             await this._apiRequest('/fapi/v1/order', {
                 symbol: position.symbol,
                 side: position.side === 1 ? 'SELL' : 'BUY',
                 type: 'MARKET',
                 quantity: position.qty
-            });
-
-            await this._fetchPositions();
+            }, 'POST');
+            
+            console.log('Position closed:', positionId);
         } catch (error) {
             console.error('Error closing position:', error);
             throw error;
@@ -509,16 +611,15 @@ class BinanceBroker {
         try {
             const position = this._positions.find(p => p.id === positionId);
             if (!position) return;
-
-            // Place market order for double quantity in opposite direction
+            
             await this._apiRequest('/fapi/v1/order', {
                 symbol: position.symbol,
                 side: position.side === 1 ? 'SELL' : 'BUY',
                 type: 'MARKET',
                 quantity: position.qty * 2
-            });
-
-            await this._fetchPositions();
+            }, 'POST');
+            
+            console.log('Position reversed:', positionId);
         } catch (error) {
             console.error('Error reversing position:', error);
             throw error;
@@ -528,7 +629,7 @@ class BinanceBroker {
     _watchedValue(val) {
         return {
             value: () => val,
-            subscribe: () => ({ unsubscribe: () => { } })
+            subscribe: () => ({ unsubscribe: () => {} })
         };
     }
 
@@ -544,7 +645,13 @@ class BinanceBroker {
     }
 
     destroy() {
-        this._stopAutoRefresh();
+        if (this._userDataWs) {
+            this._userDataWs.close();
+        }
+        if (this._keepAliveInterval) {
+            clearInterval(this._keepAliveInterval);
+        }
+        console.log('Broker destroyed');
     }
 }
 
