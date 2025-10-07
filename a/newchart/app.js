@@ -640,7 +640,8 @@ function initTradingView() {
             'object_tree', 'tradingview_logo',
             'bottom_toolbar',
             'control_bar', 'open_account_manager', 'trading_account_manager',
-            'trading_notifications'
+            'trading_notifications',
+            'timeframes_toolbar'
         ],
         enabled_features: [
             'studies_extend_time_scale',
