@@ -13,5 +13,3 @@ const newsResponseExample = {
         }
     ]
 };
-
-console.log('News API Example - See comments for implementation details');

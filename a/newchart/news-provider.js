@@ -6,7 +6,6 @@ class NewsProvider {
 
     // Main method to get news
     getNews(symbol, callback) {
-        console.log(symbol)
         const newsItems = [
             // {
             //     title: "Title 1",

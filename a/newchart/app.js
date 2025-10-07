@@ -30,7 +30,6 @@ class MultiExchangeDatafeed {
 
         // Mark global data as ready
         isGlobalDataReady = true;
-        console.log('Global data initialized');
 
         // Refresh 24hr data every 5 minutes
         ticker24hrInterval = setInterval(() => {
@@ -48,8 +47,6 @@ class MultiExchangeDatafeed {
             data.forEach(item => {
                 globalSymbolPrices[item.symbol] = parseFloat(item.price);
             });
-
-            console.log('All symbol prices loaded:', Object.keys(globalSymbolPrices).length, 'symbols');
         } catch (error) {
             console.error('Error fetching all symbol prices:', error);
         }
@@ -89,11 +86,8 @@ class MultiExchangeDatafeed {
         };
 
         markPriceWs.onclose = () => {
-            console.log('Mark price WebSocket closed, reconnecting in 5s...');
             setTimeout(() => this.connectMarkPriceWebSocket(), 5000);
         };
-
-        console.log('Mark price WebSocket connected');
     }
 
     // Fetch 24hr ticker data
@@ -119,8 +113,6 @@ class MultiExchangeDatafeed {
                     count: item.count
                 };
             });
-
-            console.log('24hr data updated:', Object.keys(global24hrData).length, 'symbols');
         } catch (error) {
             console.error('Error fetching 24hr data:', error);
         }
@@ -329,7 +321,6 @@ class MultiExchangeDatafeed {
             logos.push(`images/crypto/${cryptoFile}`);
         } else {
             // Fallback to SVG if not in map
-            console.log(`Logo not found for ${cryptoKey}, using fallback`);
             logos.push(`images/crypto/${cryptoKey}.svg`);
         }
 
@@ -574,9 +565,7 @@ const AUTO_SAVE_DELAY = 2000; // 2 giây sau khi có thay đổi
 window.changeSymbol = function (symbol, exchange = 'BINANCE') {
     if (tvWidget && tvWidget.chart) {
         const fullSymbol = `${exchange}:${symbol}`;
-        tvWidget.chart().setSymbol(fullSymbol, () => {
-            console.log('Symbol changed to:', fullSymbol);
-        });
+        tvWidget.chart().setSymbol(fullSymbol, () => { });
     }
 };
 
@@ -633,21 +622,12 @@ function initTradingView() {
     // Lấy config từ URL parameters
     const binanceConfig = getBinanceConfigFromURL();
 
-    // Log config status (không log sensitive data)
-    if (binanceConfig.apiKey && binanceConfig.apiSecret) {
-        console.log('Binance API credentials loaded from URL');
-        console.log('Testnet mode:', binanceConfig.testnet);
-    } else {
-        console.log('No API credentials in URL, using demo mode');
-    }
-
     // Khởi tạo Binance Broker với config từ URL
     const binanceBroker = new BinanceBroker(binanceConfig);
 
     // Khởi tạo News Provider với config từ URL
     const newsConfig = getNewsConfigFromURL();
     const newsProvider = new NewsProvider(newsConfig);
-    console.log('News provider initialized:', newsConfig);
 
     const widgetOptions = {
         symbol: 'BINANCE:BTCUSDT',
@@ -668,7 +648,10 @@ function initTradingView() {
             'show_symbol_logo_in_legend',
             'study_templates',
             'use_localstorage_for_settings',
-            'trading_account_manager'
+            'trading_account_manager',
+            'replay_mode',                // <--- kích hoạt Replay UI
+            'replay_market',              // cho phép mô phỏng replay trên dữ liệu thị trường
+            'replay_button',
         ],
         fullscreen: false,
         autosize: true,
@@ -724,7 +707,6 @@ function initTradingView() {
     tvWidget = new TradingView.widget(widgetOptions);
 
     tvWidget.onChartReady(() => {
-        console.log('Chart ready');
         hideLoading();
 
         // Auto-load layout gần nhất khi chart ready
@@ -744,23 +726,18 @@ function setupAutoSave() {
     try {
         // Subscribe to drawing events
         tvWidget.subscribe('drawing_event', (event) => {
-            console.log('Drawing event:', event);
             scheduleAutoSave();
         });
 
         // Subscribe to study events (indicators)
         tvWidget.subscribe('study_event', (event) => {
-            console.log('Study event:', event);
             scheduleAutoSave();
         });
 
         // Subscribe to onAutoSaveNeeded
         tvWidget.subscribe('onAutoSaveNeeded', () => {
-            console.log('Auto save needed');
             scheduleAutoSave();
         });
-
-        console.log('Auto-save listeners setup complete');
     } catch (error) {
         console.error('Error setting up auto-save:', error);
     }
@@ -782,13 +759,10 @@ function scheduleAutoSave() {
 // Thực hiện auto-save
 async function performAutoSave() {
     if (!tvWidget || !saveLoadAdapter) {
-        console.log('Widget or adapter not ready');
         return;
     }
 
     try {
-        console.log('Performing auto-save...');
-
         // Lấy state hiện tại của chart
         tvWidget.save((chartData) => {
             // Save với tên đặc biệt cho autosave
@@ -801,7 +775,6 @@ async function performAutoSave() {
             saveLoadAdapter.saveChart(saveData)
                 .then((chartId) => {
                     currentChartId = chartId;
-                    console.log('Auto-saved successfully:', chartId);
                 })
                 .catch((error) => {
                     console.error('Auto-save failed:', error);
@@ -815,18 +788,14 @@ async function performAutoSave() {
 // Auto-load layout gần nhất
 async function autoLoadLatestLayout() {
     if (!tvWidget || !saveLoadAdapter) {
-        console.log('Widget or adapter not ready for auto-load');
         return;
     }
 
     try {
-        console.log('Looking for latest layout...');
-
         // Lấy tất cả layouts
         const charts = await saveLoadAdapter.getAllCharts();
 
         if (!charts || charts.length === 0) {
-            console.log('No saved layouts found');
             return;
         }
 
@@ -834,16 +803,11 @@ async function autoLoadLatestLayout() {
         const autoSaveLayout = charts.find(c => c.name === AUTO_SAVE_LAYOUT_NAME);
 
         if (autoSaveLayout) {
-            console.log('Found autosave layout, loading...');
             currentChartId = autoSaveLayout.id;
 
             // Load layout
             const content = await saveLoadAdapter.getChartContent(autoSaveLayout.id);
             tvWidget.load(content);
-
-            console.log('Auto-loaded layout:', autoSaveLayout.id);
-        } else {
-            console.log('No autosave layout found');
         }
     } catch (error) {
         console.error('Error during auto-load:', error);

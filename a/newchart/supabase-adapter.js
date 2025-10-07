@@ -12,7 +12,6 @@ class SupabaseSaveLoadAdapter {
     initSupabase() {
         // Khởi tạo Supabase client từ CDN
         this.supabase = window.supabase.createClient(this.supabaseUrl, this.supabaseKey);
-        console.log('Supabase initialized with user ID:', this.userId);
     }
 
     // Lấy tất cả layouts
@@ -72,7 +71,6 @@ class SupabaseSaveLoadAdapter {
                 console.error('Error updating chart:', error);
                 throw error;
             }
-            console.log('Chart updated:', data.id);
             return data.id;
         } else {
             // Create new
@@ -87,7 +85,6 @@ class SupabaseSaveLoadAdapter {
                 console.error('Error creating chart:', error);
                 throw error;
             }
-            console.log('Chart created:', data.id);
             return data.id;
         }
     }
