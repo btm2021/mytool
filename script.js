@@ -6,7 +6,7 @@ const tools = [
         description: 'Backtest chart',
         category: 'Trading',
         icon: '📊',
-        url: '/mytool/a/replay/'
+        url: '/mytool/a/newchart/'
     },
     {
         id: 'Tradingview',
