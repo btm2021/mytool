@@ -639,6 +639,13 @@ function initTradingView() {
             'mainSeriesProperties.candleStyle.wickUpColor': '#089981',
             'mainSeriesProperties.candleStyle.wickDownColor': '#F23645'
         },
+        // Custom indicators
+        custom_indicators_getter: function(PineJS) {
+            return Promise.resolve([
+                createATRBot(PineJS),
+                createVSR(PineJS)
+            ]);
+        },
         // Sử dụng Supabase adapter
         save_load_adapter: saveLoadAdapter,
         charts_storage_url: 'supabase',

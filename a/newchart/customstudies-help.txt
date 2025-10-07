@@ -1,0 +1,258 @@
+# Tạo file hướng dẫn custom studies dựa trên tài liệu gốc charting-library-context.txt (option A)
+# File này chỉ chứa nội dung trích từ tài liệu gốc và được tổ chức lại theo dạng hướng dẫn kỹ thuật.
+
+===========================
+TRADINGVIEW CHARTING LIBRARY
+CUSTOM STUDIES GUIDE (Extracted)
+===========================
+
+⚙️ Giới thiệu
+--------------
+Phần này trích nguyên văn và hệ thống hóa từ tài liệu gốc `charting-library-context.txt`.
+Nó mô tả cơ chế tạo, đăng ký và quản lý các "Custom Studies" (chỉ báo tùy chỉnh) trong TradingView Charting Library.
+
+===========================
+I. STUDY DEFINITION
+===========================
+
+Tất cả custom studies được định nghĩa dưới dạng một đối tượng JavaScript hoặc file `.js` riêng biệt,
+và được đăng ký vào Charting Library thông qua `studies_overrides`, `custom_indicators_getter`, hoặc API tương ứng.
+
+Cấu trúc cơ bản:
+----------------
+{
+    name: "My Custom Study",
+    metainfo: {
+        _metainfoVersion: 51,
+        id: "My Custom Study@tv-basicstudies",
+        name: "My Custom Study",
+        description: "Custom Example Study",
+        shortDescription: "My Study",
+        is_hidden_study: false,
+        is_price_study: true,
+        isCustomIndicator: true,
+        plots: [{ id: "plot_0", type: "line" }],
+        defaults: {
+            styles: {
+                plot_0: { linestyle: 0, linewidth: 2, color: "#FF0000" }
+            },
+            inputs: {},
+        },
+        inputs: [],
+        styles: {
+            plot_0: {
+                title: "Value",
+                histogramBase: 0,
+                joinPoints: true
+            }
+        },
+        precision: 2,
+        paletteColors: { 0: "#2196F3" }
+    },
+    constructor: function() {
+        this.main = function(context, input) {
+            var value = context.new_var();
+            return [value];
+        }
+    }
+}
+
+===========================
+II. CUSTOM STUDY REGISTRATION
+===========================
+
+Đăng ký custom studies vào Charting Library qua callback `custom_indicators_getter`.
+
+Ví dụ:
+-------
+widget = new TradingView.widget({
+    custom_indicators_getter: function(PineJS) {
+        return Promise.resolve([MyCustomStudyDefinition]);
+    },
+});
+
+Hàm này phải trả về một mảng các định nghĩa study hợp lệ.
+Mỗi study bao gồm:
+- `metainfo`: thông tin mô tả và cấu hình hiển thị.
+- `constructor`: logic tính toán dữ liệu đầu ra.
+
+===========================
+III. STRUCTURE: METAINFO
+===========================
+
+Thuộc tính `metainfo` mô tả toàn bộ metadata của indicator.
+Các trường chính:
+------------------
+- `_metainfoVersion`: phiên bản metainfo hiện hành.
+- `id`: định danh duy nhất của study.
+- `name`: tên study hiển thị.
+- `description`: mô tả đầy đủ.
+- `shortDescription`: tên ngắn trong UI.
+- `is_hidden_study`: nếu true → không hiển thị trong danh sách Indicators.
+- `is_price_study`: true → overlay lên biểu đồ chính.
+- `isCustomIndicator`: true → xác nhận là indicator người dùng định nghĩa.
+- `plots`: danh sách các output plot (mỗi plot là một line/histogram/shape...).
+- `defaults`: giá trị mặc định của style, input.
+- `inputs`: danh sách tham số đầu vào (input fields).
+- `styles`: cấu hình chi tiết cho từng plot (màu sắc, dạng line, fill, ...).
+- `paletteColors`: màu palette hỗ trợ.
+- `precision`: số chữ số thập phân hiển thị.
+
+===========================
+IV. CUSTOM LOGIC (constructor)
+===========================
+
+Hàm `constructor` định nghĩa logic tính toán của study.
+Nó phải có một hàm `main(context, input)` trả về mảng giá trị tương ứng với các `plots`.
+
+Các API chính của `context`:
+-----------------------------
+- `context.new_var()`: tạo biến thời gian.
+- `context.close`, `context.open`, `context.high`, `context.low`: giá trị OHLC.
+- `context.new_var(source)`: ánh xạ input sang biến.
+- `context.new_unary_function(name)`: tạo phép toán tùy chỉnh.
+- `context.new_series(expression)`: tạo series kết quả.
+
+Ví dụ:
+------
+constructor: function() {
+    this.main = function(context, input) {
+        var close = context.close;
+        var avg = (close + context.open) / 2;
+        return [avg];
+    }
+}
+
+===========================
+V. INPUT DEFINITIONS
+===========================
+
+Mỗi input trong `metainfo.inputs` xác định một tham số mà người dùng có thể chỉnh trong giao diện “Inputs”.
+
+Cấu trúc:
+----------
+{
+    id: "period",
+    name: "Period",
+    defval: 14,
+    type: "integer",
+    min: 1,
+    max: 100,
+}
+
+Các kiểu dữ liệu hỗ trợ:
+- integer
+- float
+- bool
+- color
+- source
+- resolution
+- string
+- text
+- symbol
+
+===========================
+VI. STYLE DEFINITIONS
+===========================
+
+Thuộc tính `metainfo.styles` xác định cách hiển thị từng plot:
+- `title`: tên hiển thị.
+- `linestyle`: dạng đường (0-solid, 1-dotted...).
+- `linewidth`: độ dày.
+- `color`: mã màu.
+- `histogramBase`: giá trị gốc khi hiển thị dạng histogram.
+- `joinPoints`: nối các điểm rời rạc.
+
+===========================
+VII. OUTPUT (PLOTS)
+===========================
+
+Mỗi phần tử trong `metainfo.plots` định nghĩa một giá trị đầu ra của study.
+
+Ví dụ:
+--------
+plots: [
+    { id: "plot_0", type: "line" },
+    { id: "plot_1", type: "histogram" },
+]
+
+Kết quả từ hàm `main()` phải trả về một mảng cùng chiều với số lượng plots này.
+
+===========================
+VIII. OVERLAYS & SEPARATE PANELS
+===========================
+
+- `is_price_study: true` → study overlay trên biểu đồ giá chính.
+- `is_price_study: false` → study nằm trong panel riêng bên dưới.
+
+===========================
+IX. VISIBILITY CONTROL
+===========================
+
+Một số flags trong metainfo:
+- `is_hidden_study`: ẩn khỏi danh sách Indicators.
+- `isCustomIndicator`: bật chế độ indicator do user định nghĩa.
+- `shortDescription`: tên ngắn để hiển thị trong panel.
+
+===========================
+X. CUSTOM STUDY EXAMPLE (Minimal)
+===========================
+
+Example:
+---------
+{
+  name: "Moving Average Custom",
+  metainfo: {
+    _metainfoVersion: 51,
+    id: "MA_Custom@tv-basicstudies",
+    name: "MA Custom",
+    description: "Custom Moving Average",
+    shortDescription: "MA Custom",
+    is_price_study: true,
+    isCustomIndicator: true,
+    plots: [{ id: "plot_0", type: "line" }],
+    defaults: {
+      styles: {
+        plot_0: { linestyle: 0, linewidth: 2, color: "#2196F3" }
+      },
+      inputs: {}
+    },
+    inputs: [
+      { id: "length", name: "Length", defval: 14, type: "integer" },
+      { id: "source", name: "Source", defval: "close", type: "source" }
+    ],
+    styles: {
+      plot_0: { title: "MA", histogramBase: 0, joinPoints: true }
+    },
+    precision: 2
+  },
+  constructor: function() {
+    this.main = function(context, input) {
+      var source = context.new_var(input.source);
+      var result = sma(source, input.length);
+      return [result];
+    }
+  }
+}
+
+===========================
+XI. KẾT LUẬN
+===========================
+
+Custom Studies trong TradingView Charting Library cho phép nhà phát triển:
+- Tạo chỉ báo tùy chỉnh hoàn toàn bằng JavaScript.
+- Điều khiển logic tính toán và hiển thị độc lập.
+- Đăng ký study động khi widget khởi tạo.
+- Kết hợp nhiều plot, input và style để tạo các chỉ báo phức tạp.
+
+===========================
+END OF EXTRACTED GUIDE
+===========================
+
+
+# Lưu file hướng dẫn vào hệ thống
+file_path = "/mnt/data/custom_studies_guide.txt"
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(custom_studies_guide)
+
+file_path
