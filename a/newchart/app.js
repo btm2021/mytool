@@ -637,7 +637,10 @@ function initTradingView() {
         library_path: 'charting_library/',
         locale: localStorage.getItem('tradingview_language') || 'vi',
         disabled_features: [
-            'object_tree'
+            'object_tree', 'tradingview_logo',
+            'bottom_toolbar',
+            'control_bar', 'open_account_manager', 'trading_account_manager',
+            'trading_notifications'
         ],
         enabled_features: [
             'studies_extend_time_scale',
@@ -648,9 +651,8 @@ function initTradingView() {
             'study_templates',
             'use_localstorage_for_settings',
             'trading_account_manager',
-            'replay_mode',                // <--- kích hoạt Replay UI
-            'replay_market',              // cho phép mô phỏng replay trên dữ liệu thị trường
-            'replay_button',
+            'chart_hide_close_order_button',
+
         ],
         fullscreen: false,
         autosize: true,
@@ -659,9 +661,9 @@ function initTradingView() {
             binanceBroker.setHost(host);
             const buttonsVisibility = host.sellBuyButtonsVisibility();
             if (buttonsVisibility) {
-                buttonsVisibility.setValue(false);
+                //  buttonsVisibility.setValue(false);
             }
-            host.setAccountManagerVisibilityMode('minimized');
+            //host.setAccountManagerVisibilityMode('minimized');
 
             return Promise.resolve(binanceBroker);
         },
@@ -707,10 +709,19 @@ function initTradingView() {
             datawindow: false,
             news: false
         },
+        favorites: {
+            intervals: ['5', '15', '60', '240'], // 5m, 15m, 1h, 4h
+            chartTypes: ['1', '3'], // tùy chọn thêm nếu muốn
+        },
     };
 
     tvWidget = new TradingView.widget(widgetOptions);
 
+    const style = document.createElement('style');
+    style.textContent = `
+  
+`;
+    document.head.appendChild(style);
     tvWidget.onChartReady(() => {
         hideLoading();
 
