@@ -635,10 +635,9 @@ function initTradingView() {
         interval: '15',
         container: 'tv_chart_container',
         library_path: 'charting_library/',
-        locale: 'en',
+        locale: localStorage.getItem('tradingview_language') || 'vi',
         disabled_features: [
-
-
+            'object_tree'
         ],
         enabled_features: [
             'studies_extend_time_scale',
@@ -655,9 +654,15 @@ function initTradingView() {
         ],
         fullscreen: false,
         autosize: true,
-        theme: 'Dark',
+        theme: localStorage.getItem('tradingview_theme') || 'Dark',
         broker_factory: (host) => {
             binanceBroker.setHost(host);
+            const buttonsVisibility = host.sellBuyButtonsVisibility();
+            if (buttonsVisibility) {
+                buttonsVisibility.setValue(false);
+            }
+            host.setAccountManagerVisibilityMode('minimized');
+
             return Promise.resolve(binanceBroker);
         },
         broker_config: {
@@ -699,8 +704,8 @@ function initTradingView() {
             watchlist_settings: {
                 readonly: false
             },
-            datawindow: true,
-            news: true
+            datawindow: false,
+            news: false
         },
     };
 

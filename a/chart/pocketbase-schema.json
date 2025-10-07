@@ -1,0 +1,92 @@
+{
+  "collections": [
+    {
+      "id": "chart_layouts",
+      "name": "chart_layouts",
+      "type": "base",
+      "system": false,
+      "schema": [
+        {
+          "id": "name",
+          "name": "name",
+          "type": "text",
+          "system": false,
+          "required": true,
+          "options": {
+            "min": 1,
+            "max": 255,
+            "pattern": ""
+          }
+        },
+        {
+          "id": "symbol", 
+          "name": "symbol",
+          "type": "text",
+          "system": false,
+          "required": true,
+          "options": {
+            "min": 1,
+            "max": 50,
+            "pattern": ""
+          }
+        },
+        {
+          "id": "interval",
+          "name": "interval", 
+          "type": "text",
+          "system": false,
+          "required": true,
+          "options": {
+            "min": 1,
+            "max": 10,
+            "pattern": ""
+          }
+        },
+        {
+          "id": "layout",
+          "name": "layout",
+          "type": "json",
+          "system": false,
+          "required": true,
+          "options": {}
+        },
+        {
+          "id": "version",
+          "name": "version",
+          "type": "number",
+          "system": false,
+          "required": true,
+          "options": {
+            "min": 1,
+            "max": null
+          }
+        },
+        {
+          "id": "user",
+          "name": "user",
+          "type": "relation",
+          "system": false,
+          "required": false,
+          "options": {
+            "collectionId": "_pb_users_auth_",
+            "cascadeDelete": false,
+            "minSelect": null,
+            "maxSelect": 1,
+            "displayFields": ["email", "username"]
+          }
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_chart_layouts_user ON chart_layouts (user)",
+        "CREATE INDEX idx_chart_layouts_symbol ON chart_layouts (symbol)",
+        "CREATE INDEX idx_chart_layouts_updated ON chart_layouts (updated)"
+      ],
+      "listRule": "@request.auth.id != \"\" && (user = @request.auth.id || user = \"\")",
+      "viewRule": "@request.auth.id != \"\" && (user = @request.auth.id || user = \"\")", 
+      "createRule": "@request.auth.id != \"\"",
+      "updateRule": "@request.auth.id != \"\" && user = @request.auth.id",
+      "deleteRule": "@request.auth.id != \"\" && user = @request.auth.id",
+      "options": {}
+    }
+  ]
+}

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaveLoad Engine Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #fff;
+        }
+        .demo-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background: #2d2d2d;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button.danger {
+            background: #f44336;
+        }
+        button.danger:hover {
+            background: #da190b;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+        .log {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .chart-item {
+            background: #333;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 SaveLoad Engine Demo</h1>
+    <p>Demo để test SaveLoad Engine với PocketBase</p>
+
+    <!-- Khởi tạo Engine -->
+    <div class="demo-section">
+        <h3>⚙️ Khởi tạo Engine</h3>
+        <input type="text" id="userId" placeholder="User ID (optional)" value="">
+        <input type="number" id="autoSaveDelay" placeholder="AutoSave Delay (ms)" value="8000">
+        <label>
+            <input type="checkbox" id="autoSave" checked> Bật AutoSave
+        </label>
+        <br>
+        <button onclick="initEngine()">Khởi tạo SaveLoad Engine</button>
+        <div id="engineStatus">Chưa khởi tạo</div>
+    </div>
+
+    <!-- Test Save -->
+    <div class="demo-section">
+        <h3>💾 Test Save Chart</h3>
+        <input type="text" id="chartName" placeholder="Tên chart" value="Demo Layout">
+        <input type="text" id="chartSymbol" placeholder="Symbol" value="BINANCE:BTCUSDT">
+        <input type="text" id="chartInterval" placeholder="Interval" value="1H">
+        <textarea id="chartLayout" placeholder="Chart Layout JSON" rows="4">{"version": 1, "data": {"test": "demo layout data"}}</textarea>
+        <button onclick="testSave()">Lưu Chart</button>
+    </div>
+
+    <!-- Test Load -->
+    <div class="demo-section">
+        <h3>📥 Test Load Chart</h3>
+        <input type="text" id="loadChartId" placeholder="Chart ID để load">
+        <button onclick="testLoad()">Tải Chart</button>
+        <div id="loadResult"></div>
+    </div>
+
+    <!-- List Charts -->
+    <div class="demo-section">
+        <h3>📋 Danh sách Charts</h3>
+        <button onclick="listCharts()">Lấy danh sách Charts</button>
+        <div id="chartsList"></div>
+    </div>
+
+    <!-- Console Log -->
+    <div class="demo-section">
+        <h3>📝 Console Log</h3>
+        <button onclick="clearLog()">Xóa Log</button>
+        <div id="consoleLog" class="log"></div>
+    </div>
+
+    <!-- PocketBase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.1/dist/pocketbase.umd.js"></script>
+    
+    <script type="module">
+        import { createSaveLoadEngine } from './saveload-engine.js';
+        
+        let engine = null;
+        
+        // Override console.log để hiển thị trong demo
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function addToLog(message, type = 'log') {
+            const logDiv = document.getElementById('consoleLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : '#51cf66';
+            logDiv.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToLog(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToLog(args.join(' '), 'error');
+        };
+        
+        // Expose functions to global scope
+        window.initEngine = async function() {
+            try {
+                const userId = document.getElementById('userId').value || null;
+                const autoSave = document.getElementById('autoSave').checked;
+                const autoSaveDelay = parseInt(document.getElementById('autoSaveDelay').value) || 8000;
+                
+                engine = createSaveLoadEngine({
+                    userId,
+                    autoSave,
+                    autoSaveDelay,
+                    pocketbaseUrl: 'https://crypto.pockethost.io'
+                });
+                
+                document.getElementById('engineStatus').innerHTML = 
+                    `<span style="color: #51cf66">✅ Engine đã khởi tạo</span><br>
+                     User ID: ${userId || 'None'}<br>
+                     AutoSave: ${autoSave ? 'Enabled' : 'Disabled'}<br>
+                     Delay: ${autoSaveDelay}ms`;
+                
+            } catch (error) {
+                document.getElementById('engineStatus').innerHTML = 
+                    `<span style="color: #ff6b6b">❌ Lỗi khởi tạo: ${error.message}</span>`;
+            }
+        };
+        
+        window.testSave = async function() {
+            if (!engine) {
+                alert('Vui lòng khởi tạo Engine trước!');
+                return;
+            }
+            
+            try {
+                const chartData = {
+                    name: document.getElementById('chartName').value,
+                    symbol: document.getElementById('chartSymbol').value,
+                    interval: document.getElementById('chartInterval').value,
+                    layout: JSON.parse(document.getElementById('chartLayout').value)
+                };
+                
+                const result = await engine.saveChartToServer(chartData);
+                alert(`✅ Lưu thành công! ID: ${result.id}`);
+                
+                // Auto fill load ID
+                document.getElementById('loadChartId').value = result.id;
+                
+            } catch (error) {
+                alert(`❌ Lỗi lưu chart: ${error.message}`);
+            }
+        };
+        
+        window.testLoad = async function() {
+            if (!engine) {
+                alert('Vui lòng khởi tạo Engine trước!');
+                return;
+            }
+            
+            const chartId = document.getElementById('loadChartId').value;
+            if (!chartId) {
+                alert('Vui lòng nhập Chart ID!');
+                return;
+            }
+            
+            try {
+                const result = await engine.loadChartFromServer(chartId);
+                document.getElementById('loadResult').innerHTML = 
+                    `<pre style="background: #000; color: #0f0; padding: 10px; border-radius: 4px; overflow-x: auto;">${JSON.stringify(result, null, 2)}</pre>`;
+                
+            } catch (error) {
+                document.getElementById('loadResult').innerHTML = 
+                    `<span style="color: #ff6b6b">❌ Lỗi tải chart: ${error.message}</span>`;
+            }
+        };
+        
+        window.listCharts = async function() {
+            if (!engine) {
+                alert('Vui lòng khởi tạo Engine trước!');
+                return;
+            }
+            
+            try {
+                // Test cả getAllCharts và listUserCharts
+                console.log('Testing getAllCharts...');
+                const chartsFromGetAll = await engine.getAllCharts();
+                console.log('getAllCharts result:', chartsFromGetAll);
+                
+                console.log('Testing listUserCharts...');
+                const chartsFromList = await engine.listUserCharts();
+                console.log('listUserCharts result:', chartsFromList);
+                
+                const charts = chartsFromGetAll; // Sử dụng getAllCharts
+                const chartsDiv = document.getElementById('chartsList');
+                
+                if (charts.length === 0) {
+                    chartsDiv.innerHTML = '<p>Không có chart nào.</p>';
+                    return;
+                }
+                
+                let html = '';
+                charts.forEach(chart => {
+                    const timestamp = chart.timestamp ? new Date(chart.timestamp * 1000).toLocaleString() : 'N/A';
+                    html += `
+                        <div class="chart-item">
+                            <div>
+                                <strong>${chart.name}</strong><br>
+                                <small>ID: ${chart.id}</small><br>
+                                <small>Symbol: ${chart.symbol} | Interval: ${chart.interval}</small><br>
+                                <small>Updated: ${timestamp}</small>
+                            </div>
+                            <div>
+                                <button onclick="loadChart('${chart.id}')">Load</button>
+                                <button class="danger" onclick="deleteChart('${chart.id}')">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                chartsDiv.innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('chartsList').innerHTML = 
+                    `<span style="color: #ff6b6b">❌ Lỗi lấy danh sách: ${error.message}</span>`;
+            }
+        };
+        
+        window.loadChart = function(chartId) {
+            document.getElementById('loadChartId').value = chartId;
+            testLoad();
+        };
+        
+        window.deleteChart = async function(chartId) {
+            if (!engine) {
+                alert('Vui lòng khởi tạo Engine trước!');
+                return;
+            }
+            
+            if (!confirm('Bạn có chắc muốn xóa chart này?')) {
+                return;
+            }
+            
+            try {
+                await engine.deleteChart(chartId);
+                alert('✅ Xóa thành công!');
+                listCharts(); // Refresh list
+                
+            } catch (error) {
+                alert(`❌ Lỗi xóa chart: ${error.message}`);
+            }
+        };
+        
+        window.clearLog = function() {
+            document.getElementById('consoleLog').innerHTML = '';
+        };
+        
+        // Auto init on load
+        console.log('🚀 SaveLoad Engine Demo loaded');
+    </script>
+</body>
+</html>
