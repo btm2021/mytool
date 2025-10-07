@@ -605,10 +605,35 @@ window.autoSave = {
     }
 };
 
+// Get Binance API Configuration from URL parameters
+function getBinanceConfigFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return {
+        apiKey: urlParams.get('apiKey') || '',
+        apiSecret: urlParams.get('apiSecret') || '',
+        testnet: urlParams.get('testnet') === 'true'
+    };
+}
+
 // Initialize TradingView
 function initTradingView() {
     // Khởi tạo Supabase adapter
     saveLoadAdapter = new SupabaseSaveLoadAdapter(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Lấy config từ URL parameters
+    const binanceConfig = getBinanceConfigFromURL();
+
+    // Log config status (không log sensitive data)
+    if (binanceConfig.apiKey && binanceConfig.apiSecret) {
+        console.log('Binance API credentials loaded from URL');
+        console.log('Testnet mode:', binanceConfig.testnet);
+    } else {
+        console.log('No API credentials in URL, using demo mode');
+    }
+
+    // Khởi tạo Binance Broker với config từ URL
+    const binanceBroker = new BinanceBroker(binanceConfig);
+
     const widgetOptions = {
         symbol: 'BINANCE:BTCUSDT',
         datafeed: new MultiExchangeDatafeed(),
@@ -625,12 +650,25 @@ function initTradingView() {
             'items_favoriting',
             'use_localstorage_for_settings',
             'show_symbol_logo_in_legend',
-            '  study_templates',
-            'use_localstorage_for_settings'
+            'study_templates',
+            'use_localstorage_for_settings',
+            'trading_account_manager'
         ],
         fullscreen: false,
         autosize: true,
         theme: 'Dark',
+        broker_factory: (host) => {
+            binanceBroker.setHost(host);
+            return Promise.resolve(binanceBroker);
+        },
+        broker_config: {
+            supportPositions: true,
+            supportOrdersHistory: false,
+            supportClosePosition: true,
+            supportReversePosition: true,
+            supportModifyOrderPrice: true,
+            showNotificationsLog: true
+        },
         overrides: {
             'mainSeriesProperties.candleStyle.upColor': '#089981',
             'mainSeriesProperties.candleStyle.downColor': '#F23645',
@@ -640,7 +678,7 @@ function initTradingView() {
             'mainSeriesProperties.candleStyle.wickDownColor': '#F23645'
         },
         // Custom indicators
-        custom_indicators_getter: function(PineJS) {
+        custom_indicators_getter: function (PineJS) {
             return Promise.resolve([
                 createATRBot(PineJS),
                 createVSR(PineJS)
