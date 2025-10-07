@@ -661,6 +661,7 @@ function initTradingView() {
 
         ],
         enabled_features: [
+            'studies_extend_time_scale',
             'show_symbol_logos',
             'items_favoriting',
             'use_localstorage_for_settings',
@@ -696,7 +697,8 @@ function initTradingView() {
         custom_indicators_getter: function (PineJS) {
             return Promise.resolve([
                 createATRBot(PineJS),
-                createVSR(PineJS)
+                createVSR(PineJS),
+                createVSR_HTF(PineJS)
             ]);
         },
         // Sử dụng Supabase adapter

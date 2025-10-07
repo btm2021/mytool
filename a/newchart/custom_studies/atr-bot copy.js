@@ -16,9 +16,7 @@ function createATRBot(PineJS) {
 
             plots: [
                 { id: "plot_0", type: "line" },
-                { id: "plot_1", type: "line" },
-                { id: "plot_2", type: "line" },  // Trail1 for green fill
-                { id: "plot_3", type: "line" }   // Trail1 for red fill
+                { id: "plot_1", type: "line" }
             ],
 
             defaults: {
@@ -40,35 +38,12 @@ function createATRBot(PineJS) {
                         transparency: 0,
                         visible: true,
                         color: "#ef5350"
-                    },
-                    plot_2: {
-                        linestyle: 0,
-                        linewidth: 1,
-                        plottype: 0,
-                        trackPrice: false,
-                        transparency: 100,
-                        visible: true,
-                        color: "#26a69a"
-                    },
-                    plot_3: {
-                        linestyle: 0,
-                        linewidth: 1,
-                        plottype: 0,
-                        trackPrice: false,
-                        transparency: 100,
-                        visible: true,
-                        color: "#ef5350"
                     }
                 },
                 filledAreasStyle: {
                     fillarea_0: {
                         color: "#26a69a",
-                        transparency: 85,
-                        visible: true
-                    },
-                    fillarea_1: {
-                        color: "#ef5350",
-                        transparency: 85,
+                        transparency: 90,
                         visible: true
                     }
                 },
@@ -125,33 +100,16 @@ function createATRBot(PineJS) {
                     title: "Trail 2 (ATR Trail)",
                     histogramBase: 0,
                     joinPoints: true
-                },
-                plot_2: {
-                    title: "Trail 1 Green",
-                    histogramBase: 0,
-                    joinPoints: true
-                },
-                plot_3: {
-                    title: "Trail 1 Red",
-                    histogramBase: 0,
-                    joinPoints: true
                 }
             },
 
             filledAreas: [
                 {
                     id: "fillarea_0",
-                    objAId: "plot_2",
+                    objAId: "plot_0",
                     objBId: "plot_1",
                     type: "plot_plot",
-                    title: "Green Fill (Trail1 > Trail2)"
-                },
-                {
-                    id: "fillarea_1",
-                    objAId: "plot_3",
-                    objBId: "plot_1",
-                    type: "plot_plot",
-                    title: "Red Fill (Trail1 < Trail2)"
+                    title: "Trail Fill"
                 }
             ],
 
@@ -291,20 +249,8 @@ function createATRBot(PineJS) {
                 this.atr_prev = atr;
                 this.prev_close = close;
 
-                // Determine which fill to show based on trail1 vs trail2
-                let trail1_green = NaN;  // For green fill (when trail1 > trail2)
-                let trail1_red = NaN;    // For red fill (when trail1 < trail2)
-
-                if (trail1 > trail2) {
-                    trail1_green = trail1;  // Show green fill
-                    trail1_red = NaN;       // Hide red fill
-                } else {
-                    trail1_green = NaN;     // Hide green fill
-                    trail1_red = trail1;    // Show red fill
-                }
-
-                // Return plots: [trail1, trail2, trail1_green, trail1_red]
-                return [trail1, trail2, trail1_green, trail1_red];
+                // Return plots
+                return [trail1, trail2];
             };
         }
     };
