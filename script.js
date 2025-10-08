@@ -2,11 +2,11 @@
 const tools = [
     {
         id: 'Backtest',
-        title: 'Relay chart',
-        description: 'Backtest chart',
+        title: 'My Chart',
+        description: 'My Chart',
         category: 'Trading',
         icon: '📊',
-        url: '/mytool/a/newchart/'
+        url: 'https://btm2021.github.io/mytool/a/newchart/'
     },
     {
         id: 'Tradingview',

@@ -689,7 +689,8 @@ function initTradingView() {
             return Promise.resolve([
                 createATRBot(PineJS),
                 createVSR(PineJS),
-                createVSR_HTF(PineJS)
+                createVSR_HTF(PineJS),
+                createLWMA(PineJS)
             ]);
         },
         // Sử dụng Supabase adapter
