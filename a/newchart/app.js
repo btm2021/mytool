@@ -690,7 +690,8 @@ function initTradingView() {
                 createATRBot(PineJS),
                 createVSR(PineJS),
                 createVSR_HTF(PineJS),
-                createLWMA(PineJS)
+                createLWMA(PineJS),
+                createMarketTrendCandles(PineJS)
             ]);
         },
         // Sử dụng Supabase adapter
@@ -712,8 +713,8 @@ function initTradingView() {
             news: false
         },
         favorites: {
-            intervals: ['5', '15', '60', '240'], // 5m, 15m, 1h, 4h
-            chartTypes: ['1', '3'], // tùy chọn thêm nếu muốn
+            intervals: ['5m', '15m', '60', '240','D'], // 5m, 15m, 1h, 4h
+            chartTypes: ['candles', 'lines'], // tùy chọn thêm nếu muốn
         },
     };
 
