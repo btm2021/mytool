@@ -10,8 +10,11 @@
         }
 
         tvWidget.onChartReady(() => {
-            createMenuButton();
-            setupMenuHandlers();
+            // Wait for header to be ready before creating button
+            tvWidget.headerReady().then(() => {
+                createMenuButton();
+                setupMenuHandlers();
+            });
         });
     }
 
