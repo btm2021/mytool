@@ -204,6 +204,25 @@ toolManager.registerTool({
     }
 });
 
+// Register Trading Calendar
+toolManager.registerTool({
+    name: 'Trading Calendar',
+    description: 'Track your trades with calendar view and statistics',
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+        <path d="M3 10h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="2"/>
+        <circle cx="8" cy="14" r="1" fill="currentColor"/>
+        <circle cx="12" cy="14" r="1" fill="currentColor"/>
+        <circle cx="16" cy="14" r="1" fill="currentColor"/>
+        <circle cx="8" cy="18" r="1" fill="currentColor"/>
+        <circle cx="12" cy="18" r="1" fill="currentColor"/>
+    </svg>`,
+    action: () => {
+        const dialog = new CalendarProfitDialog();
+        dialog.show();
+    }
+});
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => toolManager.init());
