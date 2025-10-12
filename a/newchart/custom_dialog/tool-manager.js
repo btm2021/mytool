@@ -223,6 +223,20 @@ toolManager.registerTool({
     }
 });
 
+// Register Signal Analyzer
+toolManager.registerTool({
+    name: 'Signal Analyzer',
+    description: 'Analyze trading signals using EMA, RSI, VWAP indicators',
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M3 12h4l3-9 4 18 3-9h4" stroke="currentColor" stroke-width="2" fill="none"/>
+        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+    </svg>`,
+    action: () => {
+        const dialog = new SignalAnalyzerDialog();
+        dialog.show();
+    }
+});
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => toolManager.init());

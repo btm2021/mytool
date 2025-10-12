@@ -2,19 +2,43 @@
 
 Hệ thống dialog chuẩn với theme TradingView, cho phép tạo các công cụ mở rộng dễ dàng.
 
+## 📚 Documentation
+
+- **[CUSTOM-DIALOG-GUIDE.md](CUSTOM-DIALOG-GUIDE.md)** - 🔥 **Hướng dẫn chuẩn hóa tạo dialog** (BẮT ĐẦU TỪ ĐÂY)
+- **[HUONG-DAN.md](HUONG-DAN.md)** - Hướng dẫn sử dụng tiếng Việt
+- **[BUGFIX.md](BUGFIX.md)** - Common issues và fixes
+- **[SCREENER-GUIDE.md](SCREENER-GUIDE.md)** - Market Screener guide
+- **[CALENDAR-GUIDE.md](CALENDAR-GUIDE.md)** - Trading Calendar guide
+
 ## Cấu trúc
 
 ```
 custom_dialog/
-├── dialog-base.js       # Base class cho tất cả dialogs
-├── dialog-styles.css    # Styles cho dialogs
-├── tool-manager.js      # Quản lý tools và sidebar
-├── tool-styles.css      # Styles cho tool sidebar
-├── pnl-calculator.js    # Ví dụ: PNL Calculator
-└── README.md           # Tài liệu này
+├── dialog-base.js              # Base class cho tất cả dialogs
+├── dialog-styles.css           # Styles cho dialogs
+├── tool-manager.js             # Quản lý tools và sidebar
+├── tool-styles.css             # Styles cho tool sidebar
+├── template-dialog.js          # Template để tạo dialog mới
+├── pnl-calculator.js           # Example: PNL Calculator
+├── position-size-calculator.js # Example: Position Size Calculator
+├── screener.js                 # Example: Market Screener
+├── calendar-profit.js          # Example: Trading Calendar
+└── README.md                   # File này
 ```
 
-## Cách sử dụng
+## Quick Start
+
+### Cho Developers mới
+
+👉 **Đọc [CUSTOM-DIALOG-GUIDE.md](CUSTOM-DIALOG-GUIDE.md)** để biết cách tạo dialog chuẩn.
+
+### Cho Users
+
+👉 **Đọc [HUONG-DAN.md](HUONG-DAN.md)** để biết cách sử dụng các tools.
+
+---
+
+## Cách sử dụng (Chi tiết)
 
 ### 1. Tạo Dialog mới
 

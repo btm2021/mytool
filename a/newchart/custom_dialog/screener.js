@@ -48,6 +48,7 @@ class ScreenerDialog extends DialogBase {
                 </div>
             </div>
             <div class="screener-actions">
+                <input type="text" id="screener-search" class="tv-form-input" placeholder="Search symbol..." style="width: 200px; margin-right: 8px;">
                 <button class="tv-button secondary" id="refresh-btn">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M13.65 2.35A8 8 0 102.35 13.65" stroke="currentColor" stroke-width="2" fill="none"/>
@@ -98,6 +99,14 @@ class ScreenerDialog extends DialogBase {
         const refreshBtn = document.getElementById('refresh-btn');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.loadData());
+        }
+
+        // Search input
+        const searchInput = document.getElementById('screener-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.filterSymbols(e.target.value);
+            });
         }
 
         // Sort headers
@@ -204,6 +213,23 @@ class ScreenerDialog extends DialogBase {
         document.getElementById('total-volume').textContent = this.formatVolume(totalVolume);
         document.getElementById('gainers').textContent = gainers;
         document.getElementById('losers').textContent = losers;
+    }
+
+    filterSymbols(searchTerm) {
+        const tbody = document.getElementById('screener-tbody');
+        if (!tbody) return;
+
+        const rows = tbody.querySelectorAll('tr[data-symbol]');
+        const term = searchTerm.toUpperCase();
+
+        rows.forEach(row => {
+            const symbol = row.getAttribute('data-symbol');
+            if (symbol.includes(term)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
     }
 
     renderTable() {
