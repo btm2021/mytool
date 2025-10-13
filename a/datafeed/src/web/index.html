@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screener</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="app-container">
+    <header class="header">
+      <h1>SCREENER</h1>
+      <div class="header-actions">
+        <button id="symbols-manager-btn" class="btn btn-small">SYMBOLS</button>
+        <button id="config-btn" class="btn btn-small">CFG</button>
+        <button id="restart-btn" class="btn btn-small btn-warning">RESTART</button>
+        <button id="delete-db-btn" class="btn btn-small btn-danger">DELETE DB</button>
+        <div class="status-bar">
+          <div class="status-item">
+            <span class="label">WS:</span>
+            <span id="connection-status" class="status-badge disconnected">OFF</span>
+          </div>
+          <div class="status-item">
+            <span class="label">EX:</span>
+            <span id="exchange-name" class="status-badge">-</span>
+          </div>
+          <div class="status-item">
+            <span class="label">SYM:</span>
+            <span id="symbol-count" class="status-badge">0</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="main-content">
+      <div class="left-panel">
+        <div class="panel system-panel">
+          <h2>SYSTEM MONITOR</h2>
+          <div class="system-grid">
+            <div class="system-item">
+              <div class="system-label">CPU USAGE</div>
+              <div class="system-value" id="cpu-usage">0%</div>
+            </div>
+            <div class="system-item">
+              <div class="system-label">CPU CORES</div>
+              <div class="system-value" id="cpu-cores">0</div>
+            </div>
+            <div class="system-item">
+              <div class="system-label">MEMORY</div>
+              <div class="system-value" id="mem-percent">0%</div>
+            </div>
+            <div class="system-item">
+              <div class="system-label">HEAP</div>
+              <div class="system-value" id="heap-used">0MB</div>
+            </div>
+            <div class="system-item">
+              <div class="system-label">DATABASE</div>
+              <div class="system-value" id="db-size">0MB</div>
+            </div>
+            <div class="system-item">
+              <div class="system-label">DISK FREE</div>
+              <div class="system-value" id="disk-free">0GB</div>
+            </div>
+            <div class="system-item">
+              <div class="system-label">UPTIME</div>
+              <div class="system-value" id="uptime">0d 0h</div>
+            </div>
+            <div class="system-item">
+              <div class="system-label">PLATFORM</div>
+              <div class="system-value" id="platform">-</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel command-panel">
+          <h2>COMMAND</h2>
+          <div class="command-input-wrapper">
+            <input type="text" id="command-input" placeholder="reload | status | list | clear">
+            <button id="send-command" class="btn btn-success">SEND</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="center-panel">
+        <div class="panel symbols-panel">
+          <h2>SYMBOLS</h2>
+          <div class="table-wrapper">
+            <table id="symbols-table">
+              <thead>
+                <tr>
+                  <th>SYMBOL</th>
+                  <th>EXCHANGE</th>
+                  <th>STATUS</th>
+                  <th>TIMEFRAMES</th>
+                </tr>
+              </thead>
+              <tbody id="symbols-body">
+                <tr>
+                  <td colspan="4" class="no-data">LOADING...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel data-panel">
+          <h2>REALTIME DATA</h2>
+          <div class="table-wrapper">
+            <table id="data-table">
+              <thead>
+                <tr>
+                  <th>EX</th>
+                  <th>SYMBOL</th>
+                  <th>TF</th>
+                  <th>CLOSE</th>
+                  <th>VOLUME</th>
+                  <th>TIME</th>
+                </tr>
+              </thead>
+              <tbody id="data-body">
+                <tr>
+                  <td colspan="9" class="no-data">WAITING FOR DATA...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="panel terminal-panel">
+          <div class="terminal-header">
+            <h2>TERMINAL LOG</h2>
+            <button id="clear-logs" class="btn btn-small">CLEAR</button>
+          </div>
+          <div id="terminal-container" class="terminal-content"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="config-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>CONFIGURATION</h3>
+        <button class="modal-close" id="modal-close">×</button>
+      </div>
+      <form id="config-form">
+        <div class="form-group">
+          <label>Batch Interval (ms):</label>
+          <input type="number" id="batch-interval" value="60000" min="1000" step="1000">
+          <small>Time between database writes (default: 60000ms = 1 minute)</small>
+        </div>
+        <div class="form-group">
+          <label>Max Records:</label>
+          <input type="number" id="max-records" value="100000" min="1000" step="1000">
+          <small>Maximum candles to keep per symbol (default: 100000)</small>
+        </div>
+        <div class="form-group">
+          <label>Bootstrap Load:</label>
+          <input type="number" id="bootstrap-load" value="10000" min="100" step="100">
+          <small>Initial candles to load on startup (default: 10000)</small>
+        </div>
+        <div class="form-group">
+          <label>Server Port:</label>
+          <input type="number" id="port" value="3000" min="1000" max="65535">
+          <small>HTTP server port (requires restart)</small>
+        </div>
+        <button type="submit" class="btn btn-primary">SAVE & RESTART</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="symbols-modal" class="modal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>SYMBOLS MANAGER</h3>
+        <button class="modal-close" id="symbols-modal-close">×</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-exchange="binance_futures">BINANCE FUTURES</button>
+        <button class="tab-btn" data-exchange="bybit_futures">BYBIT FUTURES</button>
+        <button class="tab-btn" data-exchange="okx_futures">OKX FUTURES</button>
+      </div>
+
+      <div class="tab-content">
+        <div class="symbols-manager">
+          <div class="symbols-section">
+            <div class="section-header">
+              <h4>WHITELIST (<span id="whitelist-count">0</span>)</h4>
+              <button id="save-whitelist" class="btn btn-success btn-small">SAVE</button>
+            </div>
+            <div class="symbols-search">
+              <input type="text" id="whitelist-search" placeholder="Search whitelist...">
+            </div>
+            <div id="whitelist-container" class="symbols-list"></div>
+          </div>
+
+          <div class="symbols-section">
+            <div class="section-header">
+              <h4>AVAILABLE SYMBOLS (<span id="available-count">0</span>)</h4>
+              <button id="refresh-symbols" class="btn btn-small">REFRESH</button>
+            </div>
+            <div class="symbols-search">
+              <input type="text" id="available-search" placeholder="Search symbols...">
+            </div>
+            <div id="available-container" class="symbols-list">
+              <div class="loading-symbols">Loading symbols...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
