@@ -1,0 +1,89 @@
+/* Terminal styles */
+.terminal-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: #000;
+  border-bottom: 1px solid #fff;
+}
+
+.terminal-header h2 {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.terminal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  font-family: 'Courier New', monospace;
+  background: #000;
+}
+
+.log-entry {
+  padding: 4px 8px;
+  margin-bottom: 2px;
+  border-left: 3px solid transparent;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.log-time {
+  color: #666;
+  margin-right: 8px;
+}
+
+.log-message {
+  color: #ccc;
+}
+
+.log-info {
+  border-left-color: #0af;
+}
+
+.log-info .log-message {
+  color: #0af;
+}
+
+.log-error {
+  border-left-color: #f00;
+  background: #1a0000;
+}
+
+.log-error .log-message {
+  color: #f00;
+}
+
+.log-validated {
+  border-left-color: #0f0;
+}
+
+.log-validated .log-message {
+  color: #0f0;
+}
+
+.log-connected {
+  border-left-color: #0f0;
+  background: #001a00;
+}
+
+.log-connected .log-message {
+  color: #0f0;
+  font-weight: bold;
+}
+
+.log-receiving {
+  border-left-color: #888;
+}
+
+.log-receiving .log-message {
+  color: #888;
+}

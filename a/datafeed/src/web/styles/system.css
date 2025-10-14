@@ -1,0 +1,98 @@
+/* System monitor styles */
+.system-panel {
+  flex-shrink: 0;
+}
+
+.system-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: #000;
+  padding: 8px;
+}
+
+.system-item {
+  background: #0a0a0a;
+  padding: 6px 8px;
+  border: 1px solid #222;
+}
+
+.system-label {
+  font-size: 9px;
+  color: #666;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.system-value {
+  font-size: 13px;
+  font-weight: bold;
+  color: #0af;
+  font-family: 'Courier New', monospace;
+}
+
+.workers-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.workers-table-wrapper {
+  flex: 1;
+  overflow-y: hidden;
+}
+
+.workers-table {
+  width: 100%;
+}
+
+.worker-name {
+  color: #fff;
+  font-weight: bold;
+}
+
+.worker-metric {
+  color: #0af;
+  text-align: right;
+}
+
+.worker-status {
+  text-align: center;
+}
+
+.worker-status .status-active {
+  color: #0f0;
+  font-size: 16px;
+}
+
+.worker-status .status-inactive {
+  color: #f00;
+  font-size: 16px;
+}
+
+.command-panel {
+  flex-shrink: 0;
+  min-height: 90px;
+  max-height: 90px;
+}
+
+.command-input-wrapper {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+}
+
+.command-input-wrapper input {
+  flex: 1;
+  padding: 8px 12px;
+  background: #000;
+  border: 1px solid #333;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.command-input-wrapper input:focus {
+  outline: none;
+  border-color: #0af;
+}

@@ -1,0 +1,44 @@
+/* Worker Progress in Table */
+.worker-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.worker-progress-bar {
+  flex: 1;
+  height: 14px;
+  background: #000;
+  border: 1px solid #333;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.worker-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0af 0%, #0cf 50%, #0af 100%);
+  background-size: 200% 100%;
+  transition: width 0.3s ease;
+  animation: workerProgressShine 2s linear infinite;
+  box-shadow: 0 0 8px rgba(0, 175, 255, 0.4);
+}
+
+@keyframes workerProgressShine {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 0%;
+  }
+}
+
+.worker-progress-text {
+  font-size: 10px;
+  color: #0af;
+  font-weight: bold;
+  min-width: 35px;
+  text-align: right;
+}

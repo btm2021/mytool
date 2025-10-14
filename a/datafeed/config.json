@@ -2,6 +2,54 @@
   "exchanges": {
     "binance_futures": {
       "symbols": [
+        "1000BONKUSDT",
+        "1000PEPEUSDT",
+        "4USDT",
+        "AAVEUSDT",
+        "ADAUSDT",
+        "ALICEUSDT",
+        "ARBUSDT",
+        "ASTERUSDT",
+        "AVAXUSDT",
+        "BASUSDT",
+        "BCHUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "CAKEUSDT",
+        "COAIUSDT",
+        "CRVUSDT",
+        "DOGEUSDT",
+        "DOTUSDT",
+        "ENAUSDT",
+        "ETHUSDT",
+        "EULUSDT",
+        "FARTCOINUSDT",
+        "FFUSDT",
+        "FILUSDT",
+        "HUSDT",
+        "HYPEUSDT",
+        "IPUSDT",
+        "LINKUSDT",
+        "LTCUSDT",
+        "NEARUSDT",
+        "OMUSDT",
+        "OPUSDT",
+        "PAXGUSDT",
+        "PENGUUSDT",
+        "PUMPUSDT",
+        "SNXUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "TAOUSDT",
+        "TRUMPUSDT",
+        "WIFUSDT",
+        "WLDUSDT",
+        "WLFIUSDT",
+        "XPLUSDT",
+        "XRPUSDT",
+        "YBUSDT",
+        "ZECUSDT",
+        "ZENUSDT",
         "ZEREBROUSDT",
         "ZORAUSDT"
       ],
@@ -20,7 +68,7 @@
         "BTCUSDT",
         "ETHUSDT"
       ],
-      "enabled": false
+      "enabled": true
     }
   },
   "intervals": [
@@ -28,7 +76,7 @@
   ],
   "database_path": "./data/ohlcv.db",
   "batch_interval": 60000,
-  "max_records": 100000,
-  "bootstrap_load": 10000,
+  "max_records": 200000,
+  "bootstrap_load": 50000,
   "port": 3000
 }

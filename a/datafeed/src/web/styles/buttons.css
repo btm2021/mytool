@@ -1,0 +1,92 @@
+/* Button styles */
+.btn {
+  padding: 6px 14px;
+  border: 1px solid #fff;
+  background: #000;
+  color: #fff;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 11px;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: #fff;
+  color: #000;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-small {
+  padding: 1px 2px;
+  font-size: 10px;
+}
+
+.btn-primary {
+  border-color: #0af;
+  color: #0af;
+}
+
+.btn-primary:hover {
+  background: #0af;
+  color: #000;
+}
+
+.btn-success {
+  border-color: #0f0;
+  color: #0f0;
+}
+
+.btn-success:hover {
+  background: #0f0;
+  color: #000;
+}
+
+.btn-warning {
+  border-color: #fa0;
+  color: #fa0;
+}
+
+.btn-warning:hover {
+  background: #fa0;
+  color: #000;
+}
+
+.btn-danger {
+  border-color: #f00;
+  color: #f00;
+}
+
+.btn-danger:hover {
+  background: #f00;
+  color: #000;
+}
+
+.btn-timeframe {
+  padding: 2px 8px;
+  font-size: 10px;
+  border: 1px solid #666;
+  background: #1a1a1a;
+  color: #888;
+}
+
+.btn-timeframe:hover {
+  border-color: #0af;
+  background: #0af;
+  color: #000;
+}
+
+.btn-ohlcv {
+  border-color: #f0b90b;
+  color: #f0b90b;
+  font-weight: bold;
+}
+
+.btn-ohlcv:hover {
+  background: #f0b90b;
+  color: #000;
+}

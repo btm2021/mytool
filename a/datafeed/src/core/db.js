@@ -116,6 +116,26 @@ export class OHLCVDatabase {
     }
   }
 
+  getAllSymbolsByExchange() {
+    const query = `
+      SELECT DISTINCT exchange, symbol
+      FROM ohlcv
+      ORDER BY exchange, symbol
+    `;
+    
+    const rows = this.db.prepare(query).all();
+    const result = {};
+    
+    for (const row of rows) {
+      if (!result[row.exchange]) {
+        result[row.exchange] = [];
+      }
+      result[row.exchange].push(row.symbol);
+    }
+    
+    return result;
+  }
+
   close() {
     this.db.close();
   }

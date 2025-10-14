@@ -1,0 +1,121 @@
+/* Table styles */
+.table-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  background: #000;
+  z-index: 10;
+}
+
+th {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #fff;
+  font-weight: bold;
+  color: #fff;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+td {
+  padding: 6px 12px;
+  border-bottom: 1px solid #222;
+  color: #ccc;
+}
+
+tr:hover td {
+  background: #1a1a1a;
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+  font-style: italic;
+}
+
+.price-close {
+  font-weight: bold;
+  color: #0af;
+}
+
+.price-flash-green {
+  animation: flashGreen 0.5s ease-out;
+}
+
+.price-flash-red {
+  animation: flashRed 0.5s ease-out;
+}
+
+@keyframes flashGreen {
+  0% { background: #0f0; color: #000; }
+  100% { background: transparent; color: #0af; }
+}
+
+@keyframes flashRed {
+  0% { background: #f00; color: #fff; }
+  100% { background: transparent; color: #0af; }
+}
+
+.timeframe-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.status-active {
+  color: #0f0;
+}
+
+.status-inactive {
+  color: #f00;
+}
+
+/* Worker threads table - fixed height */
+.workers-table-wrapper {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.workers-table {
+  font-size: 11px;
+}
+
+.worker-name {
+  width: 40%;
+}
+
+.worker-metric {
+  width: 25%;
+  text-align: right;
+}
+
+.worker-status {
+  width: 10%;
+  text-align: center;
+}
+
+/* Exchange colors */
+.exchange-binance_futures {
+  color: #f0b90b !important;
+  font-weight: bold;
+}
+
+.exchange-bybit_futures {
+  color: #f7931a !important;
+  font-weight: bold;
+}
+
+.exchange-okx_futures {
+  color: #00d4aa !important;
+  font-weight: bold;
+}

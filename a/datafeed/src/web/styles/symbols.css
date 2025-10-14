@@ -1,0 +1,309 @@
+/* Symbols manager styles */
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 15px 20px 0;
+  background: #0a0a0a;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-bottom: none;
+  color: #888;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 11px;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  background: #222;
+  color: #fff;
+}
+
+.tab-btn.active {
+  background: #000;
+  border-color: #fff;
+  color: #fff;
+}
+
+.tab-content {
+  padding: 20px;
+}
+
+.symbols-manager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.symbols-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #333;
+}
+
+.section-header h4 {
+  font-size: 13px;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.symbols-search input {
+  width: 100%;
+  padding: 8px 12px;
+  background: #000;
+  border: 1px solid #333;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.symbols-search input:focus {
+  outline: none;
+  border-color: #0af;
+}
+
+.symbols-list {
+  height: 400px;
+  overflow-y: auto;
+  border: 1px solid #333;
+  background: #000;
+  padding: 10px;
+}
+
+.symbol-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  background: #1a1a1a;
+  border: 1px solid #222;
+  transition: all 0.2s;
+}
+
+.symbol-item:hover {
+  background: #222;
+  border-color: #0af;
+}
+
+.symbol-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.symbol-name {
+  font-weight: bold;
+  color: #fff;
+  font-size: 12px;
+}
+
+.symbol-volume {
+  color: #666;
+  font-size: 10px;
+}
+
+.symbol-action {
+  padding: 4px 12px;
+  font-size: 10px;
+  border: 1px solid #0af;
+  background: transparent;
+  color: #0af;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.symbol-action:hover {
+  background: #0af;
+  color: #000;
+}
+
+.symbol-action.remove {
+  border-color: #f00;
+  color: #f00;
+}
+
+.symbol-action.remove:hover {
+  background: #f00;
+  color: #fff;
+}
+
+.loading-symbols {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+  font-style: italic;
+}
+
+.symbols-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-height: 50vh;
+  overflow: hidden;
+}
+
+.symbols-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: #000;
+  border-bottom: 1px solid #fff;
+}
+
+.symbols-header h2 {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.symbols-filter-input {
+  padding:1x 1px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  width: 200px;
+}
+
+.symbols-filter-input:focus {
+  outline: none;
+  border-color: #0af;
+}
+
+.symbols-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 10px 15px;
+  background: #0a0a0a;
+  border-bottom: 1px solid #222;
+  overflow-x: auto;
+}
+
+.symbols-tab-btn {
+  padding: 6px 14px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #888;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 10px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.symbols-tab-btn:hover {
+  background: #222;
+  color: #fff;
+}
+
+.symbols-tab-btn.active {
+  background: #000;
+  border-color: #0af;
+  color: #0af;
+}
+
+/* Exchange controls */
+.exchange-controls {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  padding: 15px 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #333;
+}
+
+.exchange-status {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.exchange-status.status-enabled {
+  color: #0f0;
+}
+
+.exchange-status.status-disabled {
+  color: #666;
+}
+
+/* Exchange Loading Overlay */
+.exchange-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.2s ease;
+}
+
+.exchange-loading-spinner {
+  text-align: center;
+}
+
+.exchange-loading-spinner p {
+  margin-top: 20px;
+  color: #0af;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Spinner Animation */
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #1a1a1a;
+  border-top: 4px solid #0af;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Tab content needs relative positioning for overlay */
+.tab-content {
+  position: relative;
+  min-height: 500px;
+}

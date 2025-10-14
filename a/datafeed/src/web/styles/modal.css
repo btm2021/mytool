@@ -1,0 +1,134 @@
+/* Modal styles */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: #0a0a0a;
+  border: 2px solid #fff;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
+}
+
+.modal-large {
+  max-width: 1200px;
+}
+
+.modal-ohlcv {
+  width: 75vw;
+  height: 75vh;
+  max-width: 75vw;
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-iframe-container {
+  flex: 1;
+  overflow: hidden;
+  background: #000;
+}
+
+.modal-iframe-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #000;
+  border-bottom: 2px solid #fff;
+}
+
+.modal-header h3 {
+  font-size: 13px;
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 1.5px;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: #f00;
+  transform: rotate(90deg);
+}
+
+.form-group {
+  padding: 15px 20px;
+  border-bottom: 1px solid #222;
+}
+
+.form-group:last-child {
+  border-bottom: none;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #fff;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 8px 12px;
+  background: #000;
+  border: 1px solid #333;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #0af;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 6px;
+  color: #666;
+  font-size: 11px;
+}
+
+.form-group button {
+  width: 100%;
+  margin-top: 10px;
+}

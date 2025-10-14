@@ -1,84 +1,131 @@
-import WebSocket from 'ws';
+import ccxt from 'ccxt';
 import { DataSourceBase } from './datasource_base.js';
-import {
-    BINANCE_FUTURES_WS,
-    BINANCE_FUTURES_API,
-    WS_RECONNECT_DELAY,
-    WS_HEARTBEAT_INTERVAL,
-    WS_HEARTBEAT_TIMEOUT,
-    WS_CONNECT_DELAY,
-    DEFAULT_EXCHANGE,
-    TIMEFRAME_1M
-} from '../core/constants.js';
+import { DEFAULT_EXCHANGE, TIMEFRAME_1M } from '../core/constants.js';
+
+const ccxtpro = ccxt.pro;
 
 export class BinanceFutureDataSource extends DataSourceBase {
     constructor() {
         super();
-        this.ws = null;
+        this.exchange = null;
         this.messageCallback = null;
-        this.reconnectTimer = null;
-        this.heartbeatTimer = null;
-        this.lastPong = Date.now();
-        this.isConnecting = false;
+        this.wsConnected = false;
+        this.subscribedSymbols = new Map();
+        this.exchangeName = DEFAULT_EXCHANGE;
+        this.lastCandles = new Map();
     }
 
-    connect() {
-        if (this.isConnecting) return;
-        this.isConnecting = true;
-
-        this.log('Connecting to WebSocket...');
-        this.ws = new WebSocket(BINANCE_FUTURES_WS);
-
-        this.ws.on('open', () => {
-            this.log('WebSocket connected', 'success');
-            this.isConnecting = false;
-            this.lastPong = Date.now();
-            this.startHeartbeat();
-        });
-
-        this.ws.on('message', (data) => {
-            this.lastPong = Date.now();
-            try {
-                const parsed = JSON.parse(data.toString());
-                if (parsed.e === 'kline') {
-                    const normalized = this.normalize(parsed);
-                    
-                    if (this.messageCallback) {
-                        this.messageCallback(normalized);
-                    }
-                }
-            } catch (err) {
-                this.log(`Parse error: ${err.message}`, 'error');
+    async initialize() {
+        this.exchange = new ccxtpro.binance({
+            enableRateLimit: true,
+            newUpdates: false,
+            options: {
+                defaultType: 'future'
             }
         });
-
-        this.ws.on('error', (err) => {
-            this.log(`WebSocket error: ${err.message}`, 'error');
-        });
-
-        this.ws.on('close', () => {
-            this.log('WebSocket closed', 'warn');
-            this.isConnecting = false;
-            this.stopHeartbeat();
-            this.scheduleReconnect();
-        });
+        await this.exchange.loadMarkets();
+        this.log('Initialized', 'success');
     }
 
-    subscribe(symbols, interval = '1m') {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            this.log('Cannot subscribe: WebSocket not ready', 'error');
-            return;
+    async connect() {
+        if (!this.exchange) {
+            await this.initialize();
         }
+        this.wsConnected = true;
+        this.log('Connected', 'success');
+    }
 
-        const streams = symbols.map(s => `${s.toLowerCase()}@kline_${interval}`);
-        const subscribeMsg = {
-            method: 'SUBSCRIBE',
-            params: streams,
-            id: Date.now()
-        };
+    async subscribe(symbols, interval = '1m') {
+        this.log(`Subscribing to ${symbols.length} symbols`);
+        
+        for (const symbol of symbols) {
+            const ccxtSymbol = this.toCCXTSymbol(symbol);
+            this.subscribedSymbols.set(symbol, ccxtSymbol);
+            this.watchSymbol(symbol, ccxtSymbol, interval);
+        }
+    }
 
-        this.log(`Subscribing to ${streams.length} streams`);
-        this.ws.send(JSON.stringify(subscribeMsg));
+    async watchSymbol(originalSymbol, ccxtSymbol, interval) {
+        // Binance không hỗ trợ watchOHLCV, dùng watchTrades và aggregate
+        while (this.wsConnected && this.subscribedSymbols.has(originalSymbol)) {
+            try {
+                const trades = await this.exchange.watchTrades(ccxtSymbol);
+                if (trades && trades.length > 0) {
+                    // Aggregate trades thành candle
+                    await this.aggregateTradesIntoCandle(originalSymbol, trades, interval);
+                }
+            } catch (error) {
+                this.log(`Watch error for ${originalSymbol}: ${error.message}`, 'error');
+                await this.sleep(2000);
+            }
+        }
+    }
+
+    async aggregateTradesIntoCandle(symbol, trades, interval) {
+        const intervalMs = this.getIntervalMs(interval);
+        const now = Date.now();
+        const currentCandleTime = Math.floor(now / intervalMs) * intervalMs;
+        
+        // Lấy candle hiện tại từ cache hoặc tạo mới
+        let candle = this.lastCandles.get(symbol);
+        
+        if (!candle || candle.ts !== currentCandleTime) {
+            // Candle mới, fetch từ API để có data đầy đủ
+            try {
+                const ohlcv = await this.exchange.fetchOHLCV(
+                    this.toCCXTSymbol(symbol), 
+                    interval, 
+                    currentCandleTime, 
+                    1
+                );
+                
+                if (ohlcv && ohlcv.length > 0) {
+                    const latest = ohlcv[0];
+                    candle = {
+                        symbol,
+                        exchange: this.exchangeName,
+                        interval,
+                        ts: latest[0],
+                        open: latest[1],
+                        high: latest[2],
+                        low: latest[3],
+                        close: latest[4],
+                        volume: latest[5],
+                        closed: false
+                    };
+                    this.lastCandles.set(symbol, candle);
+                }
+            } catch (error) {
+                // Ignore fetch errors
+            }
+        }
+        
+        // Update candle với trades mới
+        if (candle) {
+            for (const trade of trades) {
+                if (trade.timestamp >= currentCandleTime && trade.timestamp < currentCandleTime + intervalMs) {
+                    candle.close = trade.price;
+                    candle.high = Math.max(candle.high, trade.price);
+                    candle.low = Math.min(candle.low, trade.price);
+                    candle.volume += trade.amount;
+                }
+            }
+            
+            // Broadcast candle update
+            if (this.messageCallback) {
+                this.messageCallback({ ...candle });
+            }
+        }
+    }
+
+    toCCXTSymbol(symbol) {
+        if (symbol.includes('/')) return symbol;
+        
+        if (symbol.endsWith('USDT')) {
+            const base = symbol.replace('USDT', '');
+            return `${base}/USDT:USDT`;
+        }
+        return symbol;
     }
 
     onMessage(callback) {
@@ -89,32 +136,74 @@ export class BinanceFutureDataSource extends DataSourceBase {
         this.logger = logger;
     }
 
-    reconnect() {
-        this.log('Manual reconnect triggered', 'warn');
-        if (this.ws) {
-            this.ws.close();
-        }
-        setTimeout(() => this.connect(), WS_CONNECT_DELAY);
+    async reconnect() {
+        this.log('Reconnecting...', 'warn');
+        await this.close();
+        await this.sleep(1000);
+        await this.connect();
     }
 
-    scheduleReconnect() {
-        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = setTimeout(() => {
-            this.log('Auto reconnecting...', 'warn');
-            this.connect();
-        }, WS_RECONNECT_DELAY);
-    }
-
-    startHeartbeat() {
-        this.stopHeartbeat();
-        this.heartbeatTimer = setInterval(() => {
-            if (Date.now() - this.lastPong > WS_HEARTBEAT_TIMEOUT) {
-                this.log('Heartbeat timeout, reconnecting...', 'warn');
-                this.reconnect();
-            } else if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                this.ws.ping();
+    async backfill(symbol, fromTs, _toTs, limit = 1500) {
+        try {
+            if (!this.exchange) {
+                await this.initialize();
             }
-        }, WS_HEARTBEAT_INTERVAL);
+
+            const ccxtSymbol = this.toCCXTSymbol(symbol);
+            const ohlcv = await this.exchange.fetchOHLCV(ccxtSymbol, TIMEFRAME_1M, fromTs, limit);
+            
+            return ohlcv.map(candle => ({
+                symbol,
+                exchange: this.exchangeName,
+                interval: TIMEFRAME_1M,
+                ts: candle[0],
+                open: candle[1],
+                high: candle[2],
+                low: candle[3],
+                close: candle[4],
+                volume: candle[5],
+                closed: true
+            }));
+        } catch (err) {
+            this.log(`Backfill error for ${symbol}: ${err.message}`, 'error');
+            return [];
+        }
+    }
+
+    normalize(symbol, ohlcv, interval) {
+        const now = Date.now();
+        const candleTime = ohlcv[0];
+        const intervalMs = this.getIntervalMs(interval);
+        const closed = (now - candleTime) >= intervalMs;
+
+        return {
+            symbol,
+            exchange: this.exchangeName,
+            interval,
+            ts: ohlcv[0],
+            open: ohlcv[1],
+            high: ohlcv[2],
+            low: ohlcv[3],
+            close: ohlcv[4],
+            volume: ohlcv[5],
+            closed
+        };
+    }
+
+    getIntervalMs(interval) {
+        const map = {
+            '1m': 60000,
+            '5m': 300000,
+            '15m': 900000,
+            '1h': 3600000,
+            '4h': 14400000,
+            '1d': 86400000
+        };
+        return map[interval] || 60000;
+    }
+
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     log(message, type = 'info') {
@@ -138,62 +227,13 @@ export class BinanceFutureDataSource extends DataSourceBase {
         }
     }
 
-    stopHeartbeat() {
-        if (this.heartbeatTimer) {
-            clearInterval(this.heartbeatTimer);
-            this.heartbeatTimer = null;
-        }
-    }
-
-    async backfill(symbol, fromTs, _toTs, limit = 1500) {
-        const url = `${BINANCE_FUTURES_API}/klines?symbol=${symbol}&interval=${TIMEFRAME_1M}&limit=${limit}&startTime=${fromTs}`;
-
-        try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            return data.map(k => ({
-                symbol,
-                exchange: DEFAULT_EXCHANGE,
-                interval: TIMEFRAME_1M,
-                ts: k[0],
-                open: parseFloat(k[1]),
-                high: parseFloat(k[2]),
-                low: parseFloat(k[3]),
-                close: parseFloat(k[4]),
-                volume: parseFloat(k[5]),
-                closed: true
-            }));
-        } catch (err) {
-            this.log(`Backfill error for ${symbol}: ${err.message}`, 'error');
-            return [];
-        }
-    }
-
-    normalize(raw) {
-        const k = raw.k;
-        return {
-            symbol: k.s,
-            exchange: DEFAULT_EXCHANGE,
-            interval: k.i,
-            ts: k.t,
-            open: parseFloat(k.o),
-            high: parseFloat(k.h),
-            low: parseFloat(k.l),
-            close: parseFloat(k.c),
-            volume: parseFloat(k.v),
-            closed: k.x
-        };
-    }
-
-    close() {
-        this.stopHeartbeat();
-        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-        if (this.ws) {
-            this.ws.close();
+    async close() {
+        this.wsConnected = false;
+        this.subscribedSymbols.clear();
+        this.lastCandles.clear();
+        
+        if (this.exchange && this.exchange.close) {
+            await this.exchange.close();
         }
     }
 }

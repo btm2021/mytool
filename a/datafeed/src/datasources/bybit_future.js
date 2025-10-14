@@ -1,81 +1,77 @@
-import WebSocket from 'ws';
+import ccxt from 'ccxt';
 import { DataSourceBase } from './datasource_base.js';
-import {
-    WS_RECONNECT_DELAY,
-    WS_HEARTBEAT_INTERVAL,
-    WS_HEARTBEAT_TIMEOUT,
-    WS_CONNECT_DELAY,
-    TIMEFRAME_1M
-} from '../core/constants.js';
+import { TIMEFRAME_1M } from '../core/constants.js';
+
+const ccxtpro = ccxt.pro;
 
 export class BybitFutureDataSource extends DataSourceBase {
     constructor() {
         super();
-        this.ws = null;
+        this.exchange = null;
         this.messageCallback = null;
-        this.reconnectTimer = null;
-        this.heartbeatTimer = null;
-        this.lastPong = Date.now();
-        this.isConnecting = false;
+        this.wsConnected = false;
+        this.subscribedSymbols = new Map();
         this.exchangeName = 'bybit_futures';
     }
 
-    connect() {
-        if (this.isConnecting) return;
-        this.isConnecting = true;
-
-        this.log('Connecting to WebSocket...');
-        this.ws = new WebSocket('wss://stream.bybit.com/v5/public/linear');
-
-        this.ws.on('open', () => {
-            this.log('WebSocket connected', 'success');
-            this.isConnecting = false;
-            this.lastPong = Date.now();
-            this.startHeartbeat();
+    async initialize() {
+        this.exchange = new ccxtpro.bybit({
+            enableRateLimit: true,
+            newUpdates: false,
+            options: {
+                defaultType: 'linear'
+            }
         });
+        await this.exchange.loadMarkets();
+        this.log('Initialized', 'success');
+    }
 
-        this.ws.on('message', (data) => {
-            this.lastPong = Date.now();
+    async connect() {
+        if (!this.exchange) {
+            await this.initialize();
+        }
+        this.wsConnected = true;
+        this.log('Connected', 'success');
+    }
+
+    async subscribe(symbols, interval = '1m') {
+        this.log(`Subscribing to ${symbols.length} symbols`);
+
+        for (const symbol of symbols) {
+            const ccxtSymbol = this.toCCXTSymbol(symbol);
+            this.subscribedSymbols.set(symbol, ccxtSymbol);
+            this.watchSymbol(symbol, ccxtSymbol, interval);
+        }
+    }
+
+    async watchSymbol(originalSymbol, ccxtSymbol, interval) {
+        while (this.wsConnected && this.subscribedSymbols.has(originalSymbol)) {
             try {
-                const parsed = JSON.parse(data.toString());
-                
-                if (parsed.topic && parsed.topic.startsWith('kline.1.')) {
-                    const normalized = this.normalize(parsed);
+                // Bybit hỗ trợ watchOHLCV
+                const ohlcv = await this.exchange.watchOHLCV(ccxtSymbol, interval);
+                if (ohlcv && ohlcv.length > 0) {
+                    const latest = ohlcv[ohlcv.length - 1];
+                    const normalized = this.normalize(originalSymbol, latest, interval);
+
                     if (this.messageCallback) {
                         this.messageCallback(normalized);
                     }
                 }
-            } catch (err) {
-                this.log(`Parse error: ${err.message}`, 'error');
+            } catch (error) {
+                this.log(`Watch error for ${originalSymbol}: ${error.message}`, 'error');
+                await this.sleep(2000);
             }
-        });
-
-        this.ws.on('error', (err) => {
-            this.log(`WebSocket error: ${err.message}`, 'error');
-        });
-
-        this.ws.on('close', () => {
-            this.log('WebSocket closed', 'warn');
-            this.isConnecting = false;
-            this.stopHeartbeat();
-            this.scheduleReconnect();
-        });
+        }
     }
 
-    subscribe(symbols, interval = '1m') {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            this.log('Cannot subscribe: WebSocket not ready', 'error');
-            return;
+    toCCXTSymbol(symbol) {
+        if (symbol.includes('/')) return symbol;
+
+        if (symbol.endsWith('USDT')) {
+            const base = symbol.replace('USDT', '');
+            return `${base}/USDT:USDT`;
         }
-
-        const args = symbols.map(s => `kline.1.${s}`);
-        const subscribeMsg = {
-            op: 'subscribe',
-            args
-        };
-
-        this.log(`Subscribing to ${args.length} streams`);
-        this.ws.send(JSON.stringify(subscribeMsg));
+        return symbol;
     }
 
     onMessage(callback) {
@@ -86,89 +82,74 @@ export class BybitFutureDataSource extends DataSourceBase {
         this.logger = logger;
     }
 
-    reconnect() {
-        this.log('Manual reconnect triggered', 'warn');
-        if (this.ws) {
-            this.ws.close();
-        }
-        setTimeout(() => this.connect(), WS_CONNECT_DELAY);
+    async reconnect() {
+        this.log('Reconnecting...', 'warn');
+        await this.close();
+        await this.sleep(1000);
+        await this.connect();
     }
 
-    scheduleReconnect() {
-        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = setTimeout(() => {
-            this.log('Auto reconnecting...', 'warn');
-            this.connect();
-        }, WS_RECONNECT_DELAY);
-    }
-
-    startHeartbeat() {
-        this.stopHeartbeat();
-        this.heartbeatTimer = setInterval(() => {
-            if (Date.now() - this.lastPong > WS_HEARTBEAT_TIMEOUT) {
-                this.log('Heartbeat timeout, reconnecting...', 'warn');
-                this.reconnect();
-            } else if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                this.ws.send(JSON.stringify({ op: 'ping' }));
-            }
-        }, WS_HEARTBEAT_INTERVAL);
-    }
-
-    stopHeartbeat() {
-        if (this.heartbeatTimer) {
-            clearInterval(this.heartbeatTimer);
-            this.heartbeatTimer = null;
-        }
-    }
-
-    async backfill(symbol, fromTs, _toTs, limit = 1000) {
-        const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=1&limit=${limit}&start=${fromTs}`;
-
+    async backfill(symbol, fromTs, _toTs, limit = 1500) {
         try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+            if (!this.exchange) {
+                await this.initialize();
             }
 
-            const data = await response.json();
-            if (data.retCode !== 0) {
-                throw new Error(data.retMsg || 'API error');
-            }
+            const ccxtSymbol = this.toCCXTSymbol(symbol);
+            const ohlcv = await this.exchange.fetchOHLCV(ccxtSymbol, TIMEFRAME_1M, fromTs, limit);
 
-            return data.result.list.map(k => ({
+            return ohlcv.map(candle => ({
                 symbol,
                 exchange: this.exchangeName,
                 interval: TIMEFRAME_1M,
-                ts: parseInt(k[0]),
-                open: parseFloat(k[1]),
-                high: parseFloat(k[2]),
-                low: parseFloat(k[3]),
-                close: parseFloat(k[4]),
-                volume: parseFloat(k[5]),
+                ts: candle[0],
+                open: candle[1],
+                high: candle[2],
+                low: candle[3],
+                close: candle[4],
+                volume: candle[5],
                 closed: true
-            })).reverse();
+            }));
         } catch (err) {
             this.log(`Backfill error for ${symbol}: ${err.message}`, 'error');
             return [];
         }
     }
 
-    normalize(raw) {
-        const data = raw.data[0];
-        const symbol = raw.topic.split('.')[2];
-        
+    normalize(symbol, ohlcv, interval) {
+        const now = Date.now();
+        const candleTime = ohlcv[0];
+        const intervalMs = this.getIntervalMs(interval);
+        const closed = (now - candleTime) >= intervalMs;
+
         return {
             symbol,
             exchange: this.exchangeName,
-            interval: TIMEFRAME_1M,
-            ts: parseInt(data.start),
-            open: parseFloat(data.open),
-            high: parseFloat(data.high),
-            low: parseFloat(data.low),
-            close: parseFloat(data.close),
-            volume: parseFloat(data.volume),
-            closed: data.confirm
+            interval,
+            ts: ohlcv[0],
+            open: ohlcv[1],
+            high: ohlcv[2],
+            low: ohlcv[3],
+            close: ohlcv[4],
+            volume: ohlcv[5],
+            closed
         };
+    }
+
+    getIntervalMs(interval) {
+        const map = {
+            '1m': 60000,
+            '5m': 300000,
+            '15m': 900000,
+            '1h': 3600000,
+            '4h': 14400000,
+            '1d': 86400000
+        };
+        return map[interval] || 60000;
+    }
+
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     log(message, type = 'info') {
@@ -192,11 +173,12 @@ export class BybitFutureDataSource extends DataSourceBase {
         }
     }
 
-    close() {
-        this.stopHeartbeat();
-        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-        if (this.ws) {
-            this.ws.close();
+    async close() {
+        this.wsConnected = false;
+        this.subscribedSymbols.clear();
+
+        if (this.exchange && this.exchange.close) {
+            await this.exchange.close();
         }
     }
 }

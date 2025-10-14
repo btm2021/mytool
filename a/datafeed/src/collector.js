@@ -20,6 +20,11 @@ export class DataCollector {
   async bootstrap() {
     this.logger.warn('Starting bootstrap - checking and loading historical data...');
     
+    // Initialize CCXT exchange
+    if (this.dataSource.initialize && typeof this.dataSource.initialize === 'function') {
+      await this.dataSource.initialize();
+    }
+    
     const symbols = this.config.getExchangeSymbols(this.exchange);
     
     for (const symbol of symbols) {
@@ -93,10 +98,10 @@ export class DataCollector {
     return allCandles;
   }
 
-  startRealtime() {
+  async startRealtime() {
     this.logger.success('Starting realtime collection...');
     
-    this.dataSource.connect();
+    await this.dataSource.connect();
     
     const symbols = this.config.getExchangeSymbols(this.exchange);
     

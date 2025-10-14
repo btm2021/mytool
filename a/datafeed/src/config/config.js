@@ -88,6 +88,24 @@ class Config {
         this.save();
         return this.data;
     }
+
+    updateExchangeSymbols(exchangeName, symbols) {
+        if (this.data.exchanges[exchangeName]) {
+            console.log(`[Config] Updating ${exchangeName} symbols:`, symbols);
+            this.data.exchanges[exchangeName].symbols = symbols;
+            const saved = this.save();
+            console.log(`[Config] Save result:`, saved);
+        } else {
+            console.error(`[Config] Exchange ${exchangeName} not found in config`);
+        }
+    }
+
+    updateExchangeEnabled(exchangeName, enabled) {
+        if (this.data.exchanges[exchangeName]) {
+            this.data.exchanges[exchangeName].enabled = enabled;
+            this.save();
+        }
+    }
 }
 
 export const config = new Config();

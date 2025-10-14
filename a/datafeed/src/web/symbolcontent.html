@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OHLCV Data</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0a;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 10px;
+    }
+
+    .header {
+      padding: 10px;
+      background: #000;
+      border: 1px solid #333;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h2 {
+      color: #0af;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+
+    .info {
+      color: #666;
+      font-size: 11px;
+    }
+
+    #viewport {
+      flex: 1;
+      overflow: auto;
+      background: #000;
+      border: 1px solid #333;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background: #000;
+      z-index: 10;
+    }
+
+    th {
+      padding: 8px 12px;
+      text-align: center;
+      border-bottom: 2px solid #fff;
+      font-weight: bold;
+      color: #fff;
+      font-size: 11px;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 6px 12px;
+      border-bottom: 1px solid #222;
+      color: #ccc;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    tbody tr:hover td {
+      background: #1a1a1a;
+    }
+
+    .loading,
+    .error {
+      text-align: center;
+      padding: 40px;
+      font-size: 14px;
+    }
+
+    .loading {
+      color: #666;
+    }
+
+    .error {
+      color: #f00;
+    }
+
+    .price {
+      color: #0af;
+      font-weight: bold;
+    }
+
+    .volume {
+      color: #f0b90b;
+    }
+
+    .time {
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="container">
+    <div class="header">
+      <h2 id="title">OHLCV DATA</h2>
+      <div class="info" id="info">0 CANDLES</div>
+    </div>
+    <div id="viewport">
+      <table id="table">
+        <thead>
+          <tr>
+            <th>TIMESTAMP</th>
+            <th>OPEN</th>
+            <th>HIGH</th>
+            <th>LOW</th>
+            <th>CLOSE</th>
+            <th>VOLUME</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    async function loadData() {
+      const params = new URLSearchParams(window.location.search);
+      const exchange = params.get('exchange') || '';
+      const symbol = params.get('symbol') || '';
+      const timeframe = params.get('timeframe') || '1m';
+
+      document.getElementById('title').textContent = symbol
+        ? `${exchange.toUpperCase()} - ${symbol} - ${timeframe.toUpperCase()}`
+        : 'OHLCV DATA';
+
+      if (!symbol) {
+        document.getElementById('tbody').innerHTML = '<tr><td colspan="6" class="error">NO SYMBOL PROVIDED</td></tr>';
+        return;
+      }
+
+      document.getElementById('tbody').innerHTML = '<tr><td colspan="6" class="loading">LOADING DATA...</td></tr>';
+
+      try {
+        const response = await fetch(`/ohlcv?exchange=${exchange}&symbol=${symbol}&timeframe=${timeframe}&limit=100000`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        document.getElementById('info').textContent = `${data.length} CANDLES`;
+
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = '';
+
+        data.forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="time">${row[0]}</td>
+            <td class="price">${row[1]}</td>
+            <td class="price">${row[2]}</td>
+            <td class="price">${row[3]}</td>
+            <td class="price">${row[4]}</td>
+            <td class="volume">${row[5]}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        document.getElementById('tbody').innerHTML = `<tr><td colspan="6" class="error">ERROR: ${err.message}</td></tr>`;
+      }
+    }
+
+    loadData();
+  </script>
+</body>
+
+</html>

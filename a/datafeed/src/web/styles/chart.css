@@ -1,0 +1,75 @@
+/* Chart page styles */
+.chart-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0a0a0a;
+}
+
+.chart-header {
+  background: #000;
+  padding: 15px 20px;
+  border-bottom: 2px solid #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chart-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 2px;
+}
+
+.chart-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.chart-controls select {
+  padding: 6px 12px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chart-controls select:focus {
+  outline: none;
+  border-color: #0af;
+}
+
+.chart-wrapper {
+  flex: 1;
+  padding: 20px;
+  overflow: hidden;
+}
+
+#chart {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  border: 1px solid #333;
+}
+
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  font-size: 16px;
+}
+
+.chart-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #f00;
+  font-size: 16px;
+}
