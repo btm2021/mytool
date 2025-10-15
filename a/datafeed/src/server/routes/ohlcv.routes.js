@@ -3,10 +3,29 @@ import { Aggregator } from '../../core/aggregator.js';
 export function setupOHLCVRoutes(app, db) {
     // OHLCV endpoint
     app.get('/ohlcv', (req, res) => {
-        const { exchange, symbol, timeframe = '1m', limit = 500 } = req.query;
+        let { exchange, symbol, timeframe = '1m', limit = 500 } = req.query;
         
         if (!symbol) {
             return res.status(400).json({ error: 'symbol is required' });
+        }
+
+        // Nếu không có exchange, thử tìm từ tất cả exchanges
+        if (!exchange) {
+            const allExchanges = ['binance_futures', 'bybit_futures', 'okx_futures'];
+            
+            // Thử lấy dữ liệu từ từng exchange cho đến khi tìm thấy
+            for (const ex of allExchanges) {
+                const candles = db.getOHLCV(ex, symbol.toUpperCase(), '1m', 10);
+                if (candles && candles.length > 0) {
+                    exchange = ex;
+                    break;
+                }
+            }
+            
+            // Nếu vẫn không tìm thấy, mặc định dùng binance_futures
+            if (!exchange) {
+                exchange = 'binance_futures';
+            }
         }
 
         const requestLimit = parseInt(limit);

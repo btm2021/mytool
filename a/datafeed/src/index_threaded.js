@@ -321,6 +321,16 @@ function handleDatasourceMessage(exchangeName, message) {
     switch (message.type) {
         case 'log':
             logMessage(message);
+            // Broadcast log to clients with debug flag
+            broadcastToClients({
+                type: 'log',
+                data: {
+                    message: message.message,
+                    type: message.level || 'info',
+                    isDebug: message.isDebug || false,
+                    timestamp: new Date().toISOString()
+                }
+            });
             break;
         case 'candle':
             broadcastToClients({

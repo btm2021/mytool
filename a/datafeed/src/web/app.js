@@ -39,13 +39,24 @@ createApp({
       // Modals
       showConfigModal: false,
       showSymbolsModal: false,
+      showOHLCVModal: false,
+      ohlcvIframeSrc: '',
+      showTasksModal: false,
+      workerProgress: {},
+      isLoadingExchange: false,
+      configTab: 'client',
+      isSaving: false,
       
       // Config
       config: {
         batch_interval: 60000,
-        max_records: 100000,
-        bootstrap_load: 10000,
-        port: 3000
+        max_records: 200000,
+        bootstrap_load: 50000,
+        cleanup_hour: 3,
+        port: 3000,
+        realtime_update: true,
+        debug_log: false,
+        max_log_lines: 200
       },
       
       // Symbols Manager
@@ -165,11 +176,13 @@ createApp({
       switch (message.type) {
         case 'log':
           if (message.data.type !== 'receiving') {
-            this.addLog(message.data.message, message.data.type);
+            this.addLog(message.data.message, message.data.type, message.data.isDebug);
           }
           break;
         case 'candle':
-          this.updateRealtimeData(message.data);
+          if (this.config.realtime_update) {
+            this.updateRealtimeData(message.data);
+          }
           break;
         case 'status':
           // Handle status updates
@@ -242,11 +255,18 @@ createApp({
     },
     
     // Logs
-    addLog(message, type = 'info') {
+    addLog(message, type = 'info', isDebug = false) {
+      // Skip debug logs if debug mode is disabled
+      if (isDebug && !this.config.debug_log) {
+        return;
+      }
+      
       const time = new Date().toLocaleTimeString();
       this.logs.unshift({ time, message, type });
-      if (this.logs.length > 500) {
-        this.logs.pop();
+      
+      const maxLines = this.config.max_log_lines || 200;
+      if (this.logs.length > maxLines) {
+        this.logs = this.logs.slice(0, maxLines);
       }
     },
     
@@ -286,34 +306,100 @@ createApp({
       try {
         const response = await fetch('/config');
         const data = await response.json();
+        
         this.config = {
           batch_interval: data.batch_interval || 60000,
-          max_records: data.max_records || 100000,
-          bootstrap_load: data.bootstrap_load || 10000,
-          port: data.port || 3000
+          max_records: data.max_records || 200000,
+          bootstrap_load: data.bootstrap_load || 50000,
+          cleanup_hour: data.cleanup_hour || 3,
+          port: data.port || 3000,
+          realtime_update: data.client?.realtime_update !== false,
+          debug_log: data.client?.debug_log || false,
+          max_log_lines: data.client?.max_log_lines || 200
         };
       } catch (err) {
         this.addLog(`Failed to load config: ${err.message}`, 'error');
       }
     },
     
-    async saveConfig() {
+    async saveClientConfig() {
+      this.isSaving = true;
+      
       try {
+        const payload = {
+          batch_interval: this.config.batch_interval,
+          max_records: this.config.max_records,
+          bootstrap_load: this.config.bootstrap_load,
+          cleanup_hour: this.config.cleanup_hour,
+          port: this.config.port,
+          client: {
+            realtime_update: this.config.realtime_update,
+            debug_log: this.config.debug_log,
+            max_log_lines: this.config.max_log_lines
+          }
+        };
+        
         const response = await fetch('/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(this.config)
+          body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          this.addLog('Client settings saved. Reloading page...', 'success');
+          
+          // Wait 1 second then reload
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          throw new Error(result.error || 'Failed to save client config');
+        }
+      } catch (err) {
+        this.addLog(`Failed to save client config: ${err.message}`, 'error');
+        this.isSaving = false;
+      }
+    },
+    
+    async saveConfig() {
+      this.isSaving = true;
+      
+      try {
+        const payload = {
+          batch_interval: this.config.batch_interval,
+          max_records: this.config.max_records,
+          bootstrap_load: this.config.bootstrap_load,
+          cleanup_hour: this.config.cleanup_hour,
+          port: this.config.port,
+          client: {
+            realtime_update: this.config.realtime_update,
+            debug_log: this.config.debug_log,
+            max_log_lines: this.config.max_log_lines
+          }
+        };
+        
+        const response = await fetch('/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
         
         const result = await response.json();
         if (result.success) {
           this.addLog('Configuration saved. System is restarting...', 'validated');
           this.showConfigModal = false;
+          
+          // Wait 2 seconds then reload
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
         } else {
           throw new Error(result.error || 'Failed to save config');
         }
       } catch (err) {
         this.addLog(`Failed to save config: ${err.message}`, 'error');
+        this.isSaving = false;
       }
     },
     
@@ -337,8 +423,11 @@ createApp({
     },
     
     // Chart
-    openChart(symbol, timeframe, exchange) {
-      const url = `chart.html?symbol=${symbol}&timeframe=${timeframe}&exchange=${exchange}`;
+    openChart(symbol, timeframe, exchange, limit) {
+      let url = `chart.html?symbol=${symbol}&timeframe=${timeframe}&exchange=${exchange}`;
+      if (limit) {
+        url += `&limit=${limit}`;
+      }
       window.open(url, '_blank');
     },
     
@@ -517,6 +606,7 @@ createApp({
     
     showConfigModal(newVal) {
       if (newVal) {
+        this.configTab = 'client'; // Reset to client tab
         this.loadConfig();
       }
     }

@@ -87,3 +87,29 @@
 .log-receiving .log-message {
   color: #888;
 }
+
+.log-debug {
+  border-left-color: #888;
+  opacity: 0.7;
+}
+
+.log-debug .log-message {
+  color: #888;
+  font-size: 10px;
+}
+
+.log-success {
+  border-left-color: #0f0;
+}
+
+.log-success .log-message {
+  color: #0f0;
+}
+
+.log-warn {
+  border-left-color: #fa0;
+}
+
+.log-warn .log-message {
+  color: #fa0;
+}

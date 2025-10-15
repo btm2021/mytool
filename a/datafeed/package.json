@@ -1,0 +1,21 @@
+{
+  "name": "datafeed",
+  "version": "1.0.0",
+  "description": "Hệ thống thu thập, lưu trữ và hiển thị dữ liệu OHLCV realtime từ các sàn giao dịch crypto (Binance, Bybit, OKX).",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^12.4.1",
+    "cctx": "^1.0.1",
+    "ccxt": "^4.5.10",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}

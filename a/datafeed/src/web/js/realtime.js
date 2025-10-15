@@ -3,7 +3,8 @@ export function createRealtimeMixin() {
   return {
     data() {
       return {
-        realtimeDataMap: new Map()
+        realtimeDataMap: new Map(),
+        realtimeEnabled: true
       };
     },
     
@@ -16,6 +17,11 @@ export function createRealtimeMixin() {
     
     methods: {
       updateRealtimeData(data) {
+        // Skip if realtime updates are disabled
+        if (!this.realtimeEnabled) {
+          return;
+        }
+        
         const key = `${data.exchange}_${data.symbol}_${data.interval}`;
         const oldData = this.realtimeDataMap.get(key);
         const oldPrice = oldData?.close;

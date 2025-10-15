@@ -42,7 +42,9 @@ export function createWebSocketMixin() {
         switch (message.type) {
           case 'log':
             if (message.data.type !== 'receiving') {
-              this.addLog(message.data.message, message.data.type);
+              // Pass debug flag to addLog
+              const logType = message.data.isDebug ? 'debug' : message.data.type;
+              this.addLog(message.data.message, logType);
             }
             break;
           case 'candle':

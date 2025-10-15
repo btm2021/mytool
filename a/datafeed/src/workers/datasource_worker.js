@@ -14,12 +14,15 @@ let batchTimer = null;
 let currentSymbols = config.symbols || [];
 let heartbeatTimer = null;
 let lastCpuUsage = process.cpuUsage();
+let cleanupTimer = null;
+let lastCleanupDate = null;
 
-function log(message, type = 'info') {
+function log(message, type = 'info', isDebug = false) {
     parentPort.postMessage({
         type: 'log',
         level: type,
-        message: `[${exchangeName}] ${message}`
+        message: `[${exchangeName}] ${message}`,
+        isDebug
     });
 }
 
@@ -106,21 +109,21 @@ async function loadHistoricalData(symbol, totalCandles) {
         const gapMinutes = Math.floor(gap / MINUTE_MS);
 
         if (gapMinutes <= 1) {
-            log(`${symbol}: Up to date (${existingCount} candles)`, 'info');
+            log(`${symbol}: Up to date (${existingCount} candles)`, 'info', true);
             return;
         }
 
-        log(`${symbol}: Fetching ${gapMinutes} missing candles...`, 'info');
+        log(`${symbol}: Fetching ${gapMinutes} missing candles...`, 'info', true);
 
         const candles = await fetchMissingCandles(symbol, lastTs + MINUTE_MS, now);
         if (candles.length > 0) {
             db.insertBatch(candles);
-            log(`${symbol}: Added ${candles.length} candles`, 'success');
+            log(`${symbol}: Added ${candles.length} candles`, 'success', true);
         }
         return;
     }
 
-    log(`${symbol}: Loading ${totalCandles} candles...`, 'info');
+    log(`${symbol}: Loading ${totalCandles} candles...`, 'info', true);
 
     const batchSize = 1500;
     const batches = Math.ceil(totalCandles / batchSize);
@@ -138,7 +141,7 @@ async function loadHistoricalData(symbol, totalCandles) {
             
             const progress = Math.round((loaded / totalCandles) * 100);
             sendProgress('loading', `${symbol}: ${loaded}/${totalCandles} loaded`, progress);
-            log(`${symbol}: ${loaded}/${totalCandles} loaded`, 'info');
+            log(`${symbol}: ${loaded}/${totalCandles} loaded`, 'info', true);
         }
     }
 }
@@ -189,13 +192,68 @@ function startBatchWriter() {
             queue = [];
 
             db.insertBatch(batch);
-            log(`Wrote ${batch.length} candles to DB`, 'info');
-
-            for (const symbol of currentSymbols) {
-                db.cleanupOldData(exchangeName, symbol, TIMEFRAME_1M, config.maxRecords);
-            }
+            log(`Wrote ${batch.length} candles to DB`, 'info', true);
         }
     }, config.batchInterval);
+    
+    // Start scheduled cleanup
+    startScheduledCleanup();
+}
+
+function startScheduledCleanup() {
+    if (cleanupTimer) clearInterval(cleanupTimer);
+    
+    const cleanupHour = config.cleanupHour || 3; // Default 3 AM
+    const cleanupEnabled = config.cleanupEnabled !== false; // Default true
+    
+    if (!cleanupEnabled) {
+        log('Scheduled cleanup is disabled', 'info');
+        return;
+    }
+    
+    // Check every minute if it's time to cleanup
+    cleanupTimer = setInterval(() => {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentDate = now.toDateString();
+        
+        // Run cleanup at specified hour, once per day
+        if (currentHour === cleanupHour && lastCleanupDate !== currentDate) {
+            log(`Starting scheduled cleanup at ${cleanupHour}:00...`, 'warn');
+            performCleanup();
+            lastCleanupDate = currentDate;
+        }
+    }, 60000); // Check every minute
+    
+    log(`Scheduled cleanup enabled: ${cleanupHour}:00 daily`, 'success');
+}
+
+function performCleanup() {
+    const startTime = Date.now();
+    let totalCleaned = 0;
+    
+    try {
+        for (const symbol of currentSymbols) {
+            const beforeCount = db.getCount(exchangeName, symbol, TIMEFRAME_1M);
+            db.cleanupOldData(exchangeName, symbol, TIMEFRAME_1M, config.maxRecords);
+            const afterCount = db.getCount(exchangeName, symbol, TIMEFRAME_1M);
+            const cleaned = beforeCount - afterCount;
+            
+            if (cleaned > 0) {
+                totalCleaned += cleaned;
+                log(`${symbol}: Cleaned ${cleaned} old records`, 'info');
+            }
+        }
+        
+        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+        log(`Cleanup completed: ${totalCleaned} records removed in ${duration}s`, 'success');
+        
+        // Optimize database after cleanup
+        db.optimize();
+        log('Database optimized', 'success');
+    } catch (error) {
+        log(`Cleanup failed: ${error.message}`, 'error');
+    }
 }
 
 async function reloadSymbols(newSymbols) {
@@ -289,12 +347,16 @@ parentPort.on('message', async (message) => {
     if (message.type === 'stop') {
         if (heartbeatTimer) clearInterval(heartbeatTimer);
         if (batchTimer) clearInterval(batchTimer);
+        if (cleanupTimer) clearInterval(cleanupTimer);
         if (dataSource) await dataSource.close();
         if (db) db.close();
         process.exit(0);
     } else if (message.type === 'reload_symbols') {
         log(`Reloading with ${message.symbols.length} symbols`, 'info');
         await reloadSymbols(message.symbols);
+    } else if (message.type === 'force_cleanup') {
+        log('Force cleanup requested', 'warn');
+        performCleanup();
     }
 });
 

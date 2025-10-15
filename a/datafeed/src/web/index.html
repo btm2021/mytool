@@ -8,7 +8,14 @@
 </head>
 <body>
   <div id="app">
-
+    <!-- Saving Overlay -->
+    <div v-if="isSaving" class="saving-overlay">
+      <div class="saving-content">
+        <div class="spinner"></div>
+        <p>Saving configuration...</p>
+        <small>Page will reload automatically</small>
+      </div>
+    </div>
 
     <!-- Header -->
     <header class="header">
@@ -162,7 +169,7 @@
                     <div class="timeframe-buttons">
                       <button 
                         class="btn-timeframe btn-ohlcv" 
-                        @click="openOHLCV(item.symbol, item.exchange)"
+                        @click="openChart(item.symbol, '1m', item.exchange, 1500)"
                       >
                         OHLCV
                       </button>
@@ -241,34 +248,98 @@
 
     <!-- Config Modal -->
     <div v-if="showConfigModal" class="modal show" @click.self="showConfigModal = false">
-      <div class="modal-content">
+      <div class="modal-content modal-large">
+        <!-- Saving Overlay for Config -->
+        <div v-if="isSavingConfig" class="saving-overlay">
+          <div class="saving-content">
+            <div class="spinner"></div>
+            <p>Saving configuration...</p>
+            <small v-if="configTab === 'server'">Server will restart automatically</small>
+            <small v-else>Applying settings...</small>
+          </div>
+        </div>
+
         <div class="modal-header">
           <h3>CONFIGURATION</h3>
           <button class="modal-close" @click="showConfigModal = false">×</button>
         </div>
-        <form @submit.prevent="saveConfig">
-          <div class="form-group">
-            <label>Batch Interval (ms):</label>
-            <input type="number" v-model.number="config.batch_interval" min="1000" step="1000">
-            <small>Time between database writes (default: 60000ms = 1 minute)</small>
+
+        <div class="tabs">
+          <button 
+            class="tab-btn" 
+            :class="{ active: configTab === 'client' }"
+            @click="configTab = 'client'"
+          >
+            CLIENT SETTINGS
+          </button>
+          <button 
+            class="tab-btn" 
+            :class="{ active: configTab === 'server' }"
+            @click="configTab = 'server'"
+          >
+            SERVER SETTINGS
+          </button>
+        </div>
+
+        <div class="tab-content">
+          <!-- Client Settings Tab -->
+          <div v-if="configTab === 'client'" class="config-tab-panel">
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="config.realtime_update">
+                <span>Enable Realtime Price Updates</span>
+              </label>
+              <small>Update prices and render in realtime (may impact performance)</small>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="config.debug_log">
+                <span>Enable Debug Logs</span>
+              </label>
+              <small>Show detailed debug logs (max 200 lines)</small>
+            </div>
+            <div class="form-group">
+              <label>Max Log Lines:</label>
+              <input type="number" v-model.number="config.max_log_lines" min="50" max="1000" step="50">
+              <small>Maximum number of log lines to keep (default: 200)</small>
+            </div>
+            <div class="form-group">
+              <button @click="saveClientConfig" class="btn btn-success">SAVE CLIENT SETTINGS</button>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Max Records:</label>
-            <input type="number" v-model.number="config.max_records" min="1000" step="1000">
-            <small>Maximum candles to keep per symbol (default: 100000)</small>
+
+          <!-- Server Settings Tab -->
+          <div v-if="configTab === 'server'" class="config-tab-panel">
+            <div class="form-group">
+              <label>Batch Interval (ms):</label>
+              <input type="number" v-model.number="config.batch_interval" min="1000" step="1000">
+              <small>Time between database writes (default: 60000ms = 1 minute)</small>
+            </div>
+            <div class="form-group">
+              <label>Max Records:</label>
+              <input type="number" v-model.number="config.max_records" min="1000" step="1000">
+              <small>Maximum candles to keep per symbol (default: 200000)</small>
+            </div>
+            <div class="form-group">
+              <label>Bootstrap Load:</label>
+              <input type="number" v-model.number="config.bootstrap_load" min="100" step="100">
+              <small>Initial candles to load on startup (default: 50000)</small>
+            </div>
+            <div class="form-group">
+              <label>Cleanup Hour:</label>
+              <input type="number" v-model.number="config.cleanup_hour" min="0" max="23">
+              <small>Hour to run daily cleanup (0-23, default: 3 = 3:00 AM)</small>
+            </div>
+            <div class="form-group">
+              <label>Server Port:</label>
+              <input type="number" v-model.number="config.port" min="1000" max="65535">
+              <small>HTTP server port (requires restart)</small>
+            </div>
+            <div class="form-group">
+              <button @click="saveConfig" class="btn btn-primary">SAVE & RESTART</button>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Bootstrap Load:</label>
-            <input type="number" v-model.number="config.bootstrap_load" min="100" step="100">
-            <small>Initial candles to load on startup (default: 10000)</small>
-          </div>
-          <div class="form-group">
-            <label>Server Port:</label>
-            <input type="number" v-model.number="config.port" min="1000" max="65535">
-            <small>HTTP server port (requires restart)</small>
-          </div>
-          <button type="submit" class="btn btn-primary">SAVE & RESTART</button>
-        </form>
+        </div>
       </div>
     </div>
 

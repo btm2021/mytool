@@ -67,6 +67,7 @@ appConfig.methods.isWorkerAlive = isWorkerAlive;
 appConfig.mounted = function() {
   this.connect();
   this.loadDatabaseSymbols();
+  this.loadConfig(); // Load config on startup
 };
 
 // Create and mount app

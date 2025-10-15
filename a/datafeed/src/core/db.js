@@ -10,8 +10,15 @@ export class OHLCVDatabase {
     }
 
     this.db = new Database(dbPath);
+    
+    // Optimize for reduced IO
     this.db.pragma('journal_mode = WAL');
-    this.db.pragma('synchronous = NORMAL');
+    this.db.pragma('synchronous = NORMAL'); // Balance between safety and performance
+    this.db.pragma('cache_size = -64000'); // 64MB cache
+    this.db.pragma('temp_store = MEMORY'); // Use memory for temp tables
+    this.db.pragma('mmap_size = 268435456'); // 256MB memory-mapped I/O
+    this.db.pragma('page_size = 8192'); // Larger page size for better performance
+    this.db.pragma('wal_autocheckpoint = 10000'); // Checkpoint every 10000 pages (~80MB)
     
     this.initTables();
     this.prepareStatements();
@@ -134,6 +141,17 @@ export class OHLCVDatabase {
     }
     
     return result;
+  }
+
+  optimize() {
+    // VACUUM to reclaim space and defragment
+    this.db.exec('VACUUM');
+    
+    // ANALYZE to update query planner statistics
+    this.db.exec('ANALYZE');
+    
+    // Checkpoint WAL to merge into main database
+    this.db.pragma('wal_checkpoint(TRUNCATE)');
   }
 
   close() {
