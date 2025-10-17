@@ -1,0 +1,33 @@
+.log-container {
+    overflow-y: auto;
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-family: var(--font-family);
+}
+
+.log-line {
+    margin-bottom: 3px;
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+}
+
+.log-time {
+    color: var(--color-text-muted);
+    margin-right: var(--spacing-xs);
+}
+
+.log-info {
+    color: var(--color-text-secondary);
+}
+
+.log-warn {
+    color: var(--color-warning);
+}
+
+.log-error {
+    color: var(--color-error);
+}
+
+.log-success {
+    color: var(--color-success);
+}

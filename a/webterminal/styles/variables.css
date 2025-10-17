@@ -1,0 +1,43 @@
+/* Retro Terminal Theme - Amber on Black */
+:root {
+    /* Colors */
+    --color-bg-primary: #1a1a1a;
+    --color-bg-secondary: #2a2a2a;
+    --color-bg-tertiary: #3a3a3a;
+    
+    --color-text-primary: #ffb000;
+    --color-text-secondary: #ff8c00;
+    --color-text-tertiary: #cc7000;
+    --color-text-muted: #996600;
+    
+    --color-border: #ff8c00;
+    --color-border-light: #664400;
+    
+    --color-success: #00ff00;
+    --color-warning: #ffff00;
+    --color-error: #ff0000;
+    --color-info: #00ffff;
+    
+    /* Fonts */
+    --font-family: 'Courier New', 'Consolas', monospace;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-md: 13px;
+    --font-size-lg: 14px;
+    --font-size-xl: 16px;
+    
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 20px;
+    
+    /* Borders */
+    --border-width: 1px;
+    --border-radius: 2px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s;
+    --transition-normal: 0.3s;
+}

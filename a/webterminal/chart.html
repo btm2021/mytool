@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart - OHLCV Screener</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ccxt@4.2.25/dist/ccxt.browser.js"></script>
+    <script src="config.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        .chart-header {
+            background: #1a1a1a;
+            border-bottom: 2px solid #ff8c00;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffb000;
+            text-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
+        }
+
+        .chart-info {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            color: #888;
+            font-size: 10px;
+        }
+
+        .info-value {
+            color: #ffb000;
+            font-weight: bold;
+        }
+
+        .price-up {
+            color: #00ff00;
+        }
+
+        .price-down {
+            color: #ff0000;
+        }
+
+        .chart-controls {
+            background: #1a1a1a;
+            padding: 10px 20px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .timeframe-btn {
+            padding: 6px 12px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #888;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Courier New', monospace;
+        }
+
+        .timeframe-btn:hover {
+            background: #3a3a3a;
+            color: #ffb000;
+        }
+
+        .timeframe-btn.active {
+            background: #ff8c00;
+            color: #000;
+            border-color: #ff8c00;
+        }
+
+        .status-indicator {
+            margin-left: auto;
+            padding: 6px 12px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff00;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        #chart {
+            width: 100%;
+            height: calc(100vh - 110px);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            color: #ff8c00;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chart-header">
+        <div class="chart-title" id="chartTitle">Loading...</div>
+        <div class="chart-info">
+            <div class="info-item">
+                <span class="info-label">PRICE</span>
+                <span class="info-value" id="currentPrice">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">24H CHANGE</span>
+                <span class="info-value" id="priceChange">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">24H HIGH</span>
+                <span class="info-value" id="high24h">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">24H LOW</span>
+                <span class="info-value" id="low24h">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">VOLUME</span>
+                <span class="info-value" id="volume24h">-</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-controls">
+        <button class="timeframe-btn" data-tf="1m">1m</button>
+        <button class="timeframe-btn" data-tf="5m">5m</button>
+        <button class="timeframe-btn active" data-tf="15m">15m</button>
+        <button class="timeframe-btn" data-tf="1h">1h</button>
+        <button class="timeframe-btn" data-tf="4h">4h</button>
+        <button class="timeframe-btn" data-tf="1d">1D</button>
+        <div class="status-indicator">
+            <span class="status-dot"></span>
+            <span id="statusText">Connecting...</span>
+        </div>
+    </div>
+
+    <div id="chart"></div>
+    <div class="loading" id="loading">Loading chart data...</div>
+
+    <script src="chart.js"></script>
+</body>
+
+</html>

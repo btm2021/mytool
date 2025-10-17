@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Test - OHLCV Screener</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #ff8c00;
+            border-bottom: 2px solid #ff8c00;
+            padding-bottom: 10px;
+        }
+        .section {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .section h2 {
+            color: #ffb000;
+            margin-top: 0;
+        }
+        button {
+            background: #2a2a2a;
+            border: 2px solid #ff8c00;
+            color: #ffb000;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #3a3a3a;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #000;
+            border: 1px solid #333;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .log-line {
+            margin: 2px 0;
+        }
+        .log-info { color: #00ff00; }
+        .log-success { color: #00ff00; font-weight: bold; }
+        .log-warn { color: #ffff00; }
+        .log-error { color: #ff0000; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .stat-box {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            padding: 10px;
+            text-align: center;
+        }
+        .stat-label {
+            color: #888;
+            font-size: 10px;
+        }
+        .stat-value {
+            color: #ffb000;
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Worker Test & Debug</h1>
+
+        <div class="section">
+            <h2>Exchange Workers</h2>
+            <button onclick="testBinance()">Test Binance</button>
+            <button onclick="testBybit()">Test Bybit</button>
+            <button onclick="testOKX()">Test OKX</button>
+            <button onclick="stopWorker()">Stop Worker</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-label">SYMBOLS LOADED</div>
+                    <div class="stat-value" id="symbolCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">PROCESSED</div>
+                    <div class="stat-value" id="processedCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">SUCCESS</div>
+                    <div class="stat-value" id="successCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">FAILED</div>
+                    <div class="stat-value" id="failedCount">0</div>
+                </div>
+            </div>
+
+            <div class="log" id="workerLog"></div>
+        </div>
+
+        <div class="section">
+            <h2>Calculator Worker</h2>
+            <button onclick="testCalculator()">Test Calculator</button>
+            <div class="log" id="calcLog"></div>
+        </div>
+
+        <div class="section">
+            <h2>Indicators Test</h2>
+            <button onclick="testIndicators()">Test Indicators</button>
+            <div class="log" id="indicatorLog"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ccxt@4.2.25/dist/ccxt.browser.js"></script>
+    <script src="config.js"></script>
+    <script src="indicators.js"></script>
+    <script>
+        let currentWorker = null;
+        let stats = {
+            symbols: 0,
+            processed: 0,
+            success: 0,
+            failed: 0
+        };
+
+        function log(elementId, message, level = 'info') {
+            const logEl = document.getElementById(elementId);
+            const time = new Date().toLocaleTimeString();
+            const line = document.createElement('div');
+            line.className = `log-line log-${level}`;
+            line.textContent = `[${time}] ${message}`;
+            logEl.appendChild(line);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('symbolCount').textContent = stats.symbols;
+            document.getElementById('processedCount').textContent = stats.processed;
+            document.getElementById('successCount').textContent = stats.success;
+            document.getElementById('failedCount').textContent = stats.failed;
+        }
+
+        function clearLogs() {
+            document.getElementById('workerLog').innerHTML = '';
+            document.getElementById('calcLog').innerHTML = '';
+            document.getElementById('indicatorLog').innerHTML = '';
+            stats = { symbols: 0, processed: 0, success: 0, failed: 0 };
+            updateStats();
+        }
+
+        function stopWorker() {
+            if (currentWorker) {
+                currentWorker.postMessage({ type: 'stop' });
+                currentWorker.terminate();
+                currentWorker = null;
+                log('workerLog', 'Worker stopped', 'warn');
+            }
+        }
+
+        function testExchange(exchangeId, workerFile) {
+            stopWorker();
+            clearLogs();
+
+            log('workerLog', `Starting ${exchangeId} worker...`, 'info');
+
+            currentWorker = new Worker(workerFile);
+
+            currentWorker.onmessage = (e) => {
+                const { type, status, message, level, data, weight, maxWeight } = e.data;
+
+                switch(type) {
+                    case 'status':
+                        log('workerLog', `Status: ${status}`, 'info');
+                        break;
+
+                    case 'log':
+                        log('workerLog', message, level);
+                        if (message.includes('Loaded') && message.includes('symbols')) {
+                            const match = message.match(/(\d+) symbols/);
+                            if (match) {
+                                stats.symbols = parseInt(match[1]);
+                                updateStats();
+                            }
+                        }
+                        if (message.includes('Batch done')) {
+                            const match = message.match(/(\d+) success, (\d+) failed/);
+                            if (match) {
+                                stats.success += parseInt(match[1]);
+                                stats.failed += parseInt(match[2]);
+                                stats.processed = stats.success + stats.failed;
+                                updateStats();
+                            }
+                        }
+                        break;
+
+                    case 'weight':
+                        log('workerLog', `Weight: ${weight}/${maxWeight}`, 'info');
+                        break;
+
+                    case 'ohlcv':
+                        log('workerLog', `✓ ${data.symbol}: ${data.ohlcv.length} candles`, 'success');
+                        break;
+
+                    case 'error':
+                        log('workerLog', `Error: ${message}`, 'error');
+                        break;
+                }
+            };
+
+            currentWorker.onerror = (error) => {
+                log('workerLog', `Worker error: ${error.message}`, 'error');
+            };
+
+            const config = CONFIG.exchanges.find(e => e.id === exchangeId);
+            currentWorker.postMessage({ type: 'init', config: config });
+        }
+
+        function testBinance() {
+            testExchange('binance', 'workers/binance-worker.js');
+        }
+
+        function testBybit() {
+            testExchange('bybit', 'workers/bybit-worker.js');
+        }
+
+        function testOKX() {
+            testExchange('okx', 'workers/okx-worker.js');
+        }
+
+        function testCalculator() {
+            document.getElementById('calcLog').innerHTML = '';
+            log('calcLog', 'Testing calculator worker...', 'info');
+
+            const calc = new Worker('calculator-worker.js');
+
+            calc.onmessage = (e) => {
+                if (e.data.type === 'result') {
+                    log('calcLog', `✓ ${e.data.symbol}:`, 'success');
+                    log('calcLog', `  Close: ${e.data.indicators.close}`, 'info');
+                    log('calcLog', `  RSI: ${e.data.indicators.rsi?.toFixed(2)}`, 'info');
+                    log('calcLog', `  EMA50: ${e.data.indicators.ema50?.toFixed(2)}`, 'info');
+                    log('calcLog', `  EMA200: ${e.data.indicators.ema200?.toFixed(2)}`, 'info');
+                    log('calcLog', `  Signal: ${e.data.indicators.signal}`, 'success');
+                } else if (e.data.type === 'error') {
+                    log('calcLog', `Error: ${e.data.message}`, 'error');
+                }
+            };
+
+            // Generate sample OHLCV data
+            const sampleOHLCV = [];
+            let price = 100;
+            for (let i = 0; i < 250; i++) {
+                price += (Math.random() - 0.5) * 2;
+                sampleOHLCV.push([
+                    Date.now() - (250 - i) * 60000,
+                    price,
+                    price + Math.random(),
+                    price - Math.random(),
+                    price,
+                    1000
+                ]);
+            }
+
+            calc.postMessage({
+                type: 'calculate',
+                exchangeId: 'test',
+                symbol: 'TEST/USDT',
+                ohlcv: sampleOHLCV,
+                config: {
+                    rsiPeriod: 14,
+                    emaShort: 50,
+                    emaLong: 200
+                }
+            });
+        }
+
+        function testIndicators() {
+            document.getElementById('indicatorLog').innerHTML = '';
+            log('indicatorLog', 'Testing indicators...', 'info');
+
+            // Generate sample data
+            const closes = [];
+            let price = 100;
+            for (let i = 0; i < 250; i++) {
+                price += (Math.random() - 0.5) * 2;
+                closes.push(price);
+            }
+
+            log('indicatorLog', `Generated ${closes.length} prices`, 'info');
+
+            // Test RSI
+            const rsi = Indicators.calculateRSI(closes, 14);
+            log('indicatorLog', `RSI(14): ${rsi?.toFixed(2)}`, rsi ? 'success' : 'error');
+
+            // Test EMA
+            const ema50 = Indicators.calculateEMA(closes, 50);
+            log('indicatorLog', `EMA(50): ${ema50?.toFixed(2)}`, ema50 ? 'success' : 'error');
+
+            const ema200 = Indicators.calculateEMA(closes, 200);
+            log('indicatorLog', `EMA(200): ${ema200?.toFixed(2)}`, ema200 ? 'success' : 'error');
+
+            // Test SMA
+            const sma50 = Indicators.calculateSMA(closes, 50);
+            log('indicatorLog', `SMA(50): ${sma50?.toFixed(2)}`, sma50 ? 'success' : 'error');
+
+            // Test signal
+            const indicators = {
+                close: closes[closes.length - 1],
+                rsi: rsi,
+                ema50: ema50,
+                ema200: ema200
+            };
+            const signal = Indicators.generateSignal(indicators);
+            log('indicatorLog', `Signal: ${signal}`, 'success');
+        }
+
+        // Auto-update stats
+        setInterval(updateStats, 1000);
+    </script>
+</body>
+</html>
