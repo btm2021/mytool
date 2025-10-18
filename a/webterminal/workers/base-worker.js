@@ -13,6 +13,7 @@ class BaseExchangeWorker {
         this.isRunning = false;
         this.isPaused = false;
         this.allSymbols = [];
+        this.symbolMap = {}; // Map normalized symbol to original symbol
         this.processedSymbols = {};
         this.currentBatchIndex = 0;
         this.cycleCount = 0;
@@ -22,7 +23,7 @@ class BaseExchangeWorker {
         this.batchDelay = exchangeConfig.batchDelay || CONFIG.batchDelay;
         this.symbolDelay = exchangeConfig.symbolDelay || CONFIG.symbolDelay;
         this.weightThreshold = exchangeConfig.weightThreshold || CONFIG.weightThreshold;
-        
+
         // Set proxy based on proxyUrl flag and CONFIG.proxyURL
         this.proxy = (exchangeConfig.proxyUrl === true && CONFIG.proxyURL) ? CONFIG.proxyURL : null;
     }
@@ -54,21 +55,31 @@ class BaseExchangeWorker {
             this.postLog('info', `Initializing ${this.exchangeId}...${proxyInfo}`);
 
             this.exchange = this.createExchange();
-            
+
             // Apply proxy if configured
             this.applyProxyToExchange();
 
             this.postStatus('Loading markets...');
             await this.exchange.loadMarkets();
 
-            this.allSymbols = this.filterSymbols();
+            const filteredSymbols = this.filterSymbols();
+
+            // Normalize symbols and create mapping
+            this.allSymbols = [];
+            this.symbolMap = {};
+            
+            filteredSymbols.forEach(originalSymbol => {
+                const normalizedSymbol = this.normalizeSymbol(originalSymbol);
+                this.allSymbols.push(normalizedSymbol);
+                this.symbolMap[normalizedSymbol] = originalSymbol;
+            });
 
             this.postLog('success', `Loaded ${this.allSymbols.length} symbols`);
-            
+
             // Send all symbols list to main thread
-            this.postMessage({ 
-                type: 'symbols_list', 
-                symbols: this.allSymbols 
+            this.postMessage({
+                type: 'symbols_list',
+                symbols: this.allSymbols
             });
 
             this.isRunning = true;
@@ -85,6 +96,13 @@ class BaseExchangeWorker {
 
     filterSymbols() {
         throw new Error('filterSymbols() must be implemented by subclass');
+    }
+
+    normalizeSymbol(symbol) {
+        // Normalize symbol format to standard format (e.g., BTC/USDT)
+        // Some exchanges use different formats like BTC-USDT, BTCUSDT, etc.
+        // This method can be overridden by subclasses if needed
+        return symbol;
     }
 
     async startProcessing() {
@@ -222,7 +240,7 @@ class BaseExchangeWorker {
         // Normalize OHLCV data to standard format
         // Standard format: [timestamp, open, high, low, close, volume]
         // Some exchanges may return different formats or have null values
-        
+
         if (!ohlcv || !Array.isArray(ohlcv)) {
             return [];
         }
@@ -267,7 +285,9 @@ class BaseExchangeWorker {
         }
 
         try {
-            const rawOhlcv = await this.exchange.fetchOHLCV(symbol, this.timeframe, undefined, this.klineLimit);
+            // Use original symbol for API call
+            const originalSymbol = this.symbolMap[symbol] || symbol;
+            const rawOhlcv = await this.exchange.fetchOHLCV(originalSymbol, this.timeframe, undefined, this.klineLimit);
 
             this.weight += this.weightCost;
             this.postWeight();

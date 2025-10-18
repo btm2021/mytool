@@ -36,32 +36,12 @@ const CONFIG = {
         },
         {
             id: 'kucoin',
-            name: 'KuCoin',
+            name: 'KuCoin Futures',
             color: '#24AE8F',
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
             workerFile: 'workers/kucoin-worker.js',
-            proxyUrl: true
-        },
-        {
-            id: 'hyperliquid',
-            name: 'Hyperliquid',
-            color: '#00D4AA',
-            maxWeight: 1000,
-            weightCost: 1,
-            weightResetInterval: 60000,
-            workerFile: 'workers/hyperliquid-worker.js',
-            proxyUrl: true
-        },
-        {
-            id: 'bitmex',
-            name: 'BitMEX',
-            color: '#E3373E',
-            maxWeight: 1000,
-            weightCost: 1,
-            weightResetInterval: 60000,
-            workerFile: 'workers/bitmex-worker.js',
             proxyUrl: true
         },
         {
@@ -85,27 +65,6 @@ const CONFIG = {
             proxyUrl: true
         },
         {
-            id: 'htx',
-            name: 'HTX',
-            color: '#2E7CFF',
-            maxWeight: 1000,
-            weightCost: 1,
-            weightResetInterval: 60000,
-            workerFile: 'workers/htx-worker.js',
-            proxyUrl: true
-        },
-        {
-            id: 'kraken',
-            name: 'Kraken Spot',
-            color: '#5741D9',
-            maxWeight: 1000,
-            weightCost: 1,
-            weightResetInterval: 60000,
-            workerFile: 'workers/kraken-spot-worker.js',
-            acceptedQuotes: ['USDT', 'USD'],
-            proxyUrl: true
-        },
-        {
             id: 'krakenfutures',
             name: 'Kraken Futures',
             color: '#7B5FE8',
@@ -114,16 +73,6 @@ const CONFIG = {
             weightResetInterval: 60000,
             workerFile: 'workers/kraken-futures-worker.js',
             acceptedQuotes: ['USD', 'USDT'],
-            proxyUrl: true
-        },
-        {
-            id: 'bitfinex',
-            name: 'Bitfinex',
-            color: '#16B157',
-            maxWeight: 1000,
-            weightCost: 1,
-            weightResetInterval: 60000,
-            workerFile: 'workers/bitfinex-worker.js',
             proxyUrl: true
         }
     ],

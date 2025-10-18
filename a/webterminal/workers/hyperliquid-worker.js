@@ -6,19 +6,35 @@ class HyperliquidWorker extends BaseExchangeWorker {
     }
 
     createExchange() {
+        const baseOptions = this.getExchangeOptions();
+        
         return new ccxt.hyperliquid({
-            enableRateLimit: true,
-            timeout: 30000
+            ...baseOptions,
+            options: {
+                defaultType: 'swap'
+            }
         });
     }
 
     filterSymbols() {
         return Object.keys(this.exchange.markets).filter(symbol => {
             const market = this.exchange.markets[symbol];
-            return market.quote === 'USDC' && 
-                   market.type === 'swap' &&
-                   market.active;
+            // Hyperliquid uses USDC as quote currency for perpetual futures
+            return (
+                market.active &&
+                (market.settle === 'USDC' || market.quote === 'USDC') &&
+                (market.type === 'swap' || market.swap === true)
+            );
         });
+    }
+
+    normalizeSymbol(symbol) {
+        // Hyperliquid might use format like BTC/USDC:USDC
+        // Normalize to BTC/USDC format
+        if (symbol.includes(':')) {
+            return symbol.split(':')[0];
+        }
+        return symbol;
     }
 }
 
