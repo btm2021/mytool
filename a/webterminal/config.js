@@ -1,5 +1,8 @@
 // Configuration for exchanges
 const CONFIG = {
+    // Proxy configuration
+    proxyURL: 'https://autumn-heart-5bf8.trinhminhbao.workers.dev/',
+
     exchanges: [
         {
             id: 'binance',
@@ -8,7 +11,8 @@ const CONFIG = {
             maxWeight: 1200,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/binance-worker.js'
+            workerFile: 'workers/binance-worker.js',
+            proxyUrl: false
         },
         {
             id: 'bybit',
@@ -17,7 +21,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/bybit-worker.js'
+            workerFile: 'workers/bybit-worker.js',
+            proxyUrl: false
         },
         {
             id: 'okx',
@@ -26,7 +31,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/okx-worker.js'
+            workerFile: 'workers/okx-worker.js',
+            proxyUrl: false
         },
         {
             id: 'kucoin',
@@ -36,7 +42,7 @@ const CONFIG = {
             weightCost: 1,
             weightResetInterval: 60000,
             workerFile: 'workers/kucoin-worker.js',
-            proxy: 'https://autumn-heart-5bf8.trinhminhbao.workers.dev/'
+            proxyUrl: true
         },
         {
             id: 'hyperliquid',
@@ -45,7 +51,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/hyperliquid-worker.js'
+            workerFile: 'workers/hyperliquid-worker.js',
+            proxyUrl: true
         },
         {
             id: 'bitmex',
@@ -54,7 +61,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/bitmex-worker.js'
+            workerFile: 'workers/bitmex-worker.js',
+            proxyUrl: true
         },
         {
             id: 'bingx',
@@ -63,7 +71,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/bingx-worker.js'
+            workerFile: 'workers/bingx-worker.js',
+            proxyUrl: true
         },
         {
             id: 'mexc',
@@ -72,7 +81,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/mexc-worker.js'
+            workerFile: 'workers/mexc-worker.js',
+            proxyUrl: true
         },
         {
             id: 'htx',
@@ -81,16 +91,30 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/htx-worker.js'
+            workerFile: 'workers/htx-worker.js',
+            proxyUrl: true
         },
         {
             id: 'kraken',
-            name: 'Kraken',
+            name: 'Kraken Spot',
             color: '#5741D9',
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/kraken-worker.js'
+            workerFile: 'workers/kraken-spot-worker.js',
+            acceptedQuotes: ['USDT', 'USD'],
+            proxyUrl: true
+        },
+        {
+            id: 'krakenfutures',
+            name: 'Kraken Futures',
+            color: '#7B5FE8',
+            maxWeight: 1000,
+            weightCost: 1,
+            weightResetInterval: 60000,
+            workerFile: 'workers/kraken-futures-worker.js',
+            acceptedQuotes: ['USD', 'USDT'],
+            proxyUrl: true
         },
         {
             id: 'bitfinex',
@@ -99,7 +123,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/bitfinex-worker.js'
+            workerFile: 'workers/bitfinex-worker.js',
+            proxyUrl: true
         }
     ],
 

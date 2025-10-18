@@ -22,7 +22,9 @@ class BaseExchangeWorker {
         this.batchDelay = exchangeConfig.batchDelay || CONFIG.batchDelay;
         this.symbolDelay = exchangeConfig.symbolDelay || CONFIG.symbolDelay;
         this.weightThreshold = exchangeConfig.weightThreshold || CONFIG.weightThreshold;
-        this.proxy = exchangeConfig.proxy || null;
+        
+        // Set proxy based on proxyUrl flag and CONFIG.proxyURL
+        this.proxy = (exchangeConfig.proxyUrl === true && CONFIG.proxyURL) ? CONFIG.proxyURL : null;
     }
 
     getExchangeOptions() {
