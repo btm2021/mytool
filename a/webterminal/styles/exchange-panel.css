@@ -1,19 +1,43 @@
 .exchange-list {
     overflow-y: auto;
     flex: 1;
+    padding: var(--spacing-sm);
 }
 
 .exchange-item {
-    padding: var(--spacing-md);
-    border-bottom: 1px solid var(--color-border-light);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    border: 1px solid var(--color-border-light);
     border-left: 3px solid;
-    opacity: 0.6;
-    transition: all var(--transition-fast);
+    border-radius: 6px;
+    opacity: 0.5;
+    transition: all 0.3s ease;
+    background: var(--color-bg-primary);
+    position: relative;
+    overflow: hidden;
+}
+
+.exchange-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .exchange-item.active {
     opacity: 1;
     background: var(--color-bg-secondary);
+    border-color: currentColor;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.exchange-item.active::before {
+    opacity: 0.3;
 }
 
 .exchange-header {
@@ -23,11 +47,100 @@
     margin-bottom: var(--spacing-xs);
 }
 
+.exchange-controls {
+    display: flex;
+    gap: 4px;
+    margin-bottom: var(--spacing-xs);
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    justify-content: center;
+}
+
+.exchange-control-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.exchange-control-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.exchange-control-btn:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+}
+
+.exchange-control-btn:nth-child(1):not(:disabled):hover {
+    color: #3fb950;
+    border-color: #3fb950;
+    box-shadow: 0 0 8px rgba(63, 185, 80, 0.3);
+}
+
+.exchange-control-btn:nth-child(1).active {
+    color: #3fb950;
+    border-color: #3fb950;
+    background: rgba(63, 185, 80, 0.1);
+    box-shadow: 0 0 8px rgba(63, 185, 80, 0.3);
+}
+
+.exchange-control-btn:nth-child(2):not(:disabled):hover {
+    color: #d29922;
+    border-color: #d29922;
+    box-shadow: 0 0 8px rgba(210, 153, 34, 0.3);
+}
+
+.exchange-control-btn:nth-child(2).active {
+    color: #d29922;
+    border-color: #d29922;
+    background: rgba(210, 153, 34, 0.1);
+    box-shadow: 0 0 8px rgba(210, 153, 34, 0.3);
+}
+
+.exchange-control-btn:nth-child(3):not(:disabled):hover {
+    color: #f85149;
+    border-color: #f85149;
+    box-shadow: 0 0 8px rgba(248, 81, 73, 0.3);
+}
+
+.exchange-control-btn .control-icon {
+    width: 12px;
+    height: 12px;
+    filter: drop-shadow(0 0 2px currentColor);
+}
+
 .status-indicator {
     width: 10px;
     height: 10px;
     border-radius: 50%;
     display: inline-block;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.status-indicator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: inherit;
+    opacity: 0.3;
 }
 
 .status-indicator.idle {
@@ -36,52 +149,143 @@
 
 .status-indicator.active {
     background: var(--color-success);
+    box-shadow: 0 0 12px currentColor;
     animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-indicator.active::after {
+    animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.status-indicator.paused {
+    background: #d29922;
+    box-shadow: 0 0 12px #d29922;
 }
 
 .status-indicator.error {
     background: var(--color-error);
+    box-shadow: 0 0 12px currentColor;
     animation: pulse 1s ease-in-out infinite;
 }
 
 @keyframes pulse {
     0%, 100% {
         opacity: 1;
-        box-shadow: 0 0 0 0 currentColor;
     }
     50% {
-        opacity: 0.7;
-        box-shadow: 0 0 8px 2px currentColor;
+        opacity: 0.6;
+    }
+}
+
+@keyframes ping {
+    75%, 100% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
     }
 }
 
 .exchange-name {
     font-weight: bold;
-    font-size: var(--font-size-lg);
+    font-size: 13px;
     flex: 1;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 .exchange-info {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-xs);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
 }
 
-.exchange-status {
+.exchange-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+}
+
+.exchange-info-label {
+    color: var(--color-text-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.exchange-info-value {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.exchange-status-text {
     color: var(--color-text-secondary);
+    font-weight: 600;
+    font-size: 11px;
+    margin-bottom: var(--spacing-xs);
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .exchange-weight {
     color: var(--color-text-tertiary);
+    font-family: 'Courier New', monospace;
+}
+
+.exchange-metric {
+    margin: var(--spacing-xs) 0;
+}
+
+.metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.metric-label {
+    color: var(--color-text-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.metric-value {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+}
+
+.metric-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.metric-fill {
+    height: 100%;
+    background: currentColor;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 6px currentColor;
+    position: relative;
 }
 
 .exchange-symbols {
     color: var(--color-text-tertiary);
+    font-weight: 600;
+    font-size: 11px;
 }
 
 .exchange-last {
     color: var(--color-text-muted);
-    font-size: var(--font-size-xs);
-    margin-top: var(--spacing-xs);
+    font-size: 10px;
+    text-align: right;
+    font-family: 'Courier New', monospace;
 }

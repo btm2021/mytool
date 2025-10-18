@@ -16,6 +16,10 @@
     flex-direction: column;
 }
 
+.center-panel {
+    min-width: 0;
+}
+
 .right-panel {
     border-right: none;
 }
@@ -25,8 +29,7 @@
     padding: var(--spacing-sm) var(--spacing-md);
     border-bottom: 2px solid var(--color-border);
     font-weight: bold;
-    font-size: var(--font-size-lg);
-    text-shadow: 0 0 5px var(--color-text-secondary);
+    font-size: var(--font-size-md);
 }
 
 .panel-header {

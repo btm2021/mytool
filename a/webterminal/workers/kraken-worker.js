@@ -1,12 +1,12 @@
 importScripts('base-worker.js');
 
-class OKXWorker extends BaseExchangeWorker {
+class KrakenWorker extends BaseExchangeWorker {
     constructor(config) {
-        super('okx', config);
+        super('kraken', config);
     }
 
     createExchange() {
-        return new ccxt.okx({
+        return new ccxt.kraken({
             enableRateLimit: true,
             timeout: 30000,
             options: {
@@ -18,8 +18,8 @@ class OKXWorker extends BaseExchangeWorker {
     filterSymbols() {
         return Object.keys(this.exchange.markets).filter(symbol => {
             const market = this.exchange.markets[symbol];
-            return market.quote === 'USDT' && 
-                   market.type === 'swap' && 
+            return (market.quote === 'USDT' || market.quote === 'USD') && 
+                   market.type === 'swap' &&
                    market.active;
         });
     }
@@ -31,7 +31,7 @@ self.onmessage = async function(e) {
     const { type, config, data } = e.data;
     
     if (type === 'init') {
-        worker = new OKXWorker(config);
+        worker = new KrakenWorker(config);
         await worker.init();
     } else if (type === 'pause') {
         if (worker) worker.pause();

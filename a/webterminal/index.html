@@ -15,15 +15,29 @@
     <link rel="stylesheet" href="styles/table.css">
     <link rel="stylesheet" href="styles/logs.css">
     <link rel="stylesheet" href="styles/system-tabs.css">
+    <link rel="stylesheet" href="styles/modal.css">
 </head>
 
 <body>
     <div id="app">
         <nav class="navbar navbar-dark">
             <span class="navbar-brand">⚡ OHLCV SCREENER - RETRO TERMINAL</span>
-            <div class="navbar-text">
-                <button class="btn btn-sm btn-success" @click="startAllWorkers" :disabled="isRunning">Start</button>
-                <button class="btn btn-sm btn-danger ml-2" @click="stopAllWorkers" :disabled="!isRunning">Stop</button>
+            <div class="navbar-controls">
+                <button class="global-control-btn" @click="startAllWorkers" title="Start All">
+                    <svg viewBox="0 0 24 24" class="control-icon">
+                        <path d="M8 5v14l11-7z" fill="currentColor" />
+                    </svg>
+                </button>
+                <button class="global-control-btn" @click="pauseAllWorkers" title="Pause All">
+                    <svg viewBox="0 0 24 24" class="control-icon">
+                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" fill="currentColor" />
+                    </svg>
+                </button>
+                <button class="global-control-btn" @click="stopAllWorkers" title="Stop All">
+                    <svg viewBox="0 0 24 24" class="control-icon">
+                        <rect x="6" y="6" width="12" height="12" fill="currentColor" />
+                    </svg>
+                </button>
             </div>
         </nav>
 
@@ -33,21 +47,78 @@
                 <div class="col-2 left-panel">
                     <div class="panel-title">EXCHANGES</div>
                     <div class="exchange-list">
-                        <div v-for="exchange in exchanges" :key="exchange.id" class="exchange-item"
-                            :class="{'active': exchange.active}" :style="{'border-left-color': exchange.color}">
+                        <div v-for="exchange in enabledExchanges" :key="exchange.id" class="exchange-item"
+                            :class="{'active': exchange.active, 'paused': exchange.paused}"
+                            :style="{'border-left-color': exchange.color, 'color': exchange.color}">
                             <div class="exchange-header">
                                 <span class="status-indicator" :class="getStatusClass(exchange)"
                                     :style="{color: exchange.color}"></span>
-                                <div class="exchange-name" :style="{color: exchange.color}">
+                                <div class="exchange-name clickable" :style="{color: exchange.color}"
+                                    @click="openExchangeModal(exchange)">
                                     {{ exchange.name }}
                                 </div>
                             </div>
+
+
                             <div class="exchange-info">
-                                <div class="exchange-status">{{ exchange.status }}</div>
-                                <div class="exchange-symbols">{{ exchange.symbolCount }} symbols</div>
-                                <div class="exchange-weight">{{ exchange.weight }}/{{ exchange.maxWeight }}</div>
-                                <div class="exchange-last">{{ exchange.lastMessage }}</div>
+
+                                <div class="exchange-metric">
+                                    <div class="metric-header">
+                                        <span class="metric-label">Progress</span>
+                                        <span class="metric-value">{{ exchange.processed }}/{{ exchange.total }}</span>
+                                    </div>
+                                    <div class="metric-bar">
+                                        <div class="metric-fill"
+                                            :style="{width: exchange.total > 0 ? (exchange.processed / exchange.total * 100) + '%' : '0%', background: exchange.color}">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="exchange-metric">
+                                    <div class="metric-header">
+                                        <span class="metric-label">Weight</span>
+                                        <span class="metric-value">{{ exchange.weight }}/{{ exchange.maxWeight }}</span>
+                                    </div>
+                                    <div class="metric-bar">
+                                        <div class="metric-fill"
+                                            :style="{width: (exchange.weight / exchange.maxWeight * 100) + '%', background: exchange.color}">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="exchange-info-row">
+                                    <span class="exchange-info-label">Symbols</span>
+                                    <span class="exchange-symbols">{{ exchange.symbolCount }}</span>
+                                </div>
+
+                                <div class="exchange-info-row">
+                                    <span class="exchange-info-label">Updated</span>
+                                    <span class="exchange-last">{{ getLastUpdateTime(exchange) }}</span>
+                                </div>
                             </div>
+                            <div class="exchange-controls">
+                                <button class="exchange-control-btn" @click="startExchange(exchange)"
+                                    :disabled="exchange.active && !exchange.paused"
+                                    :class="{'active': exchange.active && !exchange.paused}" title="Start">
+                                    <svg viewBox="0 0 24 24" class="control-icon">
+                                        <path d="M8 5v14l11-7z" fill="currentColor" />
+                                    </svg>
+                                </button>
+                                <button class="exchange-control-btn" @click="pauseExchange(exchange)"
+                                    :disabled="!exchange.active || exchange.paused" :class="{'active': exchange.paused}"
+                                    title="Pause">
+                                    <svg viewBox="0 0 24 24" class="control-icon">
+                                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" fill="currentColor" />
+                                    </svg>
+                                </button>
+                                <button class="exchange-control-btn" @click="stopExchange(exchange)"
+                                    :disabled="!exchange.active" title="Stop">
+                                    <svg viewBox="0 0 24 24" class="control-icon">
+                                        <rect x="6" y="6" width="12" height="12" fill="currentColor" />
+                                    </svg>
+                                </button>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -56,14 +127,14 @@
                 <div class="col-7 center-panel">
                     <div class="panel-header">
                         <div class="filter-container">
-                            <input type="text" v-model="symbolFilter" placeholder="Filter symbols..."
+                            <input type="search" v-model="symbolFilter" placeholder="Filter symbols..."
                                 class="filter-input">
                         </div>
                     </div>
 
                     <div class="tabs-container">
                         <div class="tab-buttons">
-                            <button v-for="exchange in exchanges" :key="exchange.id" class="tab-button"
+                            <button v-for="exchange in enabledExchanges" :key="exchange.id" class="tab-button"
                                 :class="{'active': activeTab === exchange.id}" :style="getTabStyle(exchange)"
                                 @click="activeTab = exchange.id">
                                 {{ exchange.id.toUpperCase() }} ({{ getSymbolCount(exchange.id) }})
@@ -80,15 +151,23 @@
                                         <th>EMA50</th>
                                         <th>EMA200</th>
                                         <th>Signal</th>
-                                        <th>Time</th>
+
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="symbol in filteredSymbols" :key="symbol.id">
+                                    <tr v-for="symbol in filteredSymbols" :key="symbol.symbol"
+                                        :class="{'row-updated': symbol.updated}">
                                         <td class="symbol-name">
                                             <a :href="'chart.html?exchange=' + activeTab + '&symbol=' + symbol.symbol"
                                                 target="_blank" class="symbol-link">
-                                                {{ symbol.symbol }}
+                                                <div class="symbol-icons">
+                                                    <img :src="symbol.baseIcon" :alt="symbol.baseSymbol"
+                                                        class="crypto-icon" loading="lazy" @error="handleIconError">
+                                                    <span class="icon-separator">/</span>
+                                                    <img :src="symbol.quoteIcon" :alt="symbol.quoteSymbol"
+                                                        class="crypto-icon" loading="lazy" @error="handleIconError">
+                                                </div>
+                                                <span class="symbol-text">{{ symbol.displaySymbol }}</span>
                                             </a>
                                         </td>
                                         <td>{{ symbol.close }}</td>
@@ -96,7 +175,7 @@
                                         <td>{{ symbol.ema50 }}</td>
                                         <td>{{ symbol.ema200 }}</td>
                                         <td :class="'signal-' + symbol.signal">{{ symbol.signal }}</td>
-                                        <td class="time-col">{{ symbol.time }}</td>
+
                                     </tr>
                                 </tbody>
                             </table>
@@ -205,10 +284,51 @@
                         </div>
 
                         <button class="btn-reset" @click="resetSettings">Reset to Default</button>
+                        <button class="btn-reset" @click="clearProcessedSymbols" style="margin-top: 10px;">Clear
+                            Processed Symbols</button>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Exchange Symbols Modal -->
+        <div v-if="showExchangeModal" class="modal-overlay" @click="closeExchangeModal">
+            <div class="modal-content" @click.stop :style="{'border-color': selectedExchange.color}">
+                <div class="modal-header"
+                    :style="{'background': selectedExchange.color + '20', 'border-color': selectedExchange.color}">
+                    <h3 :style="{color: selectedExchange.color}">{{ selectedExchange.name }} - Supported Symbols</h3>
+                    <button class="modal-close" @click="closeExchangeModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-symbols-section">
+                        <div class="modal-symbols-header">
+                            <div class="modal-symbols-count">{{ modalFilteredSymbols.length }}/{{
+                                selectedExchange.allSymbols.length }} symbols</div>
+                            <input type="text" v-model="modalSymbolFilter" placeholder="Search symbols..."
+                                class="modal-search">
+                        </div>
+                        <div class="modal-symbols-table">
+                            <table class="modal-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60px">#</th>
+                                        <th>Symbol</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(symbol, index) in modalFilteredSymbols" :key="symbol">
+                                        <td class="symbol-index">{{ index + 1 }}</td>
+                                        <td class="symbol-name">{{ symbol }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.min.js"></script>

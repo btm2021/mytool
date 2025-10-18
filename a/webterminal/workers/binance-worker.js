@@ -27,12 +27,18 @@ class BinanceWorker extends BaseExchangeWorker {
 let worker = null;
 
 self.onmessage = async function (e) {
-    const { type, config } = e.data;
+    const { type, config, data } = e.data;
 
     if (type === 'init') {
         worker = new BinanceWorker(config);
         await worker.init();
+    } else if (type === 'pause') {
+        if (worker) worker.pause();
+    } else if (type === 'resume') {
+        if (worker) worker.resume();
     } else if (type === 'stop') {
         if (worker) worker.stop();
+    } else if (type === 'set_processed') {
+        if (worker) worker.setProcessedSymbols(data);
     }
 };

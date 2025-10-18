@@ -14,19 +14,33 @@ body {
 }
 
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-track {
     background: var(--color-bg-primary);
+    border-left: 1px solid var(--color-border-light);
 }
 
 ::-webkit-scrollbar-thumb {
     background: var(--color-border);
-    border-radius: 4px;
+    border-radius: 5px;
+    border: 2px solid var(--color-bg-primary);
+    transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--color-text-secondary);
+    box-shadow: 0 0 8px var(--color-text-secondary);
+}
+
+/* Smooth transitions for all elements */
+* {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Disable transitions for specific elements */
+input, button, select {
+    transition: all 0.3s ease;
 }

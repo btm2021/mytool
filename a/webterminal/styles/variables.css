@@ -1,22 +1,22 @@
-/* Retro Terminal Theme - Amber on Black */
+/* Modern Dark Theme - Cool & Clean */
 :root {
     /* Colors */
-    --color-bg-primary: #1a1a1a;
-    --color-bg-secondary: #2a2a2a;
-    --color-bg-tertiary: #3a3a3a;
+    --color-bg-primary: #0d1117;
+    --color-bg-secondary: #161b22;
+    --color-bg-tertiary: #21262d;
     
-    --color-text-primary: #ffb000;
-    --color-text-secondary: #ff8c00;
-    --color-text-tertiary: #cc7000;
-    --color-text-muted: #996600;
+    --color-text-primary: #c9d1d9;
+    --color-text-secondary: #8b949e;
+    --color-text-tertiary: #6e7681;
+    --color-text-muted: #484f58;
     
-    --color-border: #ff8c00;
-    --color-border-light: #664400;
+    --color-border: #30363d;
+    --color-border-light: #21262d;
     
-    --color-success: #00ff00;
-    --color-warning: #ffff00;
-    --color-error: #ff0000;
-    --color-info: #00ffff;
+    --color-success: #3fb950;
+    --color-warning: #d29922;
+    --color-error: #f85149;
+    --color-info: #58a6ff;
     
     /* Fonts */
     --font-family: 'Courier New', 'Consolas', monospace;

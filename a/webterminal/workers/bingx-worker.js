@@ -1,12 +1,12 @@
 importScripts('base-worker.js');
 
-class OKXWorker extends BaseExchangeWorker {
+class BingxWorker extends BaseExchangeWorker {
     constructor(config) {
-        super('okx', config);
+        super('bingx', config);
     }
 
     createExchange() {
-        return new ccxt.okx({
+        return new ccxt.bingx({
             enableRateLimit: true,
             timeout: 30000,
             options: {
@@ -19,7 +19,7 @@ class OKXWorker extends BaseExchangeWorker {
         return Object.keys(this.exchange.markets).filter(symbol => {
             const market = this.exchange.markets[symbol];
             return market.quote === 'USDT' && 
-                   market.type === 'swap' && 
+                   market.type === 'swap' &&
                    market.active;
         });
     }
@@ -31,7 +31,7 @@ self.onmessage = async function(e) {
     const { type, config, data } = e.data;
     
     if (type === 'init') {
-        worker = new OKXWorker(config);
+        worker = new BingxWorker(config);
         await worker.init();
     } else if (type === 'pause') {
         if (worker) worker.pause();
