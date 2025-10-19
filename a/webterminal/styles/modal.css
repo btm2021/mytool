@@ -289,3 +289,81 @@
     font-weight: 600;
     word-break: break-word;
 }
+
+/* Whitelist Management */
+.modal-whitelist-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-light);
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.whitelist-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.whitelist-label {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.whitelist-value {
+    font-size: 13px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+.whitelist-hint {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+.symbol-action {
+    text-align: center;
+}
+
+.whitelist-btn {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    color: #666;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.whitelist-btn:hover {
+    background: var(--color-bg-tertiary);
+    transform: scale(1.1);
+}
+
+.whitelist-btn.active {
+    border-color: currentColor;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 8px currentColor;
+}
+
+.modal-table tbody tr.whitelist-active {
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid var(--color-success);
+}
+
+.modal-table tbody tr.whitelist-active:hover {
+    background: rgba(255, 255, 255, 0.05);
+}

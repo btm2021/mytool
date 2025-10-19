@@ -16,6 +16,7 @@ new Vue({
         selectedExchange: null,
         settings: {
             exchanges: {},
+            whitelists: {},
             batchSize: CONFIG.batchSize,
             klineLimit: CONFIG.klineLimit,
             timeframe: CONFIG.timeframe,
@@ -57,6 +58,11 @@ new Vue({
 
             const filter = this.modalSymbolFilter.toLowerCase();
             return symbols.filter(s => s.toLowerCase().includes(filter));
+        },
+
+        currentWhitelist() {
+            if (!this.selectedExchange) return [];
+            return this.settings.whitelists[this.selectedExchange.id] || [];
         }
     },
     methods: {
@@ -67,9 +73,17 @@ new Vue({
             } else {
                 CONFIG.exchanges.forEach(ex => {
                     this.$set(this.settings.exchanges, ex.id, true);
+                    this.$set(this.settings.whitelists, ex.id, ex.whitelist || []);
                 });
                 this.saveSettings();
             }
+
+            // Ensure whitelists exist for all exchanges
+            CONFIG.exchanges.forEach(ex => {
+                if (!this.settings.whitelists[ex.id]) {
+                    this.$set(this.settings.whitelists, ex.id, ex.whitelist || []);
+                }
+            });
         },
 
         saveSettings() {
@@ -98,6 +112,7 @@ new Vue({
         resetSettings() {
             this.settings = {
                 exchanges: {},
+                whitelists: {},
                 batchSize: CONFIG.batchSize,
                 klineLimit: CONFIG.klineLimit,
                 timeframe: CONFIG.timeframe,
@@ -111,6 +126,7 @@ new Vue({
             };
             CONFIG.exchanges.forEach(ex => {
                 this.$set(this.settings.exchanges, ex.id, true);
+                this.$set(this.settings.whitelists, ex.id, ex.whitelist || []);
             });
             this.saveSettings();
             this.addLog('success', 'Settings reset to default');
@@ -270,7 +286,8 @@ new Vue({
                     timeframe: this.settings.timeframe,
                     batchDelay: this.settings.batchDelay,
                     symbolDelay: this.settings.symbolDelay,
-                    weightThreshold: this.settings.weightThreshold
+                    weightThreshold: this.settings.weightThreshold,
+                    whitelist: this.settings.whitelists[exchange.id] || []
                 })
             });
 
@@ -512,6 +529,86 @@ new Vue({
         openExchangeModal(exchange) {
             this.selectedExchange = exchange;
             this.showExchangeModal = true;
+
+            // Load exchange info immediately if not already loaded
+            if (!exchange.allSymbols || exchange.allSymbols.length === 0) {
+                this.loadExchangeInfo(exchange);
+            }
+        },
+
+        async loadExchangeInfo(exchange) {
+            if (exchange.active) {
+                this.addLog('info', `${exchange.id}: Already running, symbols loaded`);
+                return;
+            }
+
+            this.addLog('info', `${exchange.id}: Loading exchange info...`);
+
+            const worker = new Worker(exchange.workerFile);
+            const config = CONFIG.exchanges.find(e => e.id === exchange.id);
+
+            worker.postMessage({
+                type: 'init',
+                config: Utils.merge(config, {
+                    batchSize: this.settings.batchSize,
+                    klineLimit: this.settings.klineLimit,
+                    timeframe: this.settings.timeframe,
+                    batchDelay: this.settings.batchDelay,
+                    symbolDelay: this.settings.symbolDelay,
+                    weightThreshold: this.settings.weightThreshold,
+                    whitelist: [] // Don't apply whitelist when loading all symbols for modal
+                })
+            });
+
+            worker.onmessage = (e) => {
+                if (e.data.type === 'symbols_list') {
+                    exchange.allSymbols = e.data.symbols || [];
+                    this.addLog('success', `${exchange.id}: Loaded ${exchange.allSymbols.length} symbols`);
+                    worker.postMessage({ type: 'stop' });
+                    worker.terminate();
+                }
+            };
+
+            worker.onerror = (error) => {
+                this.addLog('error', `${exchange.id}: Failed to load info - ${error.message}`);
+                worker.terminate();
+            };
+        },
+
+        isInWhitelist(symbol) {
+            if (!this.selectedExchange) return false;
+            const whitelist = this.settings.whitelists[this.selectedExchange.id] || [];
+            return whitelist.includes(symbol);
+        },
+
+        toggleWhitelist(symbol) {
+            if (!this.selectedExchange) return;
+
+            const exchangeId = this.selectedExchange.id;
+            const whitelist = this.settings.whitelists[exchangeId] || [];
+            const index = whitelist.indexOf(symbol);
+
+            if (index >= 0) {
+                // Remove from whitelist
+                whitelist.splice(index, 1);
+                this.addLog('info', `${exchangeId}: Removed ${symbol} from whitelist`);
+            } else {
+                // Add to whitelist
+                whitelist.push(symbol);
+                this.addLog('success', `${exchangeId}: Added ${symbol} to whitelist`);
+            }
+
+            this.$set(this.settings.whitelists, exchangeId, whitelist);
+            this.saveSettings();
+
+            // Restart exchange if it's running
+            if (this.selectedExchange.active) {
+                this.addLog('info', `${exchangeId}: Restarting with updated whitelist...`);
+                this.stopExchange(this.selectedExchange);
+                setTimeout(() => {
+                    this.startExchange(this.selectedExchange);
+                }, 500);
+            }
         },
 
         closeExchangeModal() {

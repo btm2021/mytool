@@ -23,6 +23,7 @@ class BaseExchangeWorker {
         this.batchDelay = exchangeConfig.batchDelay || CONFIG.batchDelay;
         this.symbolDelay = exchangeConfig.symbolDelay || CONFIG.symbolDelay;
         this.weightThreshold = exchangeConfig.weightThreshold || CONFIG.weightThreshold;
+        this.whitelist = exchangeConfig.whitelist || [];
 
         // Set proxy based on proxyUrl flag and CONFIG.proxyURL
         this.proxy = (exchangeConfig.proxyUrl === true && CONFIG.proxyURL) ? CONFIG.proxyURL : null;
@@ -73,6 +74,14 @@ class BaseExchangeWorker {
                 this.allSymbols.push(normalizedSymbol);
                 this.symbolMap[normalizedSymbol] = originalSymbol;
             });
+
+            // Apply whitelist if configured
+            if (this.whitelist && this.whitelist.length > 0) {
+                const whitelistSet = new Set(this.whitelist);
+                const beforeCount = this.allSymbols.length;
+                this.allSymbols = this.allSymbols.filter(symbol => whitelistSet.has(symbol));
+                this.postLog('info', `Whitelist applied: ${this.allSymbols.length}/${beforeCount} symbols`);
+            }
 
             this.postLog('success', `Loaded ${this.allSymbols.length} symbols`);
 

@@ -217,6 +217,10 @@
                                     </div>
                                     <div class="exchange-setting-status">
                                         {{ settings.exchanges[exchange.id] ? 'Enabled' : 'Disabled' }}
+                                        <span v-if="settings.whitelists[exchange.id] && settings.whitelists[exchange.id].length > 0" 
+                                            class="whitelist-badge" :style="{color: exchange.color}">
+                                            ⚡ {{ settings.whitelists[exchange.id].length }} whitelisted
+                                        </span>
                                     </div>
                                 </div>
                                 <label class="toggle-switch">
@@ -296,10 +300,17 @@
             <div class="modal-content" @click.stop :style="{'border-color': selectedExchange.color}">
                 <div class="modal-header"
                     :style="{'background': selectedExchange.color + '20', 'border-color': selectedExchange.color}">
-                    <h3 :style="{color: selectedExchange.color}">{{ selectedExchange.name }} - Supported Symbols</h3>
+                    <h3 :style="{color: selectedExchange.color}">{{ selectedExchange.name }} - Whitelist Management</h3>
                     <button class="modal-close" @click="closeExchangeModal">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <div class="modal-whitelist-info">
+                        <div class="whitelist-count">
+                            <span class="whitelist-label">Whitelist:</span>
+                            <span class="whitelist-value" :style="{color: selectedExchange.color}">{{ currentWhitelist.length }} symbols</span>
+                        </div>
+                        <div class="whitelist-hint">Click + to add symbol to whitelist, - to remove</div>
+                    </div>
                     <div class="modal-symbols-section">
                         <div class="modal-symbols-header">
                             <div class="modal-symbols-count">{{ modalFilteredSymbols.length }}/{{
@@ -313,12 +324,23 @@
                                     <tr>
                                         <th style="width: 60px">#</th>
                                         <th>Symbol</th>
+                                        <th style="width: 80px; text-align: center">Whitelist</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="(symbol, index) in modalFilteredSymbols" :key="symbol">
+                                    <tr v-for="(symbol, index) in modalFilteredSymbols" :key="symbol"
+                                        :class="{'whitelist-active': isInWhitelist(symbol)}">
                                         <td class="symbol-index">{{ index + 1 }}</td>
                                         <td class="symbol-name">{{ symbol }}</td>
+                                        <td class="symbol-action">
+                                            <button class="whitelist-btn" 
+                                                :class="{'active': isInWhitelist(symbol)}"
+                                                :style="{'color': isInWhitelist(symbol) ? selectedExchange.color : '#666'}"
+                                                @click="toggleWhitelist(symbol)"
+                                                :title="isInWhitelist(symbol) ? 'Remove from whitelist' : 'Add to whitelist'">
+                                                {{ isInWhitelist(symbol) ? '−' : '+' }}
+                                            </button>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>

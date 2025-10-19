@@ -12,7 +12,8 @@ const CONFIG = {
             weightCost: 1,
             weightResetInterval: 60000,
             workerFile: 'workers/binance-worker.js',
-            proxyUrl: false
+            proxyUrl: false,
+            whitelist: ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT']
         },
         {
             id: 'bybit',
@@ -22,7 +23,8 @@ const CONFIG = {
             weightCost: 1,
             weightResetInterval: 60000,
             workerFile: 'workers/bybit-worker.js',
-            proxyUrl: false
+            proxyUrl: false,
+            whitelist: ['BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'XRP/USDT:USDT', 'BNB/USDT:USDT', 'ADA/USDT:USDT', 'DOGE/USDT:USDT', 'AVAX/USDT:USDT', 'DOT/USDT:USDT', 'MATIC/USDT:USDT']
         },
         {
             id: 'okx',
@@ -32,7 +34,8 @@ const CONFIG = {
             weightCost: 1,
             weightResetInterval: 60000,
             workerFile: 'workers/okx-worker.js',
-            proxyUrl: false
+            proxyUrl: false,
+            whitelist: ['BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'XRP/USDT:USDT', 'BNB/USDT:USDT', 'ADA/USDT:USDT', 'DOGE/USDT:USDT', 'AVAX/USDT:USDT', 'DOT/USDT:USDT', 'LINK/USDT:USDT']
         },
         {
             id: 'kucoin',
@@ -42,7 +45,8 @@ const CONFIG = {
             weightCost: 1,
             weightResetInterval: 60000,
             workerFile: 'workers/kucoin-worker.js',
-            proxyUrl: true
+            proxyUrl: true,
+            whitelist: ['BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'XRP/USDT:USDT', 'BNB/USDT:USDT', 'ADA/USDT:USDT', 'DOGE/USDT:USDT', 'AVAX/USDT:USDT', 'DOT/USDT:USDT', 'MATIC/USDT:USDT']
         },
         {
             id: 'bingx',
@@ -52,7 +56,8 @@ const CONFIG = {
             weightCost: 1,
             weightResetInterval: 60000,
             workerFile: 'workers/bingx-worker.js',
-            proxyUrl: true
+            proxyUrl: true,
+            whitelist: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT']
         },
         {
             id: 'mexc',
@@ -62,7 +67,8 @@ const CONFIG = {
             weightCost: 1,
             weightResetInterval: 60000,
             workerFile: 'workers/mexc-worker.js',
-            proxyUrl: true
+            proxyUrl: true,
+            whitelist: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT']
         },
         {
             id: 'krakenfutures',
@@ -73,7 +79,8 @@ const CONFIG = {
             weightResetInterval: 60000,
             workerFile: 'workers/kraken-futures-worker.js',
             acceptedQuotes: ['USD', 'USDT'],
-            proxyUrl: true
+            proxyUrl: true,
+            whitelist: ['BTC/USD:USD', 'ETH/USD:USD', 'SOL/USD:USD', 'XRP/USD:USD', 'ADA/USD:USD', 'DOGE/USD:USD', 'AVAX/USD:USD', 'DOT/USD:USD', 'MATIC/USD:USD', 'LINK/USD:USD']
         }
     ],
 
