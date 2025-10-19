@@ -227,3 +227,52 @@ input:checked + .toggle-slider:before {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid currentColor;
 }
+
+/* Settings Actions */
+.settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid var(--color-border);
+}
+
+.btn-save-settings {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+    border: 2px solid #00ff00;
+    color: #000;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+}
+
+.btn-save-settings:hover {
+    background: linear-gradient(135deg, #00ff00 0%, #00ff00 100%);
+    box-shadow: 0 0 25px rgba(0, 255, 0, 0.5);
+    transform: translateY(-2px);
+}
+
+.btn-save-settings:active {
+    transform: translateY(0);
+}
+
+.btn-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.btn-reset {
+    margin-top: 0;
+}

@@ -3,11 +3,14 @@ const CONFIG = {
     // Proxy configuration
     proxyURL: 'https://autumn-heart-5bf8.trinhminhbao.workers.dev/',
 
+    // Cycle delay (milliseconds)
+    cycleDelay: 10000,
+
     exchanges: [
         {
             id: 'binance',
             name: 'Binance',
-            color: '#F3BA2F',
+            color: '#21e9ceff',
             maxWeight: 1200,
             weightCost: 1,
             weightResetInterval: 60000,
@@ -24,7 +27,7 @@ const CONFIG = {
             weightResetInterval: 60000,
             workerFile: 'workers/bybit-worker.js',
             proxyUrl: false,
-            whitelist: ['BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'XRP/USDT:USDT', 'BNB/USDT:USDT', 'ADA/USDT:USDT', 'DOGE/USDT:USDT', 'AVAX/USDT:USDT', 'DOT/USDT:USDT', 'MATIC/USDT:USDT']
+            whitelist: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT']
         },
         {
             id: 'okx',
@@ -35,7 +38,7 @@ const CONFIG = {
             weightResetInterval: 60000,
             workerFile: 'workers/okx-worker.js',
             proxyUrl: false,
-            whitelist: ['BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'XRP/USDT:USDT', 'BNB/USDT:USDT', 'ADA/USDT:USDT', 'DOGE/USDT:USDT', 'AVAX/USDT:USDT', 'DOT/USDT:USDT', 'LINK/USDT:USDT']
+            whitelist: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'LINK/USDT']
         },
         {
             id: 'kucoin',
@@ -46,7 +49,7 @@ const CONFIG = {
             weightResetInterval: 60000,
             workerFile: 'workers/kucoin-worker.js',
             proxyUrl: true,
-            whitelist: ['BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'XRP/USDT:USDT', 'BNB/USDT:USDT', 'ADA/USDT:USDT', 'DOGE/USDT:USDT', 'AVAX/USDT:USDT', 'DOT/USDT:USDT', 'MATIC/USDT:USDT']
+            whitelist: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT']
         },
         {
             id: 'bingx',
@@ -80,7 +83,7 @@ const CONFIG = {
             workerFile: 'workers/kraken-futures-worker.js',
             acceptedQuotes: ['USD', 'USDT'],
             proxyUrl: true,
-            whitelist: ['BTC/USD:USD', 'ETH/USD:USD', 'SOL/USD:USD', 'XRP/USD:USD', 'ADA/USD:USD', 'DOGE/USD:USD', 'AVAX/USD:USD', 'DOT/USD:USD', 'MATIC/USD:USD', 'LINK/USD:USD']
+            whitelist: ['BTC/USD', 'ETH/USD', 'SOL/USD', 'XRP/USD', 'ADA/USD', 'DOGE/USD', 'AVAX/USD', 'DOT/USD', 'MATIC/USD', 'LINK/USD']
         }
     ],
 

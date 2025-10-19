@@ -23,6 +23,7 @@ class BaseExchangeWorker {
         this.batchDelay = exchangeConfig.batchDelay || CONFIG.batchDelay;
         this.symbolDelay = exchangeConfig.symbolDelay || CONFIG.symbolDelay;
         this.weightThreshold = exchangeConfig.weightThreshold || CONFIG.weightThreshold;
+        this.cycleDelay = exchangeConfig.cycleDelay || 10000;
         this.whitelist = exchangeConfig.whitelist || [];
 
         // Set proxy based on proxyUrl flag and CONFIG.proxyURL
@@ -68,19 +69,54 @@ class BaseExchangeWorker {
             // Normalize symbols and create mapping
             this.allSymbols = [];
             this.symbolMap = {};
-            
+
             filteredSymbols.forEach(originalSymbol => {
                 const normalizedSymbol = this.normalizeSymbol(originalSymbol);
                 this.allSymbols.push(normalizedSymbol);
                 this.symbolMap[normalizedSymbol] = originalSymbol;
             });
 
+            this.postLog('info', `Total symbols from exchange: ${this.allSymbols.length}`);
+
             // Apply whitelist if configured
             if (this.whitelist && this.whitelist.length > 0) {
-                const whitelistSet = new Set(this.whitelist);
+                this.postLog('info', `Whitelist config: ${this.whitelist.length} symbols - ${this.whitelist.join(', ')}`);
+
+                // Build a map of normalized whitelist symbols
+                const whitelistNormalized = new Set();
+                this.whitelist.forEach(wSymbol => {
+                    const normalized = this.normalizeSymbol(wSymbol);
+                    whitelistNormalized.add(normalized);
+                });
+
+                // Filter allSymbols to only include whitelisted ones
                 const beforeCount = this.allSymbols.length;
-                this.allSymbols = this.allSymbols.filter(symbol => whitelistSet.has(symbol));
-                this.postLog('info', `Whitelist applied: ${this.allSymbols.length}/${beforeCount} symbols`);
+                const matchedSymbols = [];
+                const notFoundSymbols = [];
+
+                this.allSymbols.forEach(symbol => {
+                    const normalized = this.normalizeSymbol(symbol);
+                    if (whitelistNormalized.has(normalized)) {
+                        matchedSymbols.push(symbol);
+                    }
+                });
+
+                // Check which whitelist symbols were not found
+                this.whitelist.forEach(wSymbol => {
+                    const normalized = this.normalizeSymbol(wSymbol);
+                    const found = matchedSymbols.some(s => this.normalizeSymbol(s) === normalized);
+                    if (!found) {
+                        notFoundSymbols.push(wSymbol);
+                    }
+                });
+
+                this.allSymbols = matchedSymbols;
+
+                if (notFoundSymbols.length > 0) {
+                    this.postLog('warn', `Not found in exchange: ${notFoundSymbols.join(', ')}`);
+                }
+
+                this.postLog('info', `Whitelist applied: ${this.allSymbols.length}/${this.whitelist.length} matched (${beforeCount} total available)`);
             }
 
             this.postLog('success', `Loaded ${this.allSymbols.length} symbols`);
@@ -109,9 +145,18 @@ class BaseExchangeWorker {
 
     normalizeSymbol(symbol) {
         // Normalize symbol format to standard format (e.g., BTC/USDT)
-        // Some exchanges use different formats like BTC-USDT, BTCUSDT, etc.
-        // This method can be overridden by subclasses if needed
-        return symbol;
+        // Remove settlement currency suffix like :USDT, :USD
+        // Examples:
+        // BTC/USDT:USDT -> BTC/USDT
+        // ETH/USD:USD -> ETH/USD
+        // BTC/USDT -> BTC/USDT (no change)
+
+        if (!symbol) return symbol;
+
+        // Remove settlement currency (everything after :)
+        const normalized = symbol.split(':')[0];
+
+        return normalized;
     }
 
     async startProcessing() {
@@ -201,11 +246,16 @@ class BaseExchangeWorker {
             this.cycleCount++;
             this.postLog('success', `✓ Cycle ${this.cycleCount} complete - all ${this.allSymbols.length} symbols processed`);
 
-            // Only delay from cycle 2 onwards
-            if (this.cycleCount > 1) {
-                this.postLog('info', 'Waiting 10s before next cycle...');
-                await this.sleep(10000);
+            // Delay before next cycle with countdown
+            const delaySeconds = Math.floor(this.cycleDelay / 1000);
+            this.postLog('info', `Waiting ${delaySeconds}s before next cycle...`);
+
+            // Send countdown updates every second
+            for (let i = delaySeconds; i > 0; i--) {
+                this.postCountdown(i);
+                await this.sleep(1000);
             }
+            this.postCountdown(0);
 
             this.resetProcessedSymbols();
             this.currentBatchIndex = 0;
@@ -377,5 +427,9 @@ class BaseExchangeWorker {
 
     postError(message) {
         self.postMessage({ type: 'error', message: message });
+    }
+
+    postCountdown(seconds) {
+        self.postMessage({ type: 'countdown', seconds: seconds });
     }
 }

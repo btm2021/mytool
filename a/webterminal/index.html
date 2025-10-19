@@ -21,7 +21,7 @@
 <body>
     <div id="app">
         <nav class="navbar navbar-dark">
-            <span class="navbar-brand">⚡ OHLCV SCREENER - RETRO TERMINAL</span>
+            <span class="navbar-brand">⚡ OHLCV SCREENER</span>
             <div class="navbar-controls">
                 <button class="global-control-btn" @click="startAllWorkers" title="Start All">
                     <svg viewBox="0 0 24 24" class="control-icon">
@@ -48,14 +48,18 @@
                     <div class="panel-title">EXCHANGES</div>
                     <div class="exchange-list">
                         <div v-for="exchange in enabledExchanges" :key="exchange.id" class="exchange-item"
-                            :class="{'active': exchange.active, 'paused': exchange.paused}"
-                            :style="{'border-left-color': exchange.color, 'color': exchange.color}">
+                            :class="{'active': exchange.active, 'paused': exchange.paused, 'cycle-complete': exchange.cycleComplete}"
+                            :style="{'border-left-color': exchange.color, 'color': exchange.color, '--exchange-color': exchange.color}">
                             <div class="exchange-header">
                                 <span class="status-indicator" :class="getStatusClass(exchange)"
                                     :style="{color: exchange.color}"></span>
                                 <div class="exchange-name clickable" :style="{color: exchange.color}"
                                     @click="openExchangeModal(exchange)">
                                     {{ exchange.name }}
+                                    <span class="whitelist-count-badge" v-if="getWhitelistCount(exchange.id) > 0"
+                                        :style="{'background': exchange.color + '30', 'color': exchange.color}">
+                                        {{ getWhitelistCount(exchange.id) }}
+                                    </span>
                                 </div>
                             </div>
 
@@ -94,6 +98,16 @@
                                 <div class="exchange-info-row">
                                     <span class="exchange-info-label">Updated</span>
                                     <span class="exchange-last">{{ getLastUpdateTime(exchange) }}</span>
+                                </div>
+
+                                <div v-if="exchange.countdownSeconds > 0" class="exchange-countdown">
+                                    <span class="countdown-icon">⏱</span>
+                                    <span class="countdown-text">Next cycle: {{
+                                        formatCountdown(exchange.countdownSeconds) }}</span>
+                                </div>
+                                <div v-else class="exchange-countdown">
+                                    <span class="countdown-icon">⏱</span>
+                                    <span class="countdown-text">Next cycle: <span style="color:red;">∞</span></span>
                                 </div>
                             </div>
                             <div class="exchange-controls">
@@ -217,15 +231,11 @@
                                     </div>
                                     <div class="exchange-setting-status">
                                         {{ settings.exchanges[exchange.id] ? 'Enabled' : 'Disabled' }}
-                                        <span v-if="settings.whitelists[exchange.id] && settings.whitelists[exchange.id].length > 0" 
-                                            class="whitelist-badge" :style="{color: exchange.color}">
-                                            ⚡ {{ settings.whitelists[exchange.id].length }} whitelisted
-                                        </span>
+
                                     </div>
                                 </div>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" v-model="settings.exchanges[exchange.id]"
-                                        @change="saveSettings">
+                                    <input type="checkbox" v-model="settings.exchanges[exchange.id]">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
@@ -236,23 +246,29 @@
                             <div class="settings-section-title">Processing</div>
                             <div class="config-item">
                                 <label class="config-label">Batch Size</label>
-                                <input type="number" v-model.number="settings.batchSize" @change="saveSettings"
-                                    class="config-input" min="1" max="50">
+                                <input type="number" v-model.number="settings.batchSize" class="config-input" min="1"
+                                    max="50">
                             </div>
                             <div class="config-item">
                                 <label class="config-label">Kline Limit</label>
-                                <input type="number" v-model.number="settings.klineLimit" @change="saveSettings"
-                                    class="config-input" min="20" max="1000">
+                                <input type="number" v-model.number="settings.klineLimit" class="config-input" min="20"
+                                    max="1000">
                             </div>
                             <div class="config-item">
                                 <label class="config-label">Timeframe</label>
-                                <select v-model="settings.timeframe" @change="saveSettings" class="config-input">
+                                <select v-model="settings.timeframe" class="config-input">
                                     <option value="1m">1 minute</option>
                                     <option value="5m">5 minutes</option>
                                     <option value="15m">15 minutes</option>
                                     <option value="1h">1 hour</option>
                                     <option value="4h">4 hours</option>
                                 </select>
+                            </div>
+                            <div class="config-item">
+                                <label class="config-label">Cycle Delay (seconds)</label>
+                                <input type="number" v-model.number="settings.cycleDelay" class="config-input" min="5"
+                                    max="300" step="5">
+                                <div class="config-description">Wait time between cycles</div>
                             </div>
                         </div>
 
@@ -261,18 +277,18 @@
                             <div class="settings-section-title">Indicators</div>
                             <div class="config-item">
                                 <label class="config-label">RSI Period</label>
-                                <input type="number" v-model.number="settings.rsi.period" @change="saveSettings"
-                                    class="config-input" min="5" max="50">
+                                <input type="number" v-model.number="settings.rsi.period" class="config-input" min="5"
+                                    max="50">
                             </div>
                             <div class="config-item">
                                 <label class="config-label">EMA Short</label>
-                                <input type="number" v-model.number="settings.ema.short" @change="saveSettings"
-                                    class="config-input" min="5" max="100">
+                                <input type="number" v-model.number="settings.ema.short" class="config-input" min="5"
+                                    max="100">
                             </div>
                             <div class="config-item">
                                 <label class="config-label">EMA Long</label>
-                                <input type="number" v-model.number="settings.ema.long" @change="saveSettings"
-                                    class="config-input" min="50" max="500">
+                                <input type="number" v-model.number="settings.ema.long" class="config-input" min="50"
+                                    max="500">
                             </div>
                         </div>
 
@@ -281,15 +297,22 @@
                             <div class="settings-section-title">Chart</div>
                             <div class="config-item">
                                 <label class="config-label">Chart Candles Limit</label>
-                                <input type="number" v-model.number="settings.chartCandlesLimit" @change="saveSettings"
-                                    class="config-input" min="500" max="10000" step="500">
+                                <input type="number" v-model.number="settings.chartCandlesLimit" class="config-input"
+                                    min="500" max="10000" step="500">
                                 <div class="config-description">Number of candles to load in chart</div>
                             </div>
                         </div>
 
-                        <button class="btn-reset" @click="resetSettings">Reset to Default</button>
-                        <button class="btn-reset" @click="clearProcessedSymbols" style="margin-top: 10px;">Clear
-                            Processed Symbols</button>
+                        <div class="settings-actions">
+                            <button class="btn-save-settings" @click="applySettings">
+                                <svg viewBox="0 0 24 24" class="btn-icon">
+                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor" />
+                                </svg>
+                                Save & Apply Settings
+                            </button>
+                            <button class="btn-reset" @click="resetSettings">Reset to Default</button>
+                            <button class="btn-reset" @click="clearProcessedSymbols">Clear Processed Symbols</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -297,60 +320,116 @@
 
         <!-- Exchange Symbols Modal -->
         <div v-if="showExchangeModal" class="modal-overlay" @click="closeExchangeModal">
-            <div class="modal-content" @click.stop :style="{'border-color': selectedExchange.color}">
+            <div class="modal-content modal-content-wide" @click.stop :style="{'border-color': selectedExchange.color}">
+                <!-- Loading Overlay -->
+                <div v-if="isLoadingSymbols" class="modal-loading-overlay">
+                    <div class="loading-spinner" :style="{'border-top-color': selectedExchange.color}"></div>
+                    <div class="loading-text">Loading symbols from exchange...</div>
+                </div>
+                <!-- Saving Overlay -->
+                <div v-if="isSavingWhitelist" class="modal-loading-overlay">
+                    <div class="loading-spinner" :style="{'border-top-color': selectedExchange.color}"></div>
+                    <div class="loading-text">Saving whitelist...</div>
+                </div>
                 <div class="modal-header"
                     :style="{'background': selectedExchange.color + '20', 'border-color': selectedExchange.color}">
                     <h3 :style="{color: selectedExchange.color}">{{ selectedExchange.name }} - Whitelist Management</h3>
                     <button class="modal-close" @click="closeExchangeModal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <div class="modal-whitelist-info">
-                        <div class="whitelist-count">
-                            <span class="whitelist-label">Whitelist:</span>
-                            <span class="whitelist-value" :style="{color: selectedExchange.color}">{{ currentWhitelist.length }} symbols</span>
+                    <div class="modal-body-dual">
+                        <!-- Whitelist Table (Left) -->
+                        <div class="modal-table-container">
+                            <div class="modal-table-header">
+                                <div class="modal-table-title" :style="{color: selectedExchange.color}">
+                                    Whitelist ({{ tempWhitelist.length }})
+                                </div>
+                                <input type="text" v-model="whitelistFilter" placeholder="Search whitelist..."
+                                    class="modal-search">
+                            </div>
+                            <div class="modal-symbols-table">
+                                <table class="modal-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 50px">#</th>
+                                            <th>Symbol</th>
+                                            <th style="width: 60px; text-align: center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(symbol, index) in filteredWhitelist" :key="symbol"
+                                            :class="{'new-symbol-row': isNewSymbol(symbol)}">
+                                            <td class="symbol-index">{{ index + 1 }}</td>
+                                            <td class="symbol-name">
+                                                {{ symbol }}
+                                                <span v-if="isNewSymbol(symbol)" class="new-badge"
+                                                    :style="{'background': selectedExchange.color, 'color': '#fff'}">
+                                                    NEW
+                                                </span>
+                                            </td>
+                                            <td class="symbol-action">
+                                                <button class="whitelist-btn remove-btn"
+                                                    :style="{'color': selectedExchange.color}"
+                                                    @click="removeFromWhitelist(symbol)" title="Remove from whitelist">
+                                                    −
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="filteredWhitelist.length === 0">
+                                            <td colspan="3" class="empty-message">No symbols in whitelist</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                        <div class="whitelist-hint">Click + to add symbol to whitelist, - to remove</div>
+
+                        <!-- Exchange Symbols Table (Right) -->
+                        <div class="modal-table-container">
+                            <div class="modal-table-header">
+                                <div class="modal-table-title" :style="{color: selectedExchange.color}">
+                                    Exchange Symbols ({{ availableSymbols.length }})
+                                </div>
+                                <input type="text" v-model="exchangeSymbolFilter" placeholder="Search symbols..."
+                                    class="modal-search">
+                            </div>
+                            <div class="modal-symbols-table">
+                                <table class="modal-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 50px">#</th>
+                                            <th>Symbol</th>
+                                            <th style="width: 60px; text-align: center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(symbol, index) in filteredExchangeSymbols" :key="symbol">
+                                            <td class="symbol-index">{{ index + 1 }}</td>
+                                            <td class="symbol-name">{{ symbol }}</td>
+                                            <td class="symbol-action">
+                                                <button class="whitelist-btn add-btn" @click="addToWhitelist(symbol)"
+                                                    title="Add to whitelist">
+                                                    +
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="filteredExchangeSymbols.length === 0">
+                                            <td colspan="3" class="empty-message">No symbols available</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                    <div class="modal-symbols-section">
-                        <div class="modal-symbols-header">
-                            <div class="modal-symbols-count">{{ modalFilteredSymbols.length }}/{{
-                                selectedExchange.allSymbols.length }} symbols</div>
-                            <input type="text" v-model="modalSymbolFilter" placeholder="Search symbols..."
-                                class="modal-search">
-                        </div>
-                        <div class="modal-symbols-table">
-                            <table class="modal-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 60px">#</th>
-                                        <th>Symbol</th>
-                                        <th style="width: 80px; text-align: center">Whitelist</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="(symbol, index) in modalFilteredSymbols" :key="symbol"
-                                        :class="{'whitelist-active': isInWhitelist(symbol)}">
-                                        <td class="symbol-index">{{ index + 1 }}</td>
-                                        <td class="symbol-name">{{ symbol }}</td>
-                                        <td class="symbol-action">
-                                            <button class="whitelist-btn" 
-                                                :class="{'active': isInWhitelist(symbol)}"
-                                                :style="{'color': isInWhitelist(symbol) ? selectedExchange.color : '#666'}"
-                                                @click="toggleWhitelist(symbol)"
-                                                :title="isInWhitelist(symbol) ? 'Remove from whitelist' : 'Add to whitelist'">
-                                                {{ isInWhitelist(symbol) ? '−' : '+' }}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="modal-footer" v-if="hasWhitelistChanges">
+                        <button class="btn-save"
+                            :style="{'background': selectedExchange.color, 'border-color': selectedExchange.color}"
+                            @click="saveWhitelist">
+                            Save & Restart
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.min.js"></script>

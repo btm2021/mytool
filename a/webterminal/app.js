@@ -10,10 +10,15 @@ new Vue({
         calculatorWorker: null,
         activeTab: '',
         symbolFilter: '',
-        modalSymbolFilter: '',
+        whitelistFilter: '',
+        exchangeSymbolFilter: '',
         systemTab: 'logs',
         showExchangeModal: false,
         selectedExchange: null,
+        tempWhitelist: [],
+        originalWhitelist: [],
+        isLoadingSymbols: false,
+        isSavingWhitelist: false,
         settings: {
             exchanges: {},
             whitelists: {},
@@ -25,6 +30,7 @@ new Vue({
             weightThreshold: CONFIG.weightThreshold,
             maxSymbolsPerExchange: CONFIG.maxSymbolsPerExchange,
             chartCandlesLimit: CONFIG.chartCandlesLimit,
+            cycleDelay: (CONFIG.cycleDelay || 10000) / 1000,
             rsi: { ...CONFIG.rsi },
             ema: { ...CONFIG.ema }
         }
@@ -51,18 +57,32 @@ new Vue({
             return this.exchanges.filter(ex => this.settings.exchanges[ex.id]);
         },
 
-        modalFilteredSymbols() {
+        availableSymbols() {
             if (!this.selectedExchange) return [];
-            const symbols = this.selectedExchange.allSymbols || [];
-            if (!this.modalSymbolFilter) return symbols;
-
-            const filter = this.modalSymbolFilter.toLowerCase();
-            return symbols.filter(s => s.toLowerCase().includes(filter));
+            const allSymbols = this.selectedExchange.allSymbols || [];
+            return allSymbols.filter(s => !this.tempWhitelist.includes(s));
         },
 
-        currentWhitelist() {
-            if (!this.selectedExchange) return [];
-            return this.settings.whitelists[this.selectedExchange.id] || [];
+        filteredWhitelist() {
+            if (!this.whitelistFilter) return this.tempWhitelist;
+            const filter = this.whitelistFilter.toLowerCase();
+            return this.tempWhitelist.filter(s => s.toLowerCase().includes(filter));
+        },
+
+        filteredExchangeSymbols() {
+            let symbols = this.availableSymbols;
+            if (this.exchangeSymbolFilter) {
+                const filter = this.exchangeSymbolFilter.toLowerCase();
+                symbols = symbols.filter(s => s.toLowerCase().includes(filter));
+            }
+            return symbols;
+        },
+
+        hasWhitelistChanges() {
+            if (!this.selectedExchange) return false;
+            const original = this.settings.whitelists[this.selectedExchange.id] || [];
+            if (original.length !== this.tempWhitelist.length) return true;
+            return !original.every(s => this.tempWhitelist.includes(s));
         }
     },
     methods: {
@@ -87,16 +107,34 @@ new Vue({
         },
 
         saveSettings() {
-            // Check for disabled exchanges and stop them
-            this.exchanges.forEach(exchange => {
-                if (!this.settings.exchanges[exchange.id] && exchange.active) {
-                    // Stop and clear this exchange
-                    this.stopExchange(exchange);
-                    this.addLog('warn', `${exchange.id}: Disabled and stopped`);
-                }
-            });
-
             Utils.storage.set('appSettings', this.settings);
+        },
+
+        applySettings() {
+            this.addLog('info', '⚙ Applying new settings...');
+
+            // Save settings first
+            this.saveSettings();
+
+            // Stop all active exchanges
+            const activeExchanges = this.exchanges.filter(ex => ex.active);
+            if (activeExchanges.length > 0) {
+                this.addLog('info', `Stopping ${activeExchanges.length} active exchanges...`);
+                activeExchanges.forEach(exchange => {
+                    this.stopExchange(exchange);
+                });
+            }
+
+            // Clear all data
+            this.clearAllProcessedStorage();
+            this.exchanges.forEach(exchange => {
+                this.symbolsByExchange[exchange.id] = [];
+                exchange.symbolCount = 0;
+                exchange.processed = 0;
+                exchange.total = 0;
+                exchange.cycleComplete = false;
+                exchange.countdownSeconds = 0;
+            });
 
             // Update active tab if current tab is disabled
             if (!this.settings.exchanges[this.activeTab]) {
@@ -106,7 +144,18 @@ new Vue({
                 }
             }
 
-            this.addLog('info', 'Settings saved');
+            this.addLog('success', '✓ Settings applied successfully');
+
+            // Restart enabled exchanges after a short delay
+            setTimeout(() => {
+                const enabledExchanges = this.exchanges.filter(ex => this.settings.exchanges[ex.id]);
+                if (enabledExchanges.length > 0) {
+                    this.addLog('info', `Restarting ${enabledExchanges.length} enabled exchanges...`);
+                    enabledExchanges.forEach(exchange => {
+                        this.startExchange(exchange);
+                    });
+                }
+            }, 1000);
         },
 
         resetSettings() {
@@ -121,6 +170,7 @@ new Vue({
                 weightThreshold: CONFIG.weightThreshold,
                 maxSymbolsPerExchange: CONFIG.maxSymbolsPerExchange,
                 chartCandlesLimit: CONFIG.chartCandlesLimit,
+                cycleDelay: (CONFIG.cycleDelay || 10000) / 1000,
                 rsi: { ...CONFIG.rsi },
                 ema: { ...CONFIG.ema }
             };
@@ -149,7 +199,9 @@ new Vue({
                     total: 0,
                     allSymbols: [],
                     lastMessage: '-',
-                    lastUpdateTimestamp: null
+                    lastUpdateTimestamp: null,
+                    cycleComplete: false,
+                    countdownSeconds: 0
                 });
 
                 this.symbolsByExchange[config.id] = [];
@@ -287,6 +339,7 @@ new Vue({
                     batchDelay: this.settings.batchDelay,
                     symbolDelay: this.settings.symbolDelay,
                     weightThreshold: this.settings.weightThreshold,
+                    cycleDelay: this.settings.cycleDelay * 1000,
                     whitelist: this.settings.whitelists[exchange.id] || []
                 })
             });
@@ -317,10 +370,21 @@ new Vue({
                 case 'progress':
                     exchange.processed = data.processed || 0;
                     exchange.total = data.total || 0;
+                    
+                    // Check if cycle is complete
+                    if (exchange.total > 0 && exchange.processed === exchange.total) {
+                        exchange.cycleComplete = true;
+                    } else {
+                        exchange.cycleComplete = false;
+                    }
+                    break;
+
+                case 'countdown':
+                    exchange.countdownSeconds = data.seconds || 0;
                     break;
 
                 case 'symbols_list':
-                    exchange.allSymbols = data.symbols || [];
+                    this.$set(exchange, 'allSymbols', data.symbols || []);
                     this.addLog('info', `${exchange.id}: Loaded ${exchange.allSymbols.length} symbols`);
                     break;
 
@@ -528,21 +592,25 @@ new Vue({
 
         openExchangeModal(exchange) {
             this.selectedExchange = exchange;
+            this.tempWhitelist = [...(this.settings.whitelists[exchange.id] || [])];
+            this.originalWhitelist = [...(this.settings.whitelists[exchange.id] || [])];
+            this.whitelistFilter = '';
+            this.exchangeSymbolFilter = '';
             this.showExchangeModal = true;
 
-            // Load exchange info immediately if not already loaded
-            if (!exchange.allSymbols || exchange.allSymbols.length === 0) {
-                this.loadExchangeInfo(exchange);
-            }
+            // Always load exchange info to get fresh symbols list
+            this.loadExchangeInfo(exchange);
         },
 
         async loadExchangeInfo(exchange) {
-            if (exchange.active) {
-                this.addLog('info', `${exchange.id}: Already running, symbols loaded`);
+            // If already loaded and has symbols, skip
+            if (exchange.allSymbols && exchange.allSymbols.length > 0) {
+                this.addLog('info', `${exchange.id}: Using cached ${exchange.allSymbols.length} symbols`);
                 return;
             }
 
-            this.addLog('info', `${exchange.id}: Loading exchange info...`);
+            this.isLoadingSymbols = true;
+            this.addLog('info', `${exchange.id}: Loading symbols...`);
 
             const worker = new Worker(exchange.workerFile);
             const config = CONFIG.exchanges.find(e => e.id === exchange.id);
@@ -562,15 +630,17 @@ new Vue({
 
             worker.onmessage = (e) => {
                 if (e.data.type === 'symbols_list') {
-                    exchange.allSymbols = e.data.symbols || [];
+                    this.$set(exchange, 'allSymbols', e.data.symbols || []);
                     this.addLog('success', `${exchange.id}: Loaded ${exchange.allSymbols.length} symbols`);
+                    this.isLoadingSymbols = false;
                     worker.postMessage({ type: 'stop' });
                     worker.terminate();
                 }
             };
 
             worker.onerror = (error) => {
-                this.addLog('error', `${exchange.id}: Failed to load info - ${error.message}`);
+                this.addLog('error', `${exchange.id}: Failed to load - ${error.message}`);
+                this.isLoadingSymbols = false;
                 worker.terminate();
             };
         },
@@ -611,10 +681,68 @@ new Vue({
             }
         },
 
+        addToWhitelist(symbol) {
+            if (!this.tempWhitelist.includes(symbol)) {
+                // Add to beginning of array for visibility
+                this.tempWhitelist.unshift(symbol);
+            }
+        },
+
+        isNewSymbol(symbol) {
+            return !this.originalWhitelist.includes(symbol);
+        },
+
+        removeFromWhitelist(symbol) {
+            const index = this.tempWhitelist.indexOf(symbol);
+            if (index >= 0) {
+                this.tempWhitelist.splice(index, 1);
+            }
+        },
+
+        async saveWhitelist() {
+            if (!this.selectedExchange) return;
+
+            this.isSavingWhitelist = true;
+            const exchangeId = this.selectedExchange.id;
+            
+            // Small delay for visual feedback
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            this.$set(this.settings.whitelists, exchangeId, [...this.tempWhitelist]);
+            this.saveSettings();
+
+            // Restart exchange if it's running
+            if (this.selectedExchange.active) {
+                this.addLog('info', `${exchangeId}: Restarting with updated whitelist...`);
+                this.stopExchange(this.selectedExchange);
+                setTimeout(() => {
+                    this.startExchange(this.selectedExchange);
+                }, 500);
+            }
+
+            this.isSavingWhitelist = false;
+            this.closeExchangeModal();
+        },
+
         closeExchangeModal() {
             this.showExchangeModal = false;
             this.selectedExchange = null;
-            this.modalSymbolFilter = '';
+            this.originalWhitelist = [];
+            this.whitelistFilter = '';
+            this.exchangeSymbolFilter = '';
+        },
+
+        getWhitelistCount(exchangeId) {
+            const whitelist = this.settings.whitelists[exchangeId] || [];
+            return whitelist.length;
+        },
+
+        formatCountdown(seconds) {
+            if (seconds <= 0) return '';
+            if (seconds < 60) return `${seconds}s`;
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}m ${secs}s`;
         }
     }
 });

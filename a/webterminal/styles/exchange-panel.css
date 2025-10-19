@@ -40,6 +40,22 @@
     opacity: 0.3;
 }
 
+.exchange-item.cycle-complete {
+    border-left-width: 4px;
+    animation: border-glow 2s ease-in-out infinite;
+}
+
+@keyframes border-glow {
+    0%, 100% {
+        border-left-color: var(--exchange-color);
+        box-shadow: -4px 0 12px var(--exchange-color);
+    }
+    50% {
+        border-left-color: var(--exchange-color);
+        box-shadow: -8px 0 20px var(--exchange-color);
+    }
+}
+
 .exchange-header {
     display: flex;
     align-items: center;
@@ -190,6 +206,18 @@
     flex: 1;
     letter-spacing: 0.5px;
     text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.whitelist-count-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+    letter-spacing: 0;
+    border: 1px solid currentColor;
 }
 
 .exchange-info {
@@ -288,4 +316,48 @@
     font-size: 10px;
     text-align: right;
     font-family: 'Courier New', monospace;
+}
+
+.exchange-countdown {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    border: 1px solid currentColor;
+    margin-top: 4px;
+    animation: pulse-countdown 1s ease-in-out infinite;
+}
+
+@keyframes pulse-countdown {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.countdown-icon {
+    font-size: 12px;
+    animation: tick 1s steps(1) infinite;
+}
+
+@keyframes tick {
+    0%, 50% {
+        opacity: 1;
+    }
+    51%, 100% {
+        opacity: 0.5;
+    }
+}
+
+.countdown-text {
+    font-size: 10px;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+    color: currentColor;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
