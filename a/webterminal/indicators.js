@@ -243,7 +243,7 @@ const Indicators = {
         const mean = slice.reduce((a, b) => a + b, 0) / period;
         const squaredDiffs = slice.map(value => Math.pow(value - mean, 2));
         const variance = squaredDiffs.reduce((a, b) => a + b, 0) / period;
-        
+
         return Math.sqrt(variance);
     },
 
@@ -257,73 +257,78 @@ const Indicators = {
         const length = params.length || 20;
         const threshold = params.threshold || 3.0;
 
-        if (!ohlcv || ohlcv.length < length + 1) {
+        if (!ohlcv || ohlcv.length < length + 2) {
             return [];
         }
 
         const result = [];
         let lastUpper = null;
         let lastLower = null;
+        let prevStdev = null;
 
         for (let i = length; i < ohlcv.length; i++) {
-            const volumes = [];
-            const changes = [];
-
-            // Calculate volume changes
-            for (let j = i - length; j <= i; j++) {
-                volumes.push(ohlcv[j][5]); // volume
-                
-                if (j > i - length) {
-                    const prevVolume = ohlcv[j - 1][5];
-                    if (prevVolume > 0) {
-                        const change = volumes[volumes.length - 1] / prevVolume - 1;
-                        changes.push(change);
-                    }
-                }
-            }
-
             // Current volume change
             const currentVolume = ohlcv[i][5];
             const prevVolume = ohlcv[i - 1][5];
-            
-            if (prevVolume === 0) continue;
+
+            if (prevVolume === 0) {
+                // Keep last levels but don't calculate signal
+                if (lastUpper !== null && lastLower !== null) {
+                    result.push({
+                        time: ohlcv[i][0],
+                        upper: lastUpper,
+                        lower: lastLower,
+                        hasSignal: false,
+                        signal: 0
+                    });
+                }
+                continue;
+            }
 
             const change = currentVolume / prevVolume - 1;
 
-            // Calculate stdev of changes
-            const stdev = this.calculateStdev(changes, Math.min(changes.length, length));
-            
-            if (!stdev || stdev === 0) continue;
-
-            // Calculate difference and signal
-            const difference = change / stdev;
-            const signal = Math.abs(difference);
-
-            let upper = lastUpper;
-            let lower = lastLower;
-            let hasSignal = false;
-
-            // If signal exceeds threshold, update levels
-            if (signal > threshold) {
-                const prevHigh = ohlcv[i - 1][2];
-                const prevLow = ohlcv[i - 1][3];
-                const prevClose = ohlcv[i - 1][4];
-
-                upper = Math.max(prevHigh, prevClose);
-                lower = Math.min(prevLow, prevClose);
-                
-                lastUpper = upper;
-                lastLower = lower;
-                hasSignal = true;
+            // Calculate stdev of changes for the window ending at current bar
+            const changes = [];
+            for (let j = i - length + 1; j <= i; j++) {
+                if (j > 0 && ohlcv[j - 1][5] > 0) {
+                    const vol = ohlcv[j][5];
+                    const prevVol = ohlcv[j - 1][5];
+                    changes.push(vol / prevVol - 1);
+                }
             }
 
-            result.push({
-                time: ohlcv[i][0],
-                upper: upper,
-                lower: lower,
-                hasSignal: hasSignal,
-                signal: signal
-            });
+            const currentStdev = this.calculateStdev(changes, changes.length);
+
+            // Use previous bar's stdev (stdev[1] in PineScript)
+            if (prevStdev && prevStdev > 0) {
+                // Calculate difference and signal
+                const difference = change / prevStdev;
+                const signal = Math.abs(difference);
+
+                // If signal exceeds threshold, update levels (valuewhen logic)
+                if (signal > threshold) {
+                    const prevHigh = ohlcv[i - 1][2];
+                    const prevLow = ohlcv[i - 1][3];
+                    const prevClose = ohlcv[i - 1][4];
+
+                    lastUpper = Math.max(prevHigh, prevClose);
+                    lastLower = Math.min(prevLow, prevClose);
+                }
+
+                // Always push with current levels (valuewhen keeps last value)
+                if (lastUpper !== null && lastLower !== null) {
+                    result.push({
+                        time: ohlcv[i][0],
+                        upper: lastUpper,
+                        lower: lastLower,
+                        hasSignal: signal > threshold,
+                        signal: signal
+                    });
+                }
+            }
+
+            // Store current stdev for next iteration
+            prevStdev = currentStdev;
         }
 
         return result;
@@ -387,6 +392,61 @@ const Indicators = {
                 time: timestamp,
                 vwap: vwap
             });
+        }
+
+        return result;
+    },
+
+    /**
+     * Calculate WMA (Weighted Moving Average)
+     * @param {Array} closes - Array of closing prices
+     * @param {Number} period - WMA period
+     * @returns {Number} WMA value
+     */
+    calculateWMA(closes, period) {
+        if (!closes || closes.length < period) {
+            return null;
+        }
+
+        const slice = closes.slice(-period);
+        let weightedSum = 0;
+        let weightSum = 0;
+
+        for (let i = 0; i < period; i++) {
+            const weight = i + 1; // Weight increases linearly
+            weightedSum += slice[i] * weight;
+            weightSum += weight;
+        }
+
+        return weightedSum / weightSum;
+    },
+
+    /**
+     * Calculate WMA series for all data points
+     * @param {Array} ohlcv - OHLCV data array
+     * @param {Object} params - Parameters {period: 60}
+     * @returns {Array} Array of {time, wma} objects
+     */
+    calculateWMASeries(ohlcv, params = {}) {
+        const period = params.period || 60;
+
+        if (!ohlcv || ohlcv.length < period) {
+            return [];
+        }
+
+        const closes = ohlcv.map(c => c[4]);
+        const result = [];
+
+        for (let i = period - 1; i < ohlcv.length; i++) {
+            const currentCloses = closes.slice(0, i + 1);
+            const wma = this.calculateWMA(currentCloses, period);
+
+            if (wma !== null) {
+                result.push({
+                    time: ohlcv[i][0],
+                    wma: wma
+                });
+            }
         }
 
         return result;
