@@ -44,6 +44,23 @@ new Vue({
         this.initCalculatorWorker();
         this.addLog('info', 'System initialized - storage cleared');
     },
+    watch: {
+        activeTab(newTab, oldTab) {
+            // Update displayed symbols when tab changes
+            if (newTab) {
+                this.updateDisplayedSymbols(newTab);
+            }
+        },
+        filteredSymbols: {
+            handler() {
+                // Update displayed symbols when filter changes
+                if (this.activeTab) {
+                    this.updateDisplayedSymbols(this.activeTab);
+                }
+            },
+            deep: true
+        }
+    },
     computed: {
         filteredSymbols() {
             const symbols = this.symbolsByExchange[this.activeTab] || [];
@@ -427,6 +444,11 @@ new Vue({
                     });
                     break;
 
+                case 'price_update':
+                    // Handle realtime price updates from WebSocket
+                    this.updateRealtimePrices(exchange.id, data.updates);
+                    break;
+
                 case 'log':
                     this.addLog(data.level || 'info', `${exchange.id}: ${data.message}`);
                     break;
@@ -457,7 +479,8 @@ new Vue({
                 ema200: Utils.formatNumber(indicators.ema200, 8),
                 signal: indicators.signal || 'HOLD',
                 time: Utils.formatTime(),
-                updated: true // Flag for animation
+                updated: true, // Flag for animation
+                priceChange: 0 // For realtime price change
             };
 
             if (existingIndex >= 0) {
@@ -487,6 +510,51 @@ new Vue({
             if (exchange) {
                 exchange.symbolCount = symbols.length;
             }
+
+            // Notify worker about displayed symbols for WebSocket filtering
+            this.updateDisplayedSymbols(exchangeId);
+        },
+
+        updateRealtimePrices(exchangeId, updates) {
+            const symbols = this.symbolsByExchange[exchangeId];
+            if (!symbols) return;
+
+            updates.forEach(update => {
+                const index = symbols.findIndex(s => s.symbol === update.symbol);
+                if (index >= 0) {
+                    const symbol = symbols[index];
+                    const oldPrice = parseFloat(symbol.close);
+                    const newPrice = update.price;
+                    
+                    // Update price
+                    this.$set(symbols[index], 'close', Utils.formatNumber(newPrice, 8));
+                    this.$set(symbols[index], 'priceChange', update.change);
+                    
+                    // Add price flash animation
+                    this.$set(symbols[index], 'priceFlash', newPrice > oldPrice ? 'up' : (newPrice < oldPrice ? 'down' : ''));
+                    
+                    // Remove flash after animation
+                    setTimeout(() => {
+                        if (symbols[index]) {
+                            this.$set(symbols[index], 'priceFlash', '');
+                        }
+                    }, 500);
+                }
+            });
+        },
+
+        updateDisplayedSymbols(exchangeId) {
+            // Send list of currently displayed symbols to worker for WebSocket filtering
+            const worker = this.exchangeWorkers[exchangeId];
+            if (!worker) return;
+
+            const symbols = this.symbolsByExchange[exchangeId] || [];
+            const displayedSymbols = symbols.map(s => s.symbol);
+
+            worker.postMessage({
+                type: 'update_displayed_symbols',
+                data: { symbols: displayedSymbols }
+            });
         },
 
         addLog(level, message) {

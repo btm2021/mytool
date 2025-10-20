@@ -261,3 +261,53 @@
 .signal-HOLD {
     color: var(--color-warning);
 }
+
+/* Realtime price update animations */
+.price-up {
+    animation: priceFlashUp 0.5s ease-out;
+}
+
+.price-down {
+    animation: priceFlashDown 0.5s ease-out;
+}
+
+@keyframes priceFlashUp {
+    0% {
+        background: rgba(63, 185, 80, 0.5);
+        color: var(--color-success);
+        transform: scale(1.05);
+    }
+    100% {
+        background: transparent;
+        color: inherit;
+        transform: scale(1);
+    }
+}
+
+@keyframes priceFlashDown {
+    0% {
+        background: rgba(255, 82, 82, 0.5);
+        color: var(--color-error);
+        transform: scale(1.05);
+    }
+    100% {
+        background: transparent;
+        color: inherit;
+        transform: scale(1);
+    }
+}
+
+.price-change {
+    font-size: 10px;
+    margin-left: 4px;
+    font-weight: bold;
+    opacity: 0.8;
+}
+
+.price-change.positive {
+    color: var(--color-success);
+}
+
+.price-change.negative {
+    color: var(--color-error);
+}

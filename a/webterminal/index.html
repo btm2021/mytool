@@ -184,7 +184,14 @@
                                                 <span class="symbol-text">{{ symbol.displaySymbol }}</span>
                                             </a>
                                         </td>
-                                        <td>{{ symbol.close }}</td>
+                                        <td :class="'price-' + symbol.priceFlash">
+                                            {{ symbol.close }}
+                                            <span v-if="symbol.priceChange" class="price-change"
+                                                :class="symbol.priceChange > 0 ? 'positive' : 'negative'">
+                                                {{ symbol.priceChange > 0 ? '+' : '' }}{{ symbol.priceChange.toFixed(2)
+                                                }}%
+                                            </span>
+                                        </td>
                                         <td :class="getRsiClass(symbol.rsi)">{{ symbol.rsi }}</td>
                                         <td>{{ symbol.ema50 }}</td>
                                         <td>{{ symbol.ema200 }}</td>

@@ -9,6 +9,15 @@ const tools = [
         url: 'https://btm2021.github.io/mytool/a/newchart/'
     },
     {
+        id: 'Screener',
+        title: 'Screener',
+        description: 'Quét sàn',
+        category: 'Trading',
+        icon: '📊',
+        url: 'https://btm2021.github.io/mytool/a/webterminal/'
+    },
+    
+    {
         id: 'Tradingview',
         title: 'Tradingview',
         description: 'Tradingview',
