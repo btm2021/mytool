@@ -5,9 +5,15 @@ const symbol = urlParams.get('symbol') || 'BTC/USDT';
 let currentTimeframe = '15m';
 let chart = null;
 let candlestickSeries = null;
+let atrBotTrail1Series = null;
+let atrBotTrail2Series = null;
+let vsrUpperSeries = null;
+let vsrLowerSeries = null;
+let vwapSeries = null;
 let exchange = null;
 let lastCandle = null;
 let updateInterval = null;
+let rawOHLCV = []; // Store raw OHLCV for indicator calculations
 
 // UTC+7 offset (Ho Chi Minh timezone)
 const UTC7_OFFSET = 7 * 60 * 60 * 1000;
@@ -75,7 +81,7 @@ async function loadMarketData() {
     }
 }
 
-// Load chart data with multiple fetches
+// Load chart data with parallel fetches using Promise.all
 async function loadChartData(timeframe) {
     try {
         document.getElementById('loading').style.display = 'block';
@@ -85,28 +91,36 @@ async function loadChartData(timeframe) {
         const batchSize = 1000;
         const batches = Math.ceil(TARGET_CANDLES / batchSize);
 
-        let allOHLCV = [];
-        let since = Date.now() - (TARGET_CANDLES * tfDuration);
+        // Create array of promises for parallel fetching
+        const fetchPromises = [];
+        const startTime = Date.now() - (TARGET_CANDLES * tfDuration);
 
         for (let i = 0; i < batches; i++) {
-            try {
-                const loaded = Math.min((i + 1) * batchSize, TARGET_CANDLES);
-                document.getElementById('loading').textContent = `Loading candles... ${loaded}/${TARGET_CANDLES}`;
+            const since = startTime + (i * batchSize * tfDuration);
 
-                const ohlcv = await exchange.fetchOHLCV(symbol, timeframe, since, batchSize);
+            fetchPromises.push(
+                exchange.fetchOHLCV(symbol, timeframe, since, batchSize)
+                    .then(ohlcv => {
+                        const loaded = Math.min((i + 1) * batchSize, TARGET_CANDLES);
+                        document.getElementById('loading').textContent = `Loading candles... ${loaded}/${TARGET_CANDLES}`;
+                        return ohlcv || [];
+                    })
+                    .catch(error => {
+                        console.error(`Error fetching batch ${i + 1}:`, error);
+                        return [];
+                    })
+            );
+        }
 
-                if (!ohlcv || ohlcv.length === 0) break;
+        // Wait for all fetches to complete
+        document.getElementById('loading').textContent = 'Fetching all batches in parallel...';
+        const results = await Promise.all(fetchPromises);
 
+        // Combine all results
+        let allOHLCV = [];
+        for (const ohlcv of results) {
+            if (ohlcv && ohlcv.length > 0) {
                 allOHLCV = allOHLCV.concat(ohlcv);
-                since = ohlcv[ohlcv.length - 1][0] + tfDuration;
-
-                if (ohlcv.length < batchSize) break;
-
-                await sleep(100);
-
-            } catch (error) {
-                console.error(`Error fetching batch ${i + 1}:`, error);
-                break;
             }
         }
 
@@ -114,7 +128,9 @@ async function loadChartData(timeframe) {
             throw new Error('No data received');
         }
 
-        // Remove duplicates
+        document.getElementById('loading').textContent = 'Processing data...';
+
+        // Remove duplicates and sort
         const uniqueOHLCV = [];
         const timestamps = new Set();
 
@@ -128,6 +144,9 @@ async function loadChartData(timeframe) {
         uniqueOHLCV.sort((a, b) => a[0] - b[0]);
 
         console.log(`Loaded ${uniqueOHLCV.length} candles`);
+
+        // Store raw OHLCV for indicator calculations
+        rawOHLCV = uniqueOHLCV;
 
         // Convert to UTC+7
         const candleData = uniqueOHLCV.map(candle => ({
@@ -162,6 +181,12 @@ async function loadChartData(timeframe) {
         }
 
         candlestickSeries.setData(candleData);
+
+        // Calculate and display indicators
+        updateATRBotIndicator();
+        updateVSRIndicator();
+        updateVWAPIndicator();
+
         //chart.timeScale().fitContent();
 
         document.getElementById('loading').style.display = 'none';
@@ -205,64 +230,103 @@ function createChart(precision) {
     });
 
     candlestickSeries = chart.addCandlestickSeries({
-
         priceFormat: {
             type: 'price',
             precision: precision,
             minMove: 1 / Math.pow(10, precision)
         }
     });
-    
-     chart.timeScale().applyOptions({
-            rightOffset: 25,
-            barSpacing: 6,           // tăng độ zoom vào
-            fixRightEdge: false,
-            lockVisibleTimeRangeOnResize: false,
-        });
+
+    // Add ATR Bot Trail1 line (green line - upper)
+    atrBotTrail1Series = chart.addLineSeries({
+        color: '#00ff00',
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+        priceFormat: {
+            type: 'price',
+            precision: precision,
+            minMove: 1 / Math.pow(10, precision)
+        }
+    });
+
+    // Add ATR Bot Trail2 line (red line - lower)
+    atrBotTrail2Series = chart.addLineSeries({
+        color: '#ff0000',
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+        priceFormat: {
+            type: 'price',
+            precision: precision,
+            minMove: 1 / Math.pow(10, precision)
+        }
+    });
+
+    // Add VSR Upper line (resistance)
+    vsrUpperSeries = chart.addLineSeries({
+        color: 'rgba(33, 150, 243, 0.8)',
+        lineWidth: 2,
+        lineStyle: 2, // Dashed
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: true,
+        priceFormat: {
+            type: 'price',
+            precision: precision,
+            minMove: 1 / Math.pow(10, precision)
+        }
+    });
+
+    // Add VSR Lower line (support)
+    vsrLowerSeries = chart.addLineSeries({
+        color: 'rgba(33, 150, 243, 0.8)',
+        lineWidth: 2,
+        lineStyle: 2, // Dashed
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: true,
+        priceFormat: {
+            type: 'price',
+            precision: precision,
+            minMove: 1 / Math.pow(10, precision)
+        }
+    });
+
+    // Add VWAP line
+    vwapSeries = chart.addLineSeries({
+        color: 'rgba(255, 152, 0, 0.9)',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        crosshairMarkerVisible: true,
+        title: 'VWAP',
+        priceFormat: {
+            type: 'price',
+            precision: precision,
+            minMove: 1 / Math.pow(10, precision)
+        }
+    });
+
+    chart.timeScale().applyOptions({
+        rightOffset: 25,
+        barSpacing: 6,
+        fixRightEdge: false,
+        lockVisibleTimeRangeOnResize: false,
+    });
 
     window.addEventListener('resize', () => {
         chart.applyOptions({
             width: chartContainer.clientWidth,
             height: chartContainer.clientHeight
         });
-       
+
 
     });
 }
 
-// Start real-time updates using polling
-function startRealtimeUpdates() {
-    document.getElementById('statusText').textContent = 'Live';
-
-    // Update every 3 seconds
-    updateInterval = setInterval(async () => {
-        try {
-            const ohlcv = await exchange.fetchOHLCV(symbol, currentTimeframe, undefined, 2);
-
-            if (ohlcv && ohlcv.length > 0) {
-                const latestCandle = ohlcv[ohlcv.length - 1];
-
-                const candle = {
-                    time: convertToUTC7(latestCandle[0]),
-                    open: latestCandle[1],
-                    high: latestCandle[2],
-                    low: latestCandle[3],
-                    close: latestCandle[4]
-                };
-
-                if (candlestickSeries) {
-                    candlestickSeries.update(candle);
-                    lastCandle = candle;
-                }
-
-                document.getElementById('currentPrice').textContent = formatPrice(candle.close);
-            }
-
-        } catch (error) {
-            console.error('Update error:', error);
-        }
-    }, 3000);
-}
 
 // Setup timeframe buttons
 function setupTimeframeButtons() {
@@ -331,6 +395,89 @@ function formatVolume(volume) {
     if (volume >= 1e6) return (volume / 1e6).toFixed(2) + 'M';
     if (volume >= 1e3) return (volume / 1e3).toFixed(2) + 'K';
     return volume.toFixed(2);
+}
+
+// Update ATR Bot indicator
+function updateATRBotIndicator() {
+    if (!rawOHLCV || rawOHLCV.length === 0) return;
+
+    // Calculate ATR Bot
+    const atrBotData = Indicators.calculateATRBot(rawOHLCV, {
+        atrLength: 14,
+        atrMult: 2.0,
+        emaLength: 30
+    });
+
+    if (atrBotData.length === 0) return;
+
+    // Prepare data with dynamic colors based on trend
+    const trail1Data = [];
+    const trail2Data = [];
+
+    atrBotData.forEach(item => {
+        const time = convertToUTC7(item.time);
+        const color = item.isUptrend ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 0, 0, 0.8)';
+
+        trail1Data.push({
+            time,
+            value: item.trail1
+        });
+        trail2Data.push({
+            time,
+            value: item.trail2
+        });
+    });
+
+    atrBotTrail1Series.setData(trail1Data);
+    atrBotTrail2Series.setData(trail2Data);
+}
+
+// Update VSR indicator
+function updateVSRIndicator() {
+    if (!rawOHLCV || rawOHLCV.length === 0) return;
+
+    // Calculate VSR
+    const vsrData = Indicators.calculateVSR(rawOHLCV, {
+        length: 20,
+        threshold: 3.0
+    });
+
+    if (vsrData.length === 0) return;
+
+    // Prepare data for upper and lower lines
+    const upperData = [];
+    const lowerData = [];
+
+    vsrData.forEach(item => {
+        if (item.upper !== null && item.lower !== null) {
+            const time = convertToUTC7(item.time);
+            upperData.push({ time, value: item.upper });
+            lowerData.push({ time, value: item.lower });
+        }
+    });
+
+    vsrUpperSeries.setData(upperData);
+    vsrLowerSeries.setData(lowerData);
+}
+
+// Update VWAP indicator
+function updateVWAPIndicator() {
+    if (!rawOHLCV || rawOHLCV.length === 0) return;
+
+    // Calculate VWAP
+    const vwapData = Indicators.calculateVWAP(rawOHLCV, {
+        resetPeriod: 'daily' // Reset VWAP daily
+    });
+
+    if (vwapData.length === 0) return;
+
+    // Prepare data for VWAP line
+    const vwapLineData = vwapData.map(item => ({
+        time: convertToUTC7(item.time),
+        value: item.vwap
+    }));
+
+    vwapSeries.setData(vwapLineData);
 }
 
 // Start
