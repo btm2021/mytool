@@ -1,0 +1,139 @@
+/* PNL Panel Styles */
+
+.pnl-panel {
+    width: 25%;
+    background: #1a1a1a;
+    border-left: 2px solid #ff8c00;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.pnl-panel h3 {
+    color: #ff8c00;
+    font-size: 14px;
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+}
+
+.pnl-info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 11px;
+}
+
+.pnl-label {
+    color: #888;
+}
+
+.pnl-value {
+    color: #ffb000;
+    font-weight: bold;
+}
+
+.pnl-value.positive {
+    color: #00ff00;
+}
+
+.pnl-value.negative {
+    color: #ff0000;
+}
+
+.pnl-divider {
+    height: 1px;
+    background: #333;
+    margin: 15px 0;
+}
+
+.pnl-leverage-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.pnl-leverage-input label {
+    color: #888;
+    font-size: 11px;
+}
+
+.pnl-leverage-input input {
+    width: 60px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #ffb000;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+}
+
+/* PNL History */
+.pnl-history {
+    margin-top: 20px;
+}
+
+.pnl-history h4 {
+    color: #888;
+    font-size: 11px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+}
+
+.pnl-table-wrapper {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.pnl-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+}
+
+.pnl-history-table thead {
+    position: sticky;
+    top: 0;
+    background: #2a2a2a;
+    z-index: 1;
+}
+
+.pnl-history-table th {
+    color: #888;
+    padding: 8px 4px;
+    text-align: left;
+    border-bottom: 1px solid #444;
+    font-weight: normal;
+}
+
+.pnl-history-table td {
+    color: #ffb000;
+    padding: 8px 4px;
+    border-bottom: 1px solid #333;
+}
+
+.pnl-history-table tbody tr:hover {
+    background: #2a2a2a;
+}
+
+.pnl-delete-btn {
+    background: transparent;
+    border: none;
+    color: #ff0000;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+}
+
+.pnl-delete-btn:hover {
+    color: #ff4444;
+    background: rgba(255, 0, 0, 0.1);
+    border-radius: 3px;
+}

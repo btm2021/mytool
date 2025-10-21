@@ -1,0 +1,150 @@
+/* Modal Styles */
+
+/* Bootstrap Vue Modal Overrides */
+.chart-config-modal .modal-content {
+    background: #1a1a1a !important;
+    border: 2px solid #ff8c00 !important;
+    border-radius: 8px !important;
+    font-family: 'Courier New', monospace !important;
+}
+
+.chart-modal-header {
+    background: #2a2a2a !important;
+    border-bottom: 1px solid #ff8c00 !important;
+    padding: 15px 20px !important;
+}
+
+.chart-modal-header .modal-title {
+    color: #ff8c00 !important;
+    font-size: 14px !important;
+    font-weight: bold !important;
+}
+
+.chart-modal-header .close {
+    color: #888 !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+}
+
+.chart-modal-header .close:hover {
+    color: #ff0000 !important;
+}
+
+.chart-modal-body {
+    background: #1a1a1a !important;
+    padding: 20px !important;
+    max-height: 60vh !important;
+    overflow-y: auto !important;
+    color: #e0e0e0 !important;
+}
+
+.chart-modal-footer {
+    background: #2a2a2a !important;
+    border-top: 1px solid #333 !important;
+    padding: 15px 20px !important;
+}
+
+.chart-modal-footer .btn {
+    font-family: 'Courier New', monospace !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
+    padding: 8px 20px !important;
+}
+
+.chart-modal-footer .btn-secondary {
+    background: transparent !important;
+    border-color: #444 !important;
+    color: #888 !important;
+}
+
+.chart-modal-footer .btn-secondary:hover {
+    background: #333 !important;
+    color: #fff !important;
+}
+
+.chart-modal-footer .btn-warning {
+    background: #ff8c00 !important;
+    border-color: #ff8c00 !important;
+    color: #000 !important;
+}
+
+.chart-modal-footer .btn-warning:hover {
+    background: #ffb000 !important;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.config-section {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #333;
+}
+
+.config-section:last-child {
+    border-bottom: none;
+}
+
+.config-section h4 {
+    color: #ffb000;
+    font-size: 12px;
+    margin-bottom: 12px;
+    font-weight: bold;
+}
+
+/* Bootstrap Vue Checkbox Override */
+.config-section .custom-control-label {
+    color: #e0e0e0 !important;
+    font-size: 11px !important;
+    cursor: pointer !important;
+}
+
+.config-section .custom-checkbox .custom-control-input:checked ~ .custom-control-label::before {
+    background-color: #ff8c00 !important;
+    border-color: #ff8c00 !important;
+}
+
+.config-section .custom-checkbox .custom-control-input:focus ~ .custom-control-label::before {
+    box-shadow: 0 0 0 0.2rem rgba(255, 140, 0, 0.25) !important;
+}
+
+.config-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    margin-top: 8px;
+}
+
+.config-row label {
+    color: #888;
+    font-size: 11px;
+    width: 150px;
+    margin-bottom: 0;
+}
+
+.config-row input,
+.config-row select {
+    flex: 1;
+    background: #2a2a2a !important;
+    border: 1px solid #444 !important;
+    color: #ffb000 !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+    font-family: 'Courier New', monospace !important;
+}
+
+.config-row input:focus,
+.config-row select:focus {
+    outline: none !important;
+    border-color: #ff8c00 !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 140, 0, 0.25) !important;
+}
+
+.config-unit {
+    color: #888;
+    font-size: 11px;
+    margin-left: 8px;
+    width: 40px;
+}

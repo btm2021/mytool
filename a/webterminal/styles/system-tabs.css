@@ -156,12 +156,12 @@
     border-radius: 50%;
 }
 
-input:checked + .toggle-slider {
+input:checked+.toggle-slider {
     background: #2a4a2a;
     border-color: #00ff00;
 }
 
-input:checked + .toggle-slider:before {
+input:checked+.toggle-slider:before {
     transform: translateX(21px);
     background: #00ff00;
     box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);

@@ -14,7 +14,8 @@ const CONFIG = {
             maxWeight: 1200,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/binance-worker.js',
+            moduleFile: 'exchanges/binance.js',
+            className: 'BinanceExchange',
             proxyUrl: false,
             whitelist: ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT']
         },
@@ -25,7 +26,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/bybit-worker.js',
+            moduleFile: 'exchanges/bybit.js',
+            className: 'BybitExchange',
             proxyUrl: false,
             whitelist: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT']
         },
@@ -36,7 +38,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/okx-worker.js',
+            moduleFile: 'exchanges/okx.js',
+            className: 'OKXExchange',
             proxyUrl: false,
             whitelist: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'LINK/USDT']
         },
@@ -47,7 +50,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/kucoin-worker.js',
+            moduleFile: 'exchanges/kucoin.js',
+            className: 'KucoinExchange',
             proxyUrl: true,
             whitelist: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT']
         },
@@ -58,7 +62,8 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/bingx-worker.js',
+            moduleFile: 'exchanges/bingx.js',
+            className: 'BingxExchange',
             proxyUrl: true,
             whitelist: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT']
         },
@@ -69,21 +74,10 @@ const CONFIG = {
             maxWeight: 1000,
             weightCost: 1,
             weightResetInterval: 60000,
-            workerFile: 'workers/mexc-worker.js',
+            moduleFile: 'exchanges/mexc.js',
+            className: 'MexcExchange',
             proxyUrl: true,
             whitelist: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT']
-        },
-        {
-            id: 'krakenfutures',
-            name: 'Kraken Futures',
-            color: '#7B5FE8',
-            maxWeight: 1000,
-            weightCost: 1,
-            weightResetInterval: 60000,
-            workerFile: 'workers/kraken-futures-worker.js',
-            acceptedQuotes: ['USD', 'USDT'],
-            proxyUrl: true,
-            whitelist: ['BTC/USD', 'ETH/USD', 'SOL/USD', 'XRP/USD', 'ADA/USD', 'DOGE/USD', 'AVAX/USD', 'DOT/USD', 'MATIC/USD', 'LINK/USD']
         }
     ],
 

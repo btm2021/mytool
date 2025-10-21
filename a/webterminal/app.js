@@ -6,8 +6,7 @@ new Vue({
         allSymbolsByExchange: {},
         logs: [],
         isRunning: false,
-        exchangeWorkers: {},
-        calculatorWorker: null,
+        exchangeInstances: {},
         activeTab: '',
         symbolFilter: '',
         whitelistFilter: '',
@@ -36,56 +35,38 @@ new Vue({
         }
     },
     mounted() {
-        // Clear all processed symbols storage on page load
         this.clearAllProcessedStorage();
-
         this.loadSettings();
         this.initExchanges();
-        this.initCalculatorWorker();
         this.addLog('info', 'System initialized - storage cleared');
     },
     watch: {
-        activeTab(newTab, oldTab) {
-            // Update displayed symbols when tab changes
+        activeTab(newTab) {
             if (newTab) {
                 this.updateDisplayedSymbols(newTab);
             }
-        },
-        filteredSymbols: {
-            handler() {
-                // Update displayed symbols when filter changes
-                if (this.activeTab) {
-                    this.updateDisplayedSymbols(this.activeTab);
-                }
-            },
-            deep: true
         }
     },
     computed: {
         filteredSymbols() {
             const symbols = this.symbolsByExchange[this.activeTab] || [];
             if (!this.symbolFilter) return symbols;
-
             const filter = this.symbolFilter.toLowerCase();
             return symbols.filter(s => s.symbol.toLowerCase().includes(filter));
         },
-
         enabledExchanges() {
             return this.exchanges.filter(ex => this.settings.exchanges[ex.id]);
         },
-
         availableSymbols() {
             if (!this.selectedExchange) return [];
             const allSymbols = this.selectedExchange.allSymbols || [];
             return allSymbols.filter(s => !this.tempWhitelist.includes(s));
         },
-
         filteredWhitelist() {
             if (!this.whitelistFilter) return this.tempWhitelist;
             const filter = this.whitelistFilter.toLowerCase();
             return this.tempWhitelist.filter(s => s.toLowerCase().includes(filter));
         },
-
         filteredExchangeSymbols() {
             let symbols = this.availableSymbols;
             if (this.exchangeSymbolFilter) {
@@ -94,7 +75,6 @@ new Vue({
             }
             return symbols;
         },
-
         hasWhitelistChanges() {
             if (!this.selectedExchange) return false;
             const original = this.settings.whitelists[this.selectedExchange.id] || [];
@@ -114,26 +94,19 @@ new Vue({
                 });
                 this.saveSettings();
             }
-
-            // Ensure whitelists exist for all exchanges
             CONFIG.exchanges.forEach(ex => {
                 if (!this.settings.whitelists[ex.id]) {
                     this.$set(this.settings.whitelists, ex.id, ex.whitelist || []);
                 }
             });
         },
-
         saveSettings() {
             Utils.storage.set('appSettings', this.settings);
         },
-
         applySettings() {
             this.addLog('info', '⚙ Applying new settings...');
-
-            // Save settings first
             this.saveSettings();
-
-            // Stop all active exchanges
+            
             const activeExchanges = this.exchanges.filter(ex => ex.active);
             if (activeExchanges.length > 0) {
                 this.addLog('info', `Stopping ${activeExchanges.length} active exchanges...`);
@@ -141,8 +114,7 @@ new Vue({
                     this.stopExchange(exchange);
                 });
             }
-
-            // Clear all data
+            
             this.clearAllProcessedStorage();
             this.exchanges.forEach(exchange => {
                 this.symbolsByExchange[exchange.id] = [];
@@ -152,18 +124,16 @@ new Vue({
                 exchange.cycleComplete = false;
                 exchange.countdownSeconds = 0;
             });
-
-            // Update active tab if current tab is disabled
+            
             if (!this.settings.exchanges[this.activeTab]) {
                 const firstEnabled = this.exchanges.find(ex => this.settings.exchanges[ex.id]);
                 if (firstEnabled) {
                     this.activeTab = firstEnabled.id;
                 }
             }
-
+            
             this.addLog('success', '✓ Settings applied successfully');
-
-            // Restart enabled exchanges after a short delay
+            
             setTimeout(() => {
                 const enabledExchanges = this.exchanges.filter(ex => this.settings.exchanges[ex.id]);
                 if (enabledExchanges.length > 0) {
@@ -174,7 +144,6 @@ new Vue({
                 }
             }, 1000);
         },
-
         resetSettings() {
             this.settings = {
                 exchanges: {},
@@ -198,14 +167,14 @@ new Vue({
             this.saveSettings();
             this.addLog('success', 'Settings reset to default');
         },
-
         initExchanges() {
             CONFIG.exchanges.forEach(config => {
                 this.exchanges.push({
                     id: config.id,
                     name: config.name,
                     color: config.color,
-                    workerFile: config.workerFile,
+                    moduleFile: config.moduleFile,
+                    className: config.className,
                     active: false,
                     paused: false,
                     status: 'Idle',
@@ -220,136 +189,91 @@ new Vue({
                     cycleComplete: false,
                     countdownSeconds: 0
                 });
-
                 this.symbolsByExchange[config.id] = [];
             });
-
             if (this.exchanges.length > 0) {
                 this.activeTab = this.exchanges[0].id;
             }
         },
-
-        initCalculatorWorker() {
-            this.calculatorWorker = new Worker('calculator-worker.js');
-            this.calculatorWorker.onmessage = (e) => {
-                if (e.data.type === 'result') {
-                    this.updateSymbol(e.data.exchangeId, e.data.symbol, e.data.indicators);
-                } else if (e.data.type === 'error') {
-                    console.error(`Calculator error for ${e.data.symbol}:`, e.data.message);
-                }
-            };
-            this.calculatorWorker.onerror = (error) => {
-                console.error('Calculator worker error:', error);
-            };
-        },
-
         startAllWorkers() {
-            this.addLog('success', 'Starting all enabled workers...');
+            this.addLog('success', 'Starting all enabled exchanges...');
             this.exchanges.forEach(exchange => {
                 if (this.settings.exchanges[exchange.id] && !exchange.active) {
                     this.startExchange(exchange);
                 }
             });
         },
-
         pauseAllWorkers() {
-            this.addLog('info', 'Pausing all workers...');
+            this.addLog('info', 'Pausing all exchanges...');
             this.exchanges.forEach(exchange => {
                 if (exchange.active && !exchange.paused) {
                     this.pauseExchange(exchange);
                 }
             });
         },
-
         stopAllWorkers() {
-            this.addLog('warn', 'Stopping all workers and clearing storage...');
-
-            // Clear all processed symbols storage
+            this.addLog('warn', 'Stopping all exchanges and clearing storage...');
             this.exchanges.forEach(exchange => {
                 const key = `processed_${exchange.id}`;
                 Utils.storage.remove(key);
             });
-
-            // Stop all workers
             this.exchanges.forEach(exchange => {
                 if (exchange.active) {
-                    const worker = this.exchangeWorkers[exchange.id];
-                    if (worker) {
-                        worker.postMessage({ type: 'stop' });
-                        worker.terminate();
-                        delete this.exchangeWorkers[exchange.id];
-                    }
-                    exchange.active = false;
-                    exchange.paused = false;
-                    exchange.status = 'Stopped';
-                    exchange.processed = 0;
-                    exchange.total = 0;
+                    this.stopExchange(exchange);
                 }
             });
-
-            this.addLog('success', 'All workers stopped and storage cleared');
+            this.addLog('success', 'All exchanges stopped and storage cleared');
         },
-
-        startExchange(exchange) {
+        async startExchange(exchange) {
             if (exchange.paused) {
-                // Resume from pause
-                const worker = this.exchangeWorkers[exchange.id];
-                if (worker) {
-                    worker.postMessage({ type: 'resume' });
+                const instance = this.exchangeInstances[exchange.id];
+                if (instance) {
+                    instance.resume();
                     exchange.paused = false;
                     this.addLog('success', `${exchange.id}: Resumed`);
                 }
             } else if (!exchange.active) {
-                // Start new worker
-                this.startExchangeWorker(exchange);
+                await this.startExchangeInstance(exchange);
             }
         },
-
         pauseExchange(exchange) {
             if (exchange.active && !exchange.paused) {
-                const worker = this.exchangeWorkers[exchange.id];
-                if (worker) {
-                    worker.postMessage({ type: 'pause' });
+                const instance = this.exchangeInstances[exchange.id];
+                if (instance) {
+                    instance.pause();
                     exchange.paused = true;
                     this.addLog('info', `${exchange.id}: Paused`);
                 }
             }
         },
-
         stopExchange(exchange) {
             if (exchange.active) {
-                const worker = this.exchangeWorkers[exchange.id];
-                if (worker) {
-                    worker.postMessage({ type: 'stop' });
-                    worker.terminate();
-                    delete this.exchangeWorkers[exchange.id];
+                const instance = this.exchangeInstances[exchange.id];
+                if (instance) {
+                    instance.stop();
+                    delete this.exchangeInstances[exchange.id];
                 }
                 exchange.active = false;
                 exchange.paused = false;
                 exchange.status = 'Stopped';
                 exchange.processed = 0;
                 exchange.total = 0;
-
-                // Clear processed symbols storage for this exchange
                 const key = `processed_${exchange.id}`;
                 Utils.storage.remove(key);
-
                 this.addLog('warn', `${exchange.id}: Stopped and cleared`);
             }
         },
-
-        startExchangeWorker(exchange) {
-            const worker = new Worker(exchange.workerFile);
-            this.exchangeWorkers[exchange.id] = worker;
-
-            exchange.active = true;
-            exchange.status = 'Starting...';
-
-            const config = CONFIG.exchanges.find(e => e.id === exchange.id);
-
-            worker.postMessage({
-                type: 'init',
-                config: Utils.merge(config, {
+        async startExchangeInstance(exchange) {
+            try {
+                const config = CONFIG.exchanges.find(e => e.id === exchange.id);
+                const ExchangeClass = window[config.className];
+                
+                if (!ExchangeClass) {
+                    this.addLog('error', `${exchange.id}: Class ${config.className} not found`);
+                    return;
+                }
+                
+                const mergedConfig = Utils.merge(config, {
                     batchSize: this.settings.batchSize,
                     klineLimit: this.settings.klineLimit,
                     timeframe: this.settings.timeframe,
@@ -358,114 +282,93 @@ new Vue({
                     weightThreshold: this.settings.weightThreshold,
                     cycleDelay: this.settings.cycleDelay * 1000,
                     whitelist: this.settings.whitelists[exchange.id] || []
-                })
-            });
-
-            worker.onmessage = (e) => this.handleExchangeWorkerMessage(exchange, e.data, worker);
-            worker.onerror = (error) => {
-                this.addLog('error', `${exchange.id}: ${error.message}`);
-                exchange.status = 'Error';
-            };
-
-            this.addLog('info', `Worker started: ${exchange.id}`);
-        },
-
-        handleExchangeWorkerMessage(exchange, data, worker) {
-            exchange.lastMessage = Utils.formatTime();
-            exchange.lastUpdateTimestamp = Date.now();
-
-            switch (data.type) {
-                case 'status':
-                    exchange.status = data.status;
-                    break;
-
-                case 'weight':
-                    exchange.weight = data.weight;
-                    exchange.maxWeight = data.maxWeight;
-                    break;
-
-                case 'progress':
-                    exchange.processed = data.processed || 0;
-                    exchange.total = data.total || 0;
-                    
-                    // Check if cycle is complete
-                    if (exchange.total > 0 && exchange.processed === exchange.total) {
-                        exchange.cycleComplete = true;
-                    } else {
-                        exchange.cycleComplete = false;
-                    }
-                    break;
-
-                case 'countdown':
-                    exchange.countdownSeconds = data.seconds || 0;
-                    break;
-
-                case 'symbols_list':
-                    this.$set(exchange, 'allSymbols', data.symbols || []);
-                    this.addLog('info', `${exchange.id}: Loaded ${exchange.allSymbols.length} symbols`);
-                    break;
-
-                case 'request_processed':
-                    // Worker requests processed symbols data
-                    const key = `processed_${data.exchangeId}`;
-                    const stored = Utils.storage.get(key, {});
-                    worker.postMessage({
-                        type: 'set_processed',
-                        data: stored
-                    });
-                    break;
-
-                case 'save_processed':
-                    // Worker wants to save a processed symbol
-                    const saveKey = `processed_${data.exchangeId}`;
-                    const current = Utils.storage.get(saveKey, {});
-                    current[data.symbol] = data.timestamp;
-                    Utils.storage.set(saveKey, current);
-                    break;
-
-                case 'clear_processed':
-                    // Worker wants to clear processed symbols
-                    const clearKey = `processed_${data.exchangeId}`;
-                    Utils.storage.remove(clearKey);
-                    break;
-
-                case 'ohlcv':
-                    // Send to calculator worker
-                    this.calculatorWorker.postMessage({
-                        type: 'calculate',
-                        exchangeId: exchange.id,
-                        symbol: data.data.symbol,
-                        ohlcv: data.data.ohlcv,
-                        config: {
+                });
+                
+                const instance = new ExchangeClass(mergedConfig);
+                
+                instance.onStatus = (status) => {
+                    exchange.status = status;
+                    exchange.lastMessage = Utils.formatTime();
+                    exchange.lastUpdateTimestamp = Date.now();
+                };
+                
+                instance.onWeight = (weight, maxWeight) => {
+                    exchange.weight = weight;
+                    exchange.maxWeight = maxWeight;
+                    exchange.lastMessage = Utils.formatTime();
+                    exchange.lastUpdateTimestamp = Date.now();
+                };
+                
+                instance.onProgress = (processed, total) => {
+                    exchange.processed = processed || 0;
+                    exchange.total = total || 0;
+                    exchange.cycleComplete = (total > 0 && processed === total);
+                    exchange.lastMessage = Utils.formatTime();
+                    exchange.lastUpdateTimestamp = Date.now();
+                };
+                
+                instance.onCountdown = (seconds) => {
+                    exchange.countdownSeconds = seconds || 0;
+                };
+                
+                instance.onOHLCV = (data) => {
+                    Calculator.calculate(
+                        exchange.id,
+                        data.symbol,
+                        data.ohlcv,
+                        {
                             rsiPeriod: this.settings.rsi.period,
                             emaShort: this.settings.ema.short,
                             emaLong: this.settings.ema.long
+                        },
+                        (result) => {
+                            this.updateSymbol(result.exchangeId, result.symbol, result.indicators);
                         }
-                    });
-                    break;
-
-                case 'price_update':
-                    // Handle realtime price updates from WebSocket
-                    this.updateRealtimePrices(exchange.id, data.updates);
-                    break;
-
-                case 'log':
-                    this.addLog(data.level || 'info', `${exchange.id}: ${data.message}`);
-                    break;
-
-                case 'error':
-                    this.addLog('error', `${exchange.id}: ${data.message}`);
-                    break;
+                    );
+                };
+                
+                instance.onLog = (level, message) => {
+                    this.addLog(level, `${exchange.id}: ${message}`);
+                };
+                
+                instance.onError = (message) => {
+                    this.addLog('error', `${exchange.id}: ${message}`);
+                };
+                
+                if (instance.onPriceUpdate) {
+                    instance.onPriceUpdate = (updates) => {
+                        this.updateRealtimePrices(exchange.id, updates);
+                    };
+                }
+                
+                this.exchangeInstances[exchange.id] = instance;
+                exchange.active = true;
+                exchange.status = 'Starting...';
+                
+                this.addLog('info', `Starting ${exchange.id}...`);
+                
+                const symbols = await instance.init();
+                this.$set(exchange, 'allSymbols', symbols || []);
+                
+                const key = `processed_${exchange.id}`;
+                const stored = Utils.storage.get(key, {});
+                instance.processedSymbols = stored;
+                
+                instance.start();
+                
+            } catch (error) {
+                this.addLog('error', `${exchange.id}: Failed to start - ${error.message}`);
+                exchange.status = 'Error';
+                exchange.active = false;
             }
         },
-
         updateSymbol(exchangeId, symbol, indicators) {
             const symbols = this.symbolsByExchange[exchangeId];
             const existingIndex = symbols.findIndex(s => s.symbol === symbol);
-
+            
             const baseSymbol = Utils.crypto.extractSymbol(symbol);
             const quoteSymbol = Utils.crypto.extractQuote(symbol);
-
+            
             const symbolData = {
                 symbol: symbol,
                 displaySymbol: `${baseSymbol}/${quoteSymbol}`,
@@ -479,13 +382,12 @@ new Vue({
                 ema200: Utils.formatNumber(indicators.ema200, 8),
                 signal: indicators.signal || 'HOLD',
                 time: Utils.formatTime(),
-                updated: true, // Flag for animation
-                priceChange: 0 // For realtime price change
+                updated: true,
+                priceChange: 0
             };
-
+            
             if (existingIndex >= 0) {
                 this.$set(symbols, existingIndex, symbolData);
-                // Remove animation flag after animation completes
                 setTimeout(() => {
                     if (symbols[existingIndex]) {
                         this.$set(symbols[existingIndex], 'updated', false);
@@ -493,7 +395,6 @@ new Vue({
                 }, 1000);
             } else {
                 symbols.unshift(symbolData);
-                // Remove animation flag for new items
                 setTimeout(() => {
                     const idx = symbols.findIndex(s => s.symbol === symbol);
                     if (idx >= 0) {
@@ -501,24 +402,29 @@ new Vue({
                     }
                 }, 1000);
             }
-
+            
             if (symbols.length > this.settings.maxSymbolsPerExchange) {
                 this.symbolsByExchange[exchangeId] = symbols.slice(0, this.settings.maxSymbolsPerExchange);
             }
-
+            
             const exchange = this.exchanges.find(e => e.id === exchangeId);
             if (exchange) {
                 exchange.symbolCount = symbols.length;
             }
-
-            // Notify worker about displayed symbols for WebSocket filtering
+            
+            const instance = this.exchangeInstances[exchangeId];
+            if (instance && instance.processedSymbols) {
+                instance.processedSymbols[symbol] = Date.now();
+                const key = `processed_${exchangeId}`;
+                Utils.storage.set(key, instance.processedSymbols);
+            }
+            
             this.updateDisplayedSymbols(exchangeId);
         },
-
         updateRealtimePrices(exchangeId, updates) {
             const symbols = this.symbolsByExchange[exchangeId];
             if (!symbols) return;
-
+            
             updates.forEach(update => {
                 const index = symbols.findIndex(s => s.symbol === update.symbol);
                 if (index >= 0) {
@@ -526,14 +432,10 @@ new Vue({
                     const oldPrice = parseFloat(symbol.close);
                     const newPrice = update.price;
                     
-                    // Update price
                     this.$set(symbols[index], 'close', Utils.formatNumber(newPrice, 8));
                     this.$set(symbols[index], 'priceChange', update.change);
-                    
-                    // Add price flash animation
                     this.$set(symbols[index], 'priceFlash', newPrice > oldPrice ? 'up' : (newPrice < oldPrice ? 'down' : ''));
                     
-                    // Remove flash after animation
                     setTimeout(() => {
                         if (symbols[index]) {
                             this.$set(symbols[index], 'priceFlash', '');
@@ -542,33 +444,24 @@ new Vue({
                 }
             });
         },
-
         updateDisplayedSymbols(exchangeId) {
-            // Send list of currently displayed symbols to worker for WebSocket filtering
-            const worker = this.exchangeWorkers[exchangeId];
-            if (!worker) return;
-
+            const instance = this.exchangeInstances[exchangeId];
+            if (!instance || !instance.updateDisplayedSymbols) return;
+            
             const symbols = this.symbolsByExchange[exchangeId] || [];
             const displayedSymbols = symbols.map(s => s.symbol);
-
-            worker.postMessage({
-                type: 'update_displayed_symbols',
-                data: { symbols: displayedSymbols }
-            });
+            instance.updateDisplayedSymbols(displayedSymbols);
         },
-
         addLog(level, message) {
             this.logs.unshift({
                 time: Utils.formatTime(),
                 level: level,
                 message: message
             });
-
             if (this.logs.length > CONFIG.maxLogs) {
                 this.logs = this.logs.slice(0, CONFIG.maxLogs);
             }
         },
-
         getRsiClass(rsi) {
             if (!rsi || rsi === '-') return '';
             const value = parseFloat(rsi);
@@ -576,11 +469,13 @@ new Vue({
             if (value > this.settings.rsi.overbought) return 'rsi-overbought';
             return '';
         },
-
         getSymbolCount(exchangeId) {
             return (this.symbolsByExchange[exchangeId] || []).length;
         },
-
+        getWhitelistCount(exchangeId) {
+            const whitelist = this.settings.whitelists[exchangeId] || [];
+            return whitelist.length;
+        },
         getTabStyle(exchange) {
             const isActive = this.activeTab === exchange.id;
             const hexToRgba = (hex, alpha) => {
@@ -589,75 +484,55 @@ new Vue({
                 const b = parseInt(hex.slice(5, 7), 16);
                 return `rgba(${r}, ${g}, ${b}, ${alpha})`;
             };
-
             return {
                 color: isActive ? exchange.color : 'var(--color-text-muted)',
                 borderBottomColor: isActive ? exchange.color : 'var(--color-bg-primary)',
                 background: isActive ? hexToRgba(exchange.color, 0.1) : 'transparent'
             };
         },
-
         getStatusClass(exchange) {
             if (!exchange.active) return 'idle';
             if (exchange.paused) return 'paused';
             if (exchange.status.includes('Error')) return 'error';
             return 'active';
         },
-
         getExchangeStatus(exchange) {
             if (!exchange.active) return 'Idle';
             if (exchange.paused) return 'Paused';
             if (exchange.status.includes('Error')) return exchange.status;
-
             if (exchange.total > 0) {
                 const percent = Math.round((exchange.processed / exchange.total) * 100);
                 const remaining = exchange.total - exchange.processed;
-
-                if (remaining === 0) {
-                    return 'Cycle complete';
-                }
-
+                if (remaining === 0) return 'Cycle complete';
                 return `${percent}%`;
             }
-
             return exchange.status || 'Running';
         },
-
         clearProcessedSymbols() {
             this.clearAllProcessedStorage();
             this.addLog('success', 'Cleared all processed symbols tracking');
         },
-
         clearAllProcessedStorage() {
-            // Clear all processed symbols from localStorage
             CONFIG.exchanges.forEach(config => {
                 const key = `processed_${config.id}`;
                 Utils.storage.remove(key);
             });
         },
-
         getLastUpdateTime(exchange) {
             if (!exchange.lastUpdateTimestamp) return '-';
-
             const now = Date.now();
             const diff = now - exchange.lastUpdateTimestamp;
             const seconds = Math.floor(diff / 1000);
-
             if (seconds < 10) return 'just now';
             if (seconds < 60) return `${seconds}s ago`;
-
             const minutes = Math.floor(seconds / 60);
             if (minutes < 60) return `${minutes}m ago`;
-
             const hours = Math.floor(minutes / 60);
             return `${hours}h ago`;
         },
-
         handleIconError(event) {
-            // Fallback to placeholder when icon fails to load
             event.target.src = Utils.crypto.placeholderUrl;
         },
-
         openExchangeModal(exchange) {
             this.selectedExchange = exchange;
             this.tempWhitelist = [...(this.settings.whitelists[exchange.id] || [])];
@@ -665,146 +540,78 @@ new Vue({
             this.whitelistFilter = '';
             this.exchangeSymbolFilter = '';
             this.showExchangeModal = true;
-
-            // Always load exchange info to get fresh symbols list
             this.loadExchangeInfo(exchange);
         },
-
         async loadExchangeInfo(exchange) {
-            // If already loaded and has symbols, skip
             if (exchange.allSymbols && exchange.allSymbols.length > 0) {
                 this.addLog('info', `${exchange.id}: Using cached ${exchange.allSymbols.length} symbols`);
                 return;
             }
-
             this.isLoadingSymbols = true;
             this.addLog('info', `${exchange.id}: Loading symbols...`);
-
-            const worker = new Worker(exchange.workerFile);
-            const config = CONFIG.exchanges.find(e => e.id === exchange.id);
-
-            worker.postMessage({
-                type: 'init',
-                config: Utils.merge(config, {
-                    batchSize: this.settings.batchSize,
-                    klineLimit: this.settings.klineLimit,
-                    timeframe: this.settings.timeframe,
-                    batchDelay: this.settings.batchDelay,
-                    symbolDelay: this.settings.symbolDelay,
-                    weightThreshold: this.settings.weightThreshold,
-                    whitelist: [] // Don't apply whitelist when loading all symbols for modal
-                })
-            });
-
-            worker.onmessage = (e) => {
-                if (e.data.type === 'symbols_list') {
-                    this.$set(exchange, 'allSymbols', e.data.symbols || []);
-                    this.addLog('success', `${exchange.id}: Loaded ${exchange.allSymbols.length} symbols`);
-                    this.isLoadingSymbols = false;
-                    worker.postMessage({ type: 'stop' });
-                    worker.terminate();
-                }
-            };
-
-            worker.onerror = (error) => {
+            
+            try {
+                const config = CONFIG.exchanges.find(e => e.id === exchange.id);
+                const ExchangeClass = window[config.className];
+                const tempInstance = new ExchangeClass(Utils.merge(config, { whitelist: [] }));
+                const symbols = await tempInstance.init();
+                this.$set(exchange, 'allSymbols', symbols || []);
+                this.addLog('success', `${exchange.id}: Loaded ${exchange.allSymbols.length} symbols`);
+            } catch (error) {
                 this.addLog('error', `${exchange.id}: Failed to load - ${error.message}`);
+            } finally {
                 this.isLoadingSymbols = false;
-                worker.terminate();
-            };
-        },
-
-        isInWhitelist(symbol) {
-            if (!this.selectedExchange) return false;
-            const whitelist = this.settings.whitelists[this.selectedExchange.id] || [];
-            return whitelist.includes(symbol);
-        },
-
-        toggleWhitelist(symbol) {
-            if (!this.selectedExchange) return;
-
-            const exchangeId = this.selectedExchange.id;
-            const whitelist = this.settings.whitelists[exchangeId] || [];
-            const index = whitelist.indexOf(symbol);
-
-            if (index >= 0) {
-                // Remove from whitelist
-                whitelist.splice(index, 1);
-                this.addLog('info', `${exchangeId}: Removed ${symbol} from whitelist`);
-            } else {
-                // Add to whitelist
-                whitelist.push(symbol);
-                this.addLog('success', `${exchangeId}: Added ${symbol} to whitelist`);
-            }
-
-            this.$set(this.settings.whitelists, exchangeId, whitelist);
-            this.saveSettings();
-
-            // Restart exchange if it's running
-            if (this.selectedExchange.active) {
-                this.addLog('info', `${exchangeId}: Restarting with updated whitelist...`);
-                this.stopExchange(this.selectedExchange);
-                setTimeout(() => {
-                    this.startExchange(this.selectedExchange);
-                }, 500);
             }
         },
-
         addToWhitelist(symbol) {
             if (!this.tempWhitelist.includes(symbol)) {
-                // Add to beginning of array for visibility
                 this.tempWhitelist.unshift(symbol);
             }
         },
-
         isNewSymbol(symbol) {
             return !this.originalWhitelist.includes(symbol);
         },
-
         removeFromWhitelist(symbol) {
             const index = this.tempWhitelist.indexOf(symbol);
             if (index >= 0) {
                 this.tempWhitelist.splice(index, 1);
             }
         },
-
-        async saveWhitelist() {
+        saveWhitelist() {
             if (!this.selectedExchange) return;
-
             this.isSavingWhitelist = true;
             const exchangeId = this.selectedExchange.id;
-            
-            // Small delay for visual feedback
-            await new Promise(resolve => setTimeout(resolve, 300));
-
             this.$set(this.settings.whitelists, exchangeId, [...this.tempWhitelist]);
             this.saveSettings();
-
-            // Restart exchange if it's running
-            if (this.selectedExchange.active) {
-                this.addLog('info', `${exchangeId}: Restarting with updated whitelist...`);
-                this.stopExchange(this.selectedExchange);
-                setTimeout(() => {
-                    this.startExchange(this.selectedExchange);
-                }, 500);
-            }
-
-            this.isSavingWhitelist = false;
-            this.closeExchangeModal();
+            this.originalWhitelist = [...this.tempWhitelist];
+            setTimeout(() => {
+                this.isSavingWhitelist = false;
+                this.addLog('success', `${exchangeId}: Whitelist saved (${this.tempWhitelist.length} symbols)`);
+                if (this.selectedExchange.active) {
+                    this.addLog('info', `${exchangeId}: Restarting with updated whitelist...`);
+                    this.stopExchange(this.selectedExchange);
+                    setTimeout(() => {
+                        this.startExchange(this.selectedExchange);
+                    }, 500);
+                }
+            }, 500);
         },
-
+        cancelWhitelist() {
+            this.tempWhitelist = [...this.originalWhitelist];
+            this.showExchangeModal = false;
+        },
         closeExchangeModal() {
             this.showExchangeModal = false;
             this.selectedExchange = null;
+            this.tempWhitelist = [];
             this.originalWhitelist = [];
             this.whitelistFilter = '';
             this.exchangeSymbolFilter = '';
         },
-
-        getWhitelistCount(exchangeId) {
-            const whitelist = this.settings.whitelists[exchangeId] || [];
-            return whitelist.length;
+        openChart(symbol) {
+            const url = `chart/index.html?exchange=${this.activeTab}&symbol=${encodeURIComponent(symbol.symbol)}`;
+            window.open(url, '_blank');
         },
-
         formatCountdown(seconds) {
             if (seconds <= 0) return '';
             if (seconds < 60) return `${seconds}s`;

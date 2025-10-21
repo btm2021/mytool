@@ -172,7 +172,7 @@
                                     <tr v-for="symbol in filteredSymbols" :key="symbol.symbol"
                                         :class="{'row-updated': symbol.updated}">
                                         <td class="symbol-name">
-                                            <a :href="'chart.html?exchange=' + activeTab + '&symbol=' + symbol.symbol"
+                                            <a :href="'chart/index.html?exchange=' + activeTab + '&symbol=' + symbol.symbol"
                                                 target="_blank" class="symbol-link">
                                                 <div class="symbol-icons">
                                                     <img :src="symbol.baseIcon" :alt="symbol.baseSymbol"
@@ -439,12 +439,24 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap-vue@2.23.1/dist/bootstrap-vue.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ccxt@4.2.25/dist/ccxt.browser.js"></script>
+    <script src="vue.min.js"></script>
+    <script src="bootstrap-vue.min.js"></script>
+    <script src="ccxt.browser.js"></script>
     <script src="config.js"></script>
     <script src="utils.js"></script>
     <script src="indicators.js"></script>
+    <script src="calculator.js"></script>
+    <script src="exchanges/base-exchange.js"></script>
+    <script src="exchanges/binance.js"></script>
+    <script src="exchanges/bybit.js"></script>
+    <script src="exchanges/okx.js"></script>
+    <script src="exchanges/kucoin.js"></script>
+    <script src="exchanges/bingx.js"></script>
+    <script src="exchanges/mexc.js"></script>
+    <script src="exchanges/bitfinex.js"></script>
+    <script src="exchanges/bitmex.js"></script>
+    <script src="exchanges/htx.js"></script>
+    <script src="exchanges/hyperliquid.js"></script>
     <script src="app.js"></script>
 </body>
 

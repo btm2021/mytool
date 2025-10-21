@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart - OHLCV Screener</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-vue@2.23.1/dist/bootstrap-vue.min.css" rel="stylesheet">
+    
+    <!-- Libraries from parent directory -->
+    <script src="../vue.min.js"></script>
+    <script src="../bootstrap-vue.min.js"></script>
+    <script src="../ccxt.browser.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <!-- Shared modules from parent -->
+    <script src="../config.js"></script>
+    <script src="../indicators.js"></script>
+    <script src="../utils.js"></script>
+    
+    <!-- Chart styles -->
+    <link rel="stylesheet" href="styles/chart.css">
+    <link rel="stylesheet" href="styles/pnl.css">
+    <link rel="stylesheet" href="styles/modal.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Header -->
+        <div class="chart-header">
+            <div class="chart-title">{{ chartTitle }}</div>
+            <div class="chart-info">
+                <div class="info-item">
+                    <span class="info-label">PRICE</span>
+                    <span class="info-value">{{ marketData.price }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">24H CHANGE</span>
+                    <span class="info-value" :class="marketData.changeClass">{{ marketData.change }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">24H HIGH</span>
+                    <span class="info-value">{{ marketData.high }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">24H LOW</span>
+                    <span class="info-value">{{ marketData.low }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">VOLUME</span>
+                    <span class="info-value">{{ marketData.volume }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="chart-controls">
+            <button v-for="tf in timeframes" :key="tf" 
+                    class="timeframe-btn" 
+                    :class="{ active: currentTimeframe === tf }"
+                    @click="changeTimeframe(tf)">
+                {{ tf.toUpperCase() }}
+            </button>
+            <button class="timeframe-btn" @click="togglePNL" 
+                    :style="{ marginLeft: '20px', background: pnlMode ? '#00ff00' : '#2a2a2a', color: pnlMode ? '#000' : '#888' }">
+                {{ pnlMode ? '✓ PNL Mode ON' : '📊 PNL' }}
+            </button>
+            <button class="timeframe-btn" @click="showConfigModal = true" style="margin-left: 10px;">⚙</button>
+            <span v-if="pnlMessage" style="margin-left: 10px; color: #ffb000; font-size: 12px;">{{ pnlMessage }}</span>
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span>{{ statusText }}</span>
+            </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="chart-container">
+            <div id="chart" style="position: relative;">
+                <div v-if="loading" class="loading">{{ loadingText }}</div>
+            </div>
+            
+            <!-- PNL Panel -->
+            <div class="pnl-panel">
+                <h3>PNL CALCULATOR</h3>
+
+                <div class="pnl-info-row">
+                    <span class="pnl-label">Direction:</span>
+                    <span class="pnl-value">{{ pnl.direction }}</span>
+                </div>
+
+                <div class="pnl-info-row">
+                    <span class="pnl-label">Entry:</span>
+                    <span class="pnl-value">{{ pnl.entryPrice }}</span>
+                </div>
+
+                <div class="pnl-info-row">
+                    <span class="pnl-label">Exit:</span>
+                    <span class="pnl-value">{{ pnl.exitPrice }}</span>
+                </div>
+
+                <div class="pnl-divider"></div>
+
+                <div class="pnl-info-row">
+                    <span class="pnl-label">Price Change:</span>
+                    <span class="pnl-value">{{ pnl.priceChange }}</span>
+                </div>
+
+                <div class="pnl-leverage-input">
+                    <label>Leverage:</label>
+                    <input type="number" v-model.number="pnl.leverage" min="1" max="125" @input="updatePNL">
+                </div>
+
+                <div class="pnl-divider"></div>
+
+                <div class="pnl-info-row">
+                    <span class="pnl-label">PNL %:</span>
+                    <span class="pnl-value" :class="pnl.pnlClass">{{ pnl.pnlPercent }}</span>
+                </div>
+
+                <div class="pnl-info-row">
+                    <span class="pnl-label">PNL Amount:</span>
+                    <span class="pnl-value" :class="pnl.pnlClass">{{ pnl.pnlAmount }}</span>
+                </div>
+
+                <div class="pnl-info-row">
+                    <span class="pnl-label">Final Capital:</span>
+                    <span class="pnl-value" :class="pnl.finalClass">{{ pnl.finalCapital }}</span>
+                </div>
+
+                <!-- PNL History -->
+                <div class="pnl-history">
+                    <h4>HISTORY</h4>
+                    <div class="pnl-table-wrapper">
+                        <table class="pnl-history-table">
+                            <thead>
+                                <tr>
+                                    <th>Dir</th>
+                                    <th>Entry</th>
+                                    <th>Exit</th>
+                                    <th>Lev</th>
+                                    <th>PNL%</th>
+                                    <th>PNL$</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="record in pnlHistory" :key="record.id">
+                                    <td>{{ record.direction }}</td>
+                                    <td>{{ formatPrice(record.entryPrice) }}</td>
+                                    <td>{{ formatPrice(record.exitPrice) }}</td>
+                                    <td>{{ record.leverage }}x</td>
+                                    <td :class="record.pnlPercent >= 0 ? 'positive' : 'negative'">
+                                        {{ record.pnlPercent.toFixed(2) }}%
+                                    </td>
+                                    <td :class="record.pnlAmount >= 0 ? 'positive' : 'negative'">
+                                        ${{ record.pnlAmount.toFixed(2) }}
+                                    </td>
+                                    <td>
+                                        <button class="pnl-delete-btn" @click="deletePNLRecord(record.id)">×</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Config Modal -->
+        <b-modal v-model="showConfigModal" 
+                 title="Indicator Configuration" 
+                 size="lg"
+                 modal-class="chart-config-modal"
+                 header-class="chart-modal-header"
+                 body-class="chart-modal-body"
+                 footer-class="chart-modal-footer">
+            <div class="config-section">
+                <h4>ATR Bot</h4>
+                <b-form-checkbox v-model="config.atrBot.show">Show ATR Bot</b-form-checkbox>
+                <div class="config-row">
+                    <label>ATR Length:</label>
+                    <input type="number" v-model.number="config.atrBot.atrLength" min="1">
+                </div>
+                <div class="config-row">
+                    <label>ATR Multiplier:</label>
+                    <input type="number" v-model.number="config.atrBot.atrMult" step="0.1" min="0.1">
+                </div>
+                <div class="config-row">
+                    <label>EMA Length:</label>
+                    <input type="number" v-model.number="config.atrBot.emaLength" min="1">
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h4>VSR (Volume Support/Resistance)</h4>
+                <b-form-checkbox v-model="config.vsr.show">Show VSR</b-form-checkbox>
+                <div class="config-row">
+                    <label>Length:</label>
+                    <input type="number" v-model.number="config.vsr.length" min="1">
+                </div>
+                <div class="config-row">
+                    <label>Threshold:</label>
+                    <input type="number" v-model.number="config.vsr.threshold" step="0.1" min="0.1">
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h4>VWAP</h4>
+                <b-form-checkbox v-model="config.vwap.show">Show VWAP</b-form-checkbox>
+                <div class="config-row">
+                    <label>Reset Period:</label>
+                    <select v-model="config.vwap.resetPeriod">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h4>WMA (Weighted Moving Average)</h4>
+                <b-form-checkbox v-model="config.wma.show">Show WMA</b-form-checkbox>
+                <div class="config-row">
+                    <label>Period:</label>
+                    <input type="number" v-model.number="config.wma.period" min="1">
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h4>HMA (Hull Moving Average)</h4>
+                <b-form-checkbox v-model="config.hma.show">Show HMA</b-form-checkbox>
+                <div class="config-row">
+                    <label>Period:</label>
+                    <input type="number" v-model.number="config.hma.period" min="1">
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h4>PNL Calculator</h4>
+                <div class="config-row">
+                    <label>Initial Capital:</label>
+                    <input type="number" v-model.number="config.pnl.initialCapital" min="1">
+                    <span class="config-unit">$</span>
+                </div>
+                <div class="config-row">
+                    <label>Default Leverage:</label>
+                    <input type="number" v-model.number="config.pnl.defaultLeverage" min="1" max="125">
+                    <span class="config-unit">x</span>
+                </div>
+            </div>
+
+            <template #modal-footer>
+                <b-button variant="secondary" @click="showConfigModal = false">Cancel</b-button>
+                <b-button variant="warning" @click="saveConfig">Save & Apply</b-button>
+            </template>
+        </b-modal>
+    </div>
+
+    <!-- Chart JS modules -->
+    <script src="js/chart-vue.js"></script>
+</body>
+
+</html>
