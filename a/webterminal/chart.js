@@ -11,6 +11,7 @@ let vsrUpperSeries = null;
 let vsrLowerSeries = null;
 let vwapSeries = null;
 let wmaSeries = null;
+let hmaSeries = null;
 let exchange = null;
 let lastCandle = null;
 let updateInterval = null;
@@ -33,6 +34,7 @@ let indicatorConfig = {
     vsr: { length: 20, threshold: 3.0, show: true },
     vwap: { resetPeriod: 'daily', show: true },
     wma: { period: 60, show: true },
+    hma: { period: 60, show: true },
     pnl: { initialCapital: 2000, defaultLeverage: 20 }
 };
 
@@ -212,6 +214,7 @@ async function loadChartData(timeframe) {
         updateVSRIndicator();
         updateVWAPIndicator();
         updateWMAIndicator();
+        updateHMAIndicator();
 
         //chart.timeScale().fitContent();
 
@@ -347,6 +350,21 @@ function createChart(precision) {
         lastValueVisible: true,
         crosshairMarkerVisible: false,
         title: 'WMA(60)',
+        priceFormat: {
+            type: 'price',
+            precision: precision,
+            minMove: 1 / Math.pow(10, precision)
+        }
+    });
+
+    // Add HMA line
+    hmaSeries = chart.addLineSeries({
+        color: 'rgba(0, 255, 255, 0.8)',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        crosshairMarkerVisible: false,
+        title: 'HMA(60)',
         priceFormat: {
             type: 'price',
             precision: precision,
@@ -595,6 +613,30 @@ function updateWMAIndicator() {
     }));
 
     wmaSeries.setData(wmaLineData);
+}
+
+// Update HMA indicator
+function updateHMAIndicator() {
+    if (!rawOHLCV || rawOHLCV.length === 0) return;
+
+    // Hide if disabled or config not available
+    if (!indicatorConfig.hma || !indicatorConfig.hma.show) {
+        hmaSeries.setData([]);
+        return;
+    }
+
+    // Calculate HMA with config
+    const hmaData = Indicators.calculateHMASeries(rawOHLCV, indicatorConfig.hma);
+
+    if (hmaData.length === 0) return;
+
+    // Prepare data for HMA line
+    const hmaLineData = hmaData.map(item => ({
+        time: convertToUTC7(item.time),
+        value: item.hma
+    }));
+
+    hmaSeries.setData(hmaLineData);
 }
 
 // Setup PNL Calculator
@@ -1113,6 +1155,7 @@ function loadIndicatorConfig() {
                 vsr: { ...indicatorConfig.vsr, ...savedConfig.vsr },
                 vwap: { ...indicatorConfig.vwap, ...savedConfig.vwap },
                 wma: { ...indicatorConfig.wma, ...(savedConfig.wma || {}) },
+                hma: { ...indicatorConfig.hma, ...(savedConfig.hma || {}) },
                 pnl: { ...indicatorConfig.pnl, ...savedConfig.pnl }
             };
         }
@@ -1141,6 +1184,9 @@ function loadConfigToModal() {
     document.getElementById('showWMA').checked = indicatorConfig.wma?.show !== false;
     document.getElementById('wmaPeriod').value = indicatorConfig.wma?.period || 60;
 
+    document.getElementById('showHMA').checked = indicatorConfig.hma?.show !== false;
+    document.getElementById('hmaPeriod').value = indicatorConfig.hma?.period || 60;
+
     document.getElementById('initialCapital').value = indicatorConfig.pnl.initialCapital;
     document.getElementById('defaultLeverage').value = indicatorConfig.pnl.defaultLeverage;
 }
@@ -1161,6 +1207,9 @@ function saveIndicatorConfig() {
 
     indicatorConfig.wma.show = document.getElementById('showWMA').checked;
     indicatorConfig.wma.period = parseInt(document.getElementById('wmaPeriod').value);
+
+    indicatorConfig.hma.show = document.getElementById('showHMA').checked;
+    indicatorConfig.hma.period = parseInt(document.getElementById('hmaPeriod').value);
 
     indicatorConfig.pnl.initialCapital = parseFloat(document.getElementById('initialCapital').value);
     indicatorConfig.pnl.defaultLeverage = parseInt(document.getElementById('defaultLeverage').value);

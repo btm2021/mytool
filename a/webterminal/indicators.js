@@ -453,6 +453,101 @@ const Indicators = {
     },
 
     /**
+     * Calculate HMA (Hull Moving Average)
+     * @param {Array} closes - Array of closing prices
+     * @param {Number} period - HMA period
+     * @returns {Number} HMA value
+     */
+    calculateHMA(closes, period) {
+        if (!closes || closes.length < period) {
+            return null;
+        }
+
+        // HMA = WMA(2*WMA(n/2) - WMA(n)), sqrt(n))
+        const halfPeriod = Math.floor(period / 2);
+        const sqrtPeriod = Math.floor(Math.sqrt(period));
+
+        // Calculate WMA(n/2)
+        const wmaHalf = this.calculateWMA(closes, halfPeriod);
+        if (wmaHalf === null) return null;
+
+        // Calculate WMA(n)
+        const wmaFull = this.calculateWMA(closes, period);
+        if (wmaFull === null) return null;
+
+        // Calculate 2*WMA(n/2) - WMA(n) for all points
+        const rawHMA = [];
+        const minLength = Math.max(halfPeriod, period);
+        
+        for (let i = minLength - 1; i < closes.length; i++) {
+            const currentCloses = closes.slice(0, i + 1);
+            const wmaH = this.calculateWMA(currentCloses, halfPeriod);
+            const wmaF = this.calculateWMA(currentCloses, period);
+            
+            if (wmaH !== null && wmaF !== null) {
+                rawHMA.push(2 * wmaH - wmaF);
+            }
+        }
+
+        if (rawHMA.length < sqrtPeriod) return null;
+
+        // Calculate WMA of rawHMA with sqrt(period)
+        return this.calculateWMA(rawHMA, sqrtPeriod);
+    },
+
+    /**
+     * Calculate HMA series for all data points
+     * @param {Array} ohlcv - OHLCV data array
+     * @param {Object} params - Parameters {period: 60}
+     * @returns {Array} Array of {time, hma} objects
+     */
+    calculateHMASeries(ohlcv, params = {}) {
+        const period = params.period || 60;
+
+        if (!ohlcv || ohlcv.length < period) {
+            return [];
+        }
+
+        const closes = ohlcv.map(c => c[4]);
+        const result = [];
+        
+        const halfPeriod = Math.floor(period / 2);
+        const sqrtPeriod = Math.floor(Math.sqrt(period));
+        const minLength = period + sqrtPeriod;
+
+        for (let i = minLength - 1; i < ohlcv.length; i++) {
+            const currentCloses = closes.slice(0, i + 1);
+            
+            // Calculate raw HMA values
+            const rawHMA = [];
+            const startIdx = Math.max(halfPeriod, period) - 1;
+            
+            for (let j = startIdx; j < currentCloses.length; j++) {
+                const slicedCloses = currentCloses.slice(0, j + 1);
+                const wmaH = this.calculateWMA(slicedCloses, halfPeriod);
+                const wmaF = this.calculateWMA(slicedCloses, period);
+                
+                if (wmaH !== null && wmaF !== null) {
+                    rawHMA.push(2 * wmaH - wmaF);
+                }
+            }
+
+            if (rawHMA.length >= sqrtPeriod) {
+                const hma = this.calculateWMA(rawHMA, sqrtPeriod);
+                
+                if (hma !== null) {
+                    result.push({
+                        time: ohlcv[i][0],
+                        hma: hma
+                    });
+                }
+            }
+        }
+
+        return result;
+    },
+
+    /**
      * Calculate all indicators for a symbol
      * @param {Array} ohlcv - OHLCV data array
      * @param {Object} config - Configuration object
