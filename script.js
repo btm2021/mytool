@@ -16,6 +16,14 @@ const tools = [
         icon: '📊',
         url: 'https://btm2021.github.io/mytool/a/webterminal/'
     },
+    {
+        id: 'Feature',
+        title: 'Feature',
+        description: 'Feature build',
+        category: 'Trading',
+        icon: '📊',
+        url: 'https://btm2021.github.io/mytool/a/feature/'
+    },
     
     {
         id: 'Tradingview',
