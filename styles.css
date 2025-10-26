@@ -278,7 +278,7 @@ body {
 }
 
 .tool-card:hover {
-    background-color: #f8f9fa;
+    background-color: rgb(147, 160, 174);
 }
 
 .tool-content {

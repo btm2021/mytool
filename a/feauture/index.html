@@ -42,7 +42,6 @@
 
         <!-- Tab: Log Event -->
         <div v-show="activeTab === 'log'" class="form-section">
-          <div class="section-title">LOG NEW EVENT</div>
 
           <b-form @submit.prevent="logEvent">
             <!-- Select Event -->
@@ -62,23 +61,68 @@
               <div v-if="selectedEvent.comment" style="font-size: 10px;"><strong>COMMENT:</strong> {{
                 selectedEvent.comment }}</div>
             </div>
+            <div class="sub-events-section">
+              <div class="section-title" style="margin-bottom: 10px;">SUB EVENTS</div>
 
+              <!-- Add Sub Event -->
+              <b-form-group label="Add Sub Event">
+                <div style="display: flex; gap: 8px;">
+                  <b-form-select v-model="tempSubEventId" :options="eventOptions" style="flex: 1;">
+                    <template #first>
+                      <b-form-select-option :value="null">-- Select Sub Event --</b-form-select-option>
+                    </template>
+                  </b-form-select>
+                  <b-button variant="success" @click="addSubEvent" :disabled="!tempSubEventId"
+                    style="width: auto; padding: 6px 12px;">
+                    +
+                  </b-button>
+                </div>
+              </b-form-group>
+
+              <!-- List of Sub Events -->
+              <div v-if="subEventIds.length > 0" class="sub-events-list">
+                <div v-for="eventId in subEventIds" :key="eventId" class="sub-event-item">
+                  <div class="sub-event-info">
+                    <div style="font-weight: 600; font-size: 11px;">{{ getEventName(eventId) }}</div>
+                    <div style="font-size: 9px; color: #666;">{{ getEventType(eventId) }} | {{ getEventData(eventId) }}
+                    </div>
+                  </div>
+                  <b-button variant="danger" size="sm" @click="removeSubEvent(eventId)"
+                    style="padding: 2px 8px; font-size: 9px;">×</b-button>
+                </div>
+              </div>
+              <div v-else
+                style="padding: 10px; text-align: center; color: #999; font-size: 10px; background: #f9f9f9; border: 1px dashed #ccc;">
+                No sub events added
+              </div>
+            </div>
+            <b-row>
+              <b-col cols="6">
+                <b-form-group label="Side">
+                  <b-form-radio-group v-model="logForm.side" :options="sideOptions" required
+                    stacked></b-form-radio-group>
+                </b-form-group>
+              </b-col>
+              <b-col>
+                <b-form-group label="Result">
+                  <b-form-select v-model="logForm.result" :options="resultOptions" required></b-form-select>
+                </b-form-group>
+
+              </b-col>
+            </b-row>
             <!-- Side Selection -->
-            <b-form-group label="Side">
-              <b-form-radio-group v-model="logForm.side" :options="sideOptions" required stacked></b-form-radio-group>
-            </b-form-group>
+
 
             <!-- Result -->
-            <b-form-group label="Result">
-              <b-form-select v-model="logForm.result" :options="resultOptions" required></b-form-select>
-            </b-form-group>
 
             <!-- Notes -->
             <b-form-group label="Notes (Optional)">
               <b-form-textarea v-model="logForm.notes" rows="3"></b-form-textarea>
             </b-form-group>
 
-            <b-button type="submit" variant="primary" :disabled="!selectedEventId || loading">
+            <!-- Sub Events Section -->
+
+            <b-button type="submit" variant="primary" :disabled="!selectedEventId || loading" style="margin-top: 15px;">
               {{ loading ? 'Saving...' : 'Log Event' }}
             </b-button>
           </b-form>
@@ -163,7 +207,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="log in sortedLogs" :key="log.id">
+              <tr v-for="log in sortedLogs" :key="log.id" @click="openLogDetail(log)" style="cursor: pointer;">
                 <td>{{ formatTimestamp(log.created) }}</td>
                 <td style="font-weight: 600;">{{ getEventName(log.event_id) }}</td>
                 <td>{{ getEventType(log.event_id) }}</td>
@@ -178,7 +222,7 @@
                 <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                   {{ log.notes || '-' }}
                 </td>
-                <td>
+                <td @click.stop>
                   <b-button variant="danger" size="sm" @click="deleteLog(log.id)">Del</b-button>
                 </td>
               </tr>
@@ -187,6 +231,77 @@
         </div>
       </div>
     </div>
+
+    <!-- Loading Overlay -->
+    <div v-if="loading" class="loading-overlay">
+      <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">{{ overlayMessage }}</div>
+      </div>
+    </div>
+
+    <!-- Log Detail Modal -->
+    <b-modal v-model="showLogDetailModal" title="LOG DETAILS & ADDITIONAL EVENTS" size="lg" hide-footer>
+      <div v-if="selectedLog">
+        <!-- Main Event Info -->
+        <div class="modal-section">
+          <h6 class="modal-section-title">MAIN EVENT</h6>
+          <div class="event-detail-box">
+            <div><strong>Event:</strong> {{ getEventName(selectedLog.event_id) }}</div>
+            <div><strong>Type:</strong> {{ getEventType(selectedLog.event_id) }}</div>
+            <div><strong>Data:</strong> {{ getEventData(selectedLog.event_id) }}</div>
+            <div><strong>Side:</strong> <span :class="selectedLog.side === 'long' ? 'side-long' : 'side-short'">{{
+                selectedLog.side.toUpperCase() }}</span></div>
+            <div><strong>Result:</strong> <span
+                :style="{ color: selectedLog.result === 'win' ? '#008000' : selectedLog.result === 'loss' ? '#d00' : '#666', fontWeight: '600' }">{{
+                selectedLog.result.toUpperCase() }}</span></div>
+            <div><strong>Notes:</strong> {{ selectedLog.notes || '-' }}</div>
+            <div><strong>Time:</strong> {{ formatTimestamp(selectedLog.created) }}</div>
+          </div>
+        </div>
+
+        <!-- Additional Events -->
+        <div class="modal-section">
+          <h6 class="modal-section-title">ADDITIONAL EVENTS</h6>
+
+          <!-- Add Event Selector -->
+          <b-form-group label="Add Event">
+            <div style="display: flex; gap: 8px;">
+              <b-form-select v-model="tempEventId" :options="eventOptions" style="flex: 1;">
+                <template #first>
+                  <b-form-select-option :value="null">-- Select Event to Add --</b-form-select-option>
+                </template>
+              </b-form-select>
+              <b-button variant="primary" @click="addAdditionalEvent(tempEventId); tempEventId = null;"
+                :disabled="!tempEventId" style="width: auto;">
+                Add
+              </b-button>
+            </div>
+          </b-form-group>
+
+          <!-- List of Additional Events -->
+          <div v-if="additionalEventIds.length > 0" class="additional-events-list">
+            <div v-for="eventId in additionalEventIds" :key="eventId" class="additional-event-item">
+              <div class="additional-event-info">
+                <div style="font-weight: 600;">{{ getEventName(eventId) }}</div>
+                <div style="font-size: 10px; color: #666;">{{ getEventType(eventId) }} | {{ getEventData(eventId) }}
+                </div>
+              </div>
+              <b-button variant="danger" size="sm" @click="removeAdditionalEvent(eventId)">Remove</b-button>
+            </div>
+          </div>
+          <div v-else style="padding: 20px; text-align: center; color: #999; font-size: 11px;">
+            No additional events added yet
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 8px; margin-top: 20px;">
+          <b-button variant="primary" @click="saveAdditionalEvents" style="flex: 1;">Save Changes</b-button>
+          <b-button variant="secondary" @click="showLogDetailModal = false" style="flex: 1;">Cancel</b-button>
+        </div>
+      </div>
+    </b-modal>
   </div>
 
   <!-- Vue 2 -->
