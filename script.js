@@ -22,7 +22,7 @@ const tools = [
         description: 'Feature build',
         category: 'Trading',
         icon: '📊',
-        url: 'https://btm2021.github.io/mytool/a/feature/'
+        url: 'https://btm2021.github.io/mytool/a/feauture/'
     },
     
     {
