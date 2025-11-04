@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
+    <script src="./dist/lwc-plugin-fill.umd.cjs"></script>
 </head>
 
 <body>
@@ -29,7 +30,7 @@
             <input type="number" id="candleCount" value="10000" min="100" placeholder="Nến">
             <button id="loadData">Load Data</button>
         </div>
-        
+
         <div class="nav-group replay-controls">
             <button id="replayBtn">Replay</button>
             <button id="playPauseBtn" disabled>Play</button>
@@ -40,13 +41,13 @@
                 <button class="speed-btn" data-speed="50">50x</button>
             </div>
         </div>
-        
+
         <div class="nav-group backtest-controls">
             <button id="clearBacktestBtn">Clear</button>
             <button id="cacheManagerBtn">Cache</button>
             <button id="indicatorSettingsBtn">Settings</button>
         </div>
-        
+
         <div class="nav-group status-info">
             <span id="status">Ready</span>
             <span id="progress"></span>
@@ -121,12 +122,12 @@
                         <span id="cache-storage-size" class="cache-stat-value">0 MB</span>
                     </div>
                 </div>
-                
+
                 <div class="cache-controls">
                     <button id="refreshCacheBtn">Refresh</button>
                     <button id="clearAllCacheBtn">Clear All</button>
                 </div>
-                
+
                 <div class="cache-table-container">
                     <table id="cache-table">
                         <thead>
@@ -177,7 +178,7 @@
                         <span id="modal-duration" class="info-value"></span>
                     </div>
                 </div>
-                
+
                 <div class="profit-analysis">
                     <div class="analysis-header">Phân Tích Lợi Nhuận Tối Đa</div>
                     <div class="analysis-content">
@@ -199,7 +200,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div id="modal-chart"></div>
             </div>
         </div>
@@ -236,13 +237,18 @@
                             <tr>
                                 <th class="favorite-header">★</th>
                                 <th data-sort="symbol" class="sortable">Symbol <span class="sort-indicator"></span></th>
-                                <th data-sort="lastPrice" class="sortable">Last Price <span class="sort-indicator"></span></th>
-                                <th data-sort="quoteVolume" class="sortable">Volume (USDT) <span class="sort-indicator"></span></th>
-                                <th data-sort="priceChangePercent" class="sortable">Change % <span class="sort-indicator"></span></th>
+                                <th data-sort="lastPrice" class="sortable">Last Price <span
+                                        class="sort-indicator"></span></th>
+                                <th data-sort="quoteVolume" class="sortable">Volume (USDT) <span
+                                        class="sort-indicator"></span></th>
+                                <th data-sort="priceChangePercent" class="sortable">Change % <span
+                                        class="sort-indicator"></span></th>
                             </tr>
                         </thead>
                         <tbody id="symbol-table-body">
-                            <tr><td colspan="5" class="loading-row">Loading symbols...</td></tr>
+                            <tr>
+                                <td colspan="5" class="loading-row">Loading symbols...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -258,66 +264,112 @@
                 <span class="modal-close settings-modal-close">&times;</span>
             </div>
             <div class="modal-body">
-                <div class="settings-section">
-                    <h3>Bot ATR Settings</h3>
-                    <div class="setting-group">
-                        <label for="bot-ema-length">EMA Length:</label>
-                        <input type="number" id="bot-ema-length" value="30" min="1" max="200">
+                <div class="settings-grid">
+                    <!-- Bot ATR Settings -->
+                    <div class="settings-section" id="botATRSection">
+                        <div class="settings-section-header">
+                            <h3>Bot ATR</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="botATRToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="bot-ema-length">EMA Length:</label>
+                                <input type="number" id="bot-ema-length" value="30" min="1" max="200">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot-atr-length">ATR Length:</label>
+                                <input type="number" id="bot-atr-length" value="14" min="1" max="100">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot-atr-multiplier">ATR Multiplier:</label>
+                                <input type="number" id="bot-atr-multiplier" value="2.0" min="0.1" max="10" step="0.1">
+                            </div>
+                        </div>
                     </div>
-                    <div class="setting-group">
-                        <label for="bot-atr-length">ATR Length:</label>
-                        <input type="number" id="bot-atr-length" value="14" min="1" max="100">
+
+                    <!-- VSR Settings -->
+                    <div class="settings-section" id="vsrSection">
+                        <div class="settings-section-header">
+                            <h3>VSR Indicator</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="vsrToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="vsr-length">Length:</label>
+                                <input type="number" id="vsr-length" value="10" min="1" max="100">
+                            </div>
+                            <div class="setting-group">
+                                <label for="vsr-threshold">Threshold:</label>
+                                <input type="number" id="vsr-threshold" value="10" min="1" max="100">
+                            </div>
+                        </div>
                     </div>
-                    <div class="setting-group">
-                        <label for="bot-atr-multiplier">ATR Multiplier:</label>
-                        <input type="number" id="bot-atr-multiplier" value="2.0" min="0.1" max="10" step="0.1">
+
+                    <!-- Donchian Channel Settings -->
+                    <div class="settings-section" id="donchianSection">
+                        <div class="settings-section-header">
+                            <h3>Donchian Channel</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="donchianToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="donchian-length">Length:</label>
+                                <input type="number" id="donchian-length" value="50" min="1" max="200">
+                            </div>
+                            <div class="setting-group">
+                                <label for="donchian-upper-color">Upper Color:</label>
+                                <input type="color" id="donchian-upper-color" value="#0000ff">
+                            </div>
+                            <div class="setting-group">
+                                <label for="donchian-lower-color">Lower Color:</label>
+                                <input type="color" id="donchian-lower-color" value="#0000ff">
+                            </div>
+                            <div class="setting-group">
+                                <label for="donchian-middle-color">Middle Color:</label>
+                                <input type="color" id="donchian-middle-color" value="#0000ff">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tenkansen Settings -->
+                    <div class="settings-section" id="tenkansenSection">
+                        <div class="settings-section-header">
+                            <h3>Tenkansen (Baseline)</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="tenkansenToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="tenkansen-length">Length:</label>
+                                <input type="number" id="tenkansen-length" value="50" min="1" max="200">
+                            </div>
+                            <div class="setting-group">
+                                <label for="tenkansen-color">Color:</label>
+                                <input type="color" id="tenkansen-color" value="#ffa500">
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="settings-section">
-                    <h3>VSR Settings</h3>
-                    <div class="setting-group">
-                        <label for="vsr-length">Length:</label>
-                        <input type="number" id="vsr-length" value="10" min="1" max="100">
-                    </div>
-                    <div class="setting-group">
-                        <label for="vsr-threshold">Threshold:</label>
-                        <input type="number" id="vsr-threshold" value="10" min="1" max="100">
-                    </div>
-                </div>
-                
-                <div class="settings-section">
-                    <h3>Donchian Channel Settings</h3>
-                    <div class="setting-group">
-                        <label for="donchian-length">Length:</label>
-                        <input type="number" id="donchian-length" value="50" min="1" max="200">
-                    </div>
-                    <div class="setting-group">
-                        <label for="donchian-upper-color">Upper Color:</label>
-                        <input type="color" id="donchian-upper-color" value="#0000ff">
-                    </div>
-                    <div class="setting-group">
-                        <label for="donchian-lower-color">Lower Color:</label>
-                        <input type="color" id="donchian-lower-color" value="#0000ff">
-                    </div>
-                    <div class="setting-group">
-                        <label for="donchian-middle-color">Middle Color:</label>
-                        <input type="color" id="donchian-middle-color" value="#0000ff">
-                    </div>
-                </div>
-                
-                <div class="settings-section">
-                    <h3>Tenkansen (Baseline) Settings</h3>
-                    <div class="setting-group">
-                        <label for="tenkansen-length">Length:</label>
-                        <input type="number" id="tenkansen-length" value="50" min="1" max="200">
-                    </div>
-                    <div class="setting-group">
-                        <label for="tenkansen-color">Color:</label>
-                        <input type="color" id="tenkansen-color" value="#ffa500">
-                    </div>
-                </div>
-                
+
                 <div class="settings-controls">
                     <button id="resetSettingsBtn">Reset to Default</button>
                     <button id="applySettingsBtn">Apply Settings</button>
@@ -325,7 +377,7 @@
             </div>
         </div>
     </div>
-
+    <script src="./dist/lwc-plugin-fill.umd.cjs"></script>
     <script src="binance-api.js"></script>
     <script src="symbol-selector.js"></script>
     <script src="botatr.js"></script>

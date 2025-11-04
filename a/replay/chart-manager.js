@@ -85,27 +85,9 @@ class ChartManager {
         });
 
 
-        // Create VSR Upper Line series (upper boundary line)
-        this.vsrUpperLineSeries = this.chart.addLineSeries({
-            color: 'rgba(0, 255, 0, 1.0)',         // Solid green line
-            lineWidth: 2,
-            lineStyle: LightweightCharts.LineStyle.Dotted,
-            title: 'VSR Upper',
-            crosshairMarkerVisible: true,
-            priceLineVisible: false,
-            axisLabelVisible:false
-        });
-
-        // Create VSR Lower Line series (lower boundary line)
-        this.vsrLowerLineSeries = this.chart.addLineSeries({
-            color: 'rgba(0, 255, 0, 1.0)',         // Solid green line
-            lineWidth: 2,
-            lineStyle: LightweightCharts.LineStyle.Dotted,
-            title: 'VSR Lower',
-            priceLineVisible: false,
-            axisLabelVisible: false,
-            crosshairMarkerVisible: true,
-        });
+        // VSR will use FillRect plugin instead of line series
+        // Store VSR rectangles array
+        this.vsrRectangles = [];
 
         // Create Donchian Channel series
         this.donchianUpperSeries = this.chart.addLineSeries({
@@ -169,12 +151,8 @@ class ChartManager {
         if (this.trail2Series) {
             this.trail2Series.setData([]);
         }
-        if (this.vsrUpperLineSeries) {
-            this.vsrUpperLineSeries.setData([]);
-        }
-        if (this.vsrLowerLineSeries) {
-            this.vsrLowerLineSeries.setData([]);
-        }
+        // Clear VSR rectangles
+        this.clearVSRRectangles();
         if (this.donchianUpperSeries) {
             this.donchianUpperSeries.setData([]);
         }
@@ -211,17 +189,15 @@ class ChartManager {
     }
 
 
-    // Add VSR upper line point to the chart
-    addVSRUpperLinePoint(point) {
-        if (this.vsrUpperLineSeries && point) {
-            this.vsrUpperLineSeries.update(point);
-        }
-    }
-
-    // Add VSR lower line point to the chart
-    addVSRLowerLinePoint(point) {
-        if (this.vsrLowerLineSeries && point) {
-            this.vsrLowerLineSeries.update(point);
+    // Clear all VSR rectangles
+    clearVSRRectangles() {
+        if (this.vsrRectangles && this.vsrRectangles.length > 0) {
+            this.vsrRectangles.forEach(rect => {
+                if (this.candlestickSeries) {
+                    this.candlestickSeries.detachPrimitive(rect);
+                }
+            });
+            this.vsrRectangles = [];
         }
     }
 
@@ -343,69 +319,92 @@ class ChartManager {
         }
     }
 
-    // Set all VSR Upper Line data at once
-    setVSRUpperLineData(data) {
-        if (this.vsrUpperLineSeries && data && data.length > 0) {
-            // Determine precision based on data values
-            const values = data.map(d => d.value);
-            const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+    // Set VSR data using FillRect plugin
+    setVSRData(upperData, lowerData) {
+        // Clear existing rectangles
+        this.clearVSRRectangles();
+        
+        if (!upperData || !lowerData || upperData.length === 0 || lowerData.length === 0) {
+            return;
+        }
+        
+        // Create rectangles for each VSR zone
+        // Group consecutive points with same upper/lower values
+        let currentUpper = null;
+        let currentLower = null;
+        let startTime = null;
+        
+        for (let i = 0; i < Math.max(upperData.length, lowerData.length); i++) {
+            const upperPoint = upperData[i];
+            const lowerPoint = lowerData[i];
             
-            let precision = 2;
-            let minMove = 0.01;
+            // Get current values
+            const upperValue = upperPoint ? upperPoint.value : currentUpper;
+            const lowerValue = lowerPoint ? lowerPoint.value : currentLower;
+            const currentTime = (upperPoint || lowerPoint).time;
             
-            if (avgValue < 1) {
-                precision = 6;
-                minMove = 0.0001;
-            } else if (avgValue < 10) {
-                precision = 4;
-                minMove = 0.0001;
-            } else if (avgValue < 100) {
-                precision = 3;
-                minMove = 0.001;
+            // Check if we need to create a new rectangle
+            const valuesChanged = (upperValue !== currentUpper || lowerValue !== currentLower);
+            
+            if (valuesChanged && currentUpper !== null && currentLower !== null && startTime !== null) {
+                // Create rectangle for previous zone
+                const rect = new FillRect.FillRect(
+                    { time: startTime, price: currentLower },
+                    { time: currentTime, price: currentUpper },
+                    {
+                        fillColor: 'rgba(255, 251, 0, 0.5)',
+                        showLabels: false
+                    }
+                );
+                
+                this.candlestickSeries.attachPrimitive(rect);
+                this.vsrRectangles.push(rect);
             }
             
-            this.vsrUpperLineSeries.applyOptions({
-                priceFormat: {
-                    type: 'price',
-                    precision: precision,
-                    minMove: minMove,
-                },
-            });
+            // Update current values
+            if (valuesChanged) {
+                currentUpper = upperValue;
+                currentLower = lowerValue;
+                startTime = currentTime;
+            }
+        }
+        
+        // Create final rectangle if exists
+        if (currentUpper !== null && currentLower !== null && startTime !== null) {
+            // Get the last time from data
+            const lastTime = Math.max(
+                upperData.length > 0 ? upperData[upperData.length - 1].time : 0,
+                lowerData.length > 0 ? lowerData[lowerData.length - 1].time : 0
+            );
             
-            this.vsrUpperLineSeries.setData(data);
+            const rect = new  FillRect.FillRect(
+                { time: startTime, price: currentLower },
+                { time: lastTime, price: currentUpper },
+                {
+                    fillColor: 'rgba(255, 251, 0, 0.5)',
+                    showLabels: false
+                }
+            );
+            
+            this.candlestickSeries.attachPrimitive(rect);
+            this.vsrRectangles.push(rect);
         }
     }
 
-    // Set all VSR Lower Line data at once
+    // Backward compatibility - convert old API to new
+    setVSRUpperLineData(data) {
+        // Store for later use with setVSRLowerLineData
+        this._vsrUpperData = data;
+        if (this._vsrLowerData) {
+            this.setVSRData(this._vsrUpperData, this._vsrLowerData);
+        }
+    }
+
     setVSRLowerLineData(data) {
-        if (this.vsrLowerLineSeries && data && data.length > 0) {
-            // Determine precision based on data values
-            const values = data.map(d => d.value);
-            const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
-            
-            let precision = 2;
-            let minMove = 0.01;
-            
-            if (avgValue < 1) {
-                precision = 6;
-                minMove = 0.0001;
-            } else if (avgValue < 10) {
-                precision = 4;
-                minMove = 0.0001;
-            } else if (avgValue < 100) {
-                precision = 3;
-                minMove = 0.001;
-            }
-            
-            this.vsrLowerLineSeries.applyOptions({
-                priceFormat: {
-                    type: 'price',
-                    precision: precision,
-                    minMove: minMove,
-                },
-            });
-            
-            this.vsrLowerLineSeries.setData(data);
+        // Store for later use with setVSRUpperLineData
+        this._vsrLowerData = data;
+        if (this._vsrUpperData) {
+            this.setVSRData(this._vsrUpperData, this._vsrLowerData);
         }
     }
 
@@ -462,8 +461,8 @@ class ChartManager {
             this.candlestickSeries = null;
             this.trail1Series = null;
             this.trail2Series = null;
-            this.vsrUpperLineSeries = null;
-            this.vsrLowerLineSeries = null;
+            this.clearVSRRectangles();
+            this.vsrRectangles = null;
             this.donchianUpperSeries = null;
             this.donchianLowerSeries = null;
             this.donchianMiddleSeries = null;

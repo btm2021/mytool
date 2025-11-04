@@ -1,0 +1,22 @@
+{
+    "name": "lwc-plugin-fill",
+    "version": "1.0.0",
+    "keywords": [
+        "lwc-plugin",
+        "lightweight-charts"
+    ],
+    "type": "module",
+    "main": "./lwc-plugin-fill.umd.cjs",
+    "module": "./lwc-plugin-fill.js",
+    "types": "./lwc-plugin-fill.d.ts",
+    "exports": {
+        "import": {
+            "types": "./lwc-plugin-fill.d.ts",
+            "default": "./lwc-plugin-fill.js"
+        },
+        "require": {
+            "types": "./lwc-plugin-fill.d.cts",
+            "default": "./lwc-plugin-fill.umd.cjs"
+        }
+    }
+}

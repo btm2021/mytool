@@ -14,15 +14,18 @@ class TradingApp {
             // Indicator settings with default values
             this.indicatorSettings = {
                 botATR: {
+                    enabled: true,
                     emaLength: 30,
                     atrLength: 14,
                     atrMultiplier: 2.0
                 },
                 vsr: {
+                    enabled: true,
                     length: 10,
                     threshold: 10
                 },
                 donchian: {
+                    enabled: true,
                     length: 50,
                     colors: {
                         upper: 'rgba(0, 0, 255, 0.8)',
@@ -31,6 +34,7 @@ class TradingApp {
                     }
                 },
                 tenkansen: {
+                    enabled: true,
                     length: 50,
                     color: 'rgba(255, 165, 0, 0.8)'
                 }
@@ -493,40 +497,48 @@ class TradingApp {
             // Show all data on chart initially
             this.chartManager.setCandlestickData(data);
 
-            // Calculate and show full ATR indicators
-            const botATR = new BotATRIndicator(
-                this.indicatorSettings.botATR.emaLength,
-                this.indicatorSettings.botATR.atrLength,
-                this.indicatorSettings.botATR.atrMultiplier
-            );
-            const atrData = botATR.calculateArray(data);
-            this.chartManager.setTrail1Data(atrData.ema);
-            this.chartManager.setTrail2Data(atrData.trail);
+            // Calculate and show full ATR indicators if enabled
+            if (this.indicatorSettings.botATR.enabled) {
+                const botATR = new BotATRIndicator(
+                    this.indicatorSettings.botATR.emaLength,
+                    this.indicatorSettings.botATR.atrLength,
+                    this.indicatorSettings.botATR.atrMultiplier
+                );
+                const atrData = botATR.calculateArray(data);
+                this.chartManager.setTrail1Data(atrData.ema);
+                this.chartManager.setTrail2Data(atrData.trail);
+            }
 
-            // Calculate and show VSR indicators
-            const vsr = new VSRIndicator(
-                this.indicatorSettings.vsr.length,
-                this.indicatorSettings.vsr.threshold
-            );
-            const vsrData = vsr.calculateArray(data);
-            this.chartManager.setVSRUpperLineData(vsrData.upper);
-            this.chartManager.setVSRLowerLineData(vsrData.lower);
+            // Calculate and show VSR indicators if enabled
+            if (this.indicatorSettings.vsr.enabled) {
+                const vsr = new VSRIndicator(
+                    this.indicatorSettings.vsr.length,
+                    this.indicatorSettings.vsr.threshold
+                );
+                const vsrData = vsr.calculateArray(data);
+                this.chartManager.setVSRUpperLineData(vsrData.upper);
+                this.chartManager.setVSRLowerLineData(vsrData.lower);
+            }
 
-            // Calculate and show Donchian Channel
-            const donchian = new DonchianIndicator(
-                this.indicatorSettings.donchian.length,
-                this.indicatorSettings.donchian.colors
-            );
-            const donchianData = donchian.calculateArray(data);
-            this.chartManager.setDonchianData(donchianData, this.indicatorSettings.donchian.colors);
+            // Calculate and show Donchian Channel if enabled
+            if (this.indicatorSettings.donchian.enabled) {
+                const donchian = new DonchianIndicator(
+                    this.indicatorSettings.donchian.length,
+                    this.indicatorSettings.donchian.colors
+                );
+                const donchianData = donchian.calculateArray(data);
+                this.chartManager.setDonchianData(donchianData, this.indicatorSettings.donchian.colors);
+            }
 
-            // Calculate and show Tenkan-sen
-            const tenkansen = new TenkansenIndicator(
-                this.indicatorSettings.tenkansen.length,
-                this.indicatorSettings.tenkansen.color
-            );
-            const tenkansenData = tenkansen.calculateArray(data);
-            this.chartManager.setTenkansenData(tenkansenData, this.indicatorSettings.tenkansen.color);
+            // Calculate and show Tenkan-sen if enabled
+            if (this.indicatorSettings.tenkansen.enabled) {
+                const tenkansen = new TenkansenIndicator(
+                    this.indicatorSettings.tenkansen.length,
+                    this.indicatorSettings.tenkansen.color
+                );
+                const tenkansenData = tenkansen.calculateArray(data);
+                this.chartManager.setTenkansenData(tenkansenData, this.indicatorSettings.tenkansen.color);
+            }
 
             this.chartManager.fitContent();
 
@@ -770,13 +782,8 @@ class TradingApp {
         const duration = entry.candleData.length;
         const isWin = entry.isWinByMaxPnL || false;
 
-        // Format entry date 
-        const entryDate = entry.entryTime ? new Date(entry.entryTime).toLocaleString('vi-VN', {
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        }) : '-';
+        // Format entry date - convert timestamp (seconds) to UTC+7
+        const entryDate = entry.entryTime ? this.formatTimestampToVN(entry.entryTime) : '-';
 
         // Use max price as exit price if available
         const exitPrice = entry.maxPrice || entry.exitPrice;
@@ -791,6 +798,29 @@ class TradingApp {
                 <td class="table-cell-pnl ${maxPnLPercent >= 0 ? 'positive' : 'negative'}" onclick="app.showEntryDetail(${index - 1})">${maxPnLPercent.toFixed(1)}%</td>
             </tr>
         `;
+    }
+
+    // Format timestamp to Vietnam timezone (UTC+7)
+    formatTimestampToVN(timestamp) {
+        // timestamp is in seconds, convert to milliseconds
+        const ms = timestamp * 1000;
+        
+        // Create date object
+        const date = new Date(ms);
+        
+        // Get UTC time
+        const utcTime = date.getTime();
+        
+        // Add 7 hours for Vietnam timezone (UTC+7)
+        const vnTime = new Date(utcTime + (7 * 60 * 60 * 1000));
+        
+        // Format: DD/MM HH:mm
+        const day = String(vnTime.getUTCDate()).padStart(2, '0');
+        const month = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
+        const hours = String(vnTime.getUTCHours()).padStart(2, '0');
+        const minutes = String(vnTime.getUTCMinutes()).padStart(2, '0');
+        
+        return `${day}/${month} ${hours}:${minutes}`;
     }
 
     // Generate summary row
@@ -859,8 +889,9 @@ class TradingApp {
             const csvContent = [
                 headers.join(','),
                 ...this.currentTableData.map((entry, index) => {
-                    const entryDate = entry.entryTime ? new Date(entry.entryTime).toLocaleString('vi-VN') : 'N/A';
-                    const exitDate = entry.exitTime ? new Date(entry.exitTime).toLocaleString('vi-VN') : 'N/A';
+                    // Format timestamps to VN timezone
+                    const entryDate = entry.entryTime ? this.formatTimestampToVNFull(entry.entryTime) : 'N/A';
+                    const exitDate = entry.exitTime ? this.formatTimestampToVNFull(entry.exitTime) : 'N/A';
 
                     return [
                         index + 1,
@@ -899,6 +930,31 @@ class TradingApp {
         }
     }
 
+    // Format timestamp to Vietnam timezone (UTC+7) - Full format for CSV
+    formatTimestampToVNFull(timestamp) {
+        // timestamp is in seconds, convert to milliseconds
+        const ms = timestamp * 1000;
+        
+        // Create date object
+        const date = new Date(ms);
+        
+        // Get UTC time
+        const utcTime = date.getTime();
+        
+        // Add 7 hours for Vietnam timezone (UTC+7)
+        const vnTime = new Date(utcTime + (7 * 60 * 60 * 1000));
+        
+        // Format: DD/MM/YYYY HH:mm:ss
+        const day = String(vnTime.getUTCDate()).padStart(2, '0');
+        const month = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
+        const year = vnTime.getUTCFullYear();
+        const hours = String(vnTime.getUTCHours()).padStart(2, '0');
+        const minutes = String(vnTime.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(vnTime.getUTCSeconds()).padStart(2, '0');
+        
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    }
+
     // Jump to entry time on main chart
     jumpToEntryTime(entryIndex) {
         if (!this.currentTableData || entryIndex >= this.currentTableData.length) {
@@ -906,12 +962,12 @@ class TradingApp {
         }
 
         const entry = this.currentTableData[entryIndex];
-        if (!entry.entryTime || !this.chart) {
+        if (!entry.entryTime || !this.chartManager || !this.chartManager.chart) {
             return;
         }
 
-        // Convert entry time to chart time (seconds)
-        const chartTime = Math.floor(entry.entryTime / 1000);
+        // entryTime is already in seconds, use it directly
+        const chartTime = entry.entryTime;
 
         // Set chart visible range to show the entry time in center
         const visibleRange = {
@@ -919,10 +975,11 @@ class TradingApp {
             to: chartTime + 50    // Show 50 candles after
         };
 
-        this.chart.timeScale().setVisibleRange(visibleRange);
+        this.chartManager.chart.timeScale().setVisibleRange(visibleRange);
 
-        // Highlight the entry briefly
-        this.updateStatus(`Jumped to entry #${entryIndex + 1} at ${new Date(entry.entryTime).toLocaleString('vi-VN')}`, 'info');
+        // Highlight the entry briefly with formatted VN time
+        const vnTime = this.formatTimestampToVN(entry.entryTime);
+        this.updateStatus(`Jumped to entry #${entryIndex + 1} at ${vnTime}`, 'info');
     }
 
     // Show entry detail modal
@@ -1035,12 +1092,8 @@ class TradingApp {
             maxROEElement.className = `analysis-value ${maxROE >= 0 ? 'positive' : 'negative'}`;
 
             if (maxTime) {
-                const timeStr = new Date(maxTime * 1000).toLocaleString('vi-VN', {
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+                // maxTime is in seconds, format to VN timezone
+                const timeStr = this.formatTimestampToVN(maxTime);
                 maxTimeElement.textContent = timeStr;
             } else {
                 maxTimeElement.textContent = '-';
@@ -1383,12 +1436,35 @@ class TradingApp {
         document.getElementById('donchian-middle-color').value = this.rgbaToHex(this.indicatorSettings.donchian.colors.middle);
         document.getElementById('tenkansen-color').value = this.rgbaToHex(this.indicatorSettings.tenkansen.color);
 
+        // Set toggle states
+        this.setToggleState('botATRToggle', 'botATRSection', this.indicatorSettings.botATR.enabled);
+        this.setToggleState('vsrToggle', 'vsrSection', this.indicatorSettings.vsr.enabled);
+        this.setToggleState('donchianToggle', 'donchianSection', this.indicatorSettings.donchian.enabled);
+        this.setToggleState('tenkansenToggle', 'tenkansenSection', this.indicatorSettings.tenkansen.enabled);
+
         // Show modal
         const modal = document.getElementById('indicatorSettingsModal');
         modal.style.display = 'block';
 
         // Initialize event listeners if not already done
         this.initializeSettingsModal();
+    }
+
+    // Set toggle state
+    setToggleState(toggleId, sectionId, enabled) {
+        const toggle = document.getElementById(toggleId);
+        const section = document.getElementById(sectionId);
+        const label = toggle.nextElementSibling;
+        
+        if (enabled) {
+            toggle.classList.add('active');
+            section.classList.remove('disabled');
+            label.textContent = 'Enabled';
+        } else {
+            toggle.classList.remove('active');
+            section.classList.add('disabled');
+            label.textContent = 'Disabled';
+        }
     }
 
     // Initialize settings modal event listeners
@@ -1411,6 +1487,12 @@ class TradingApp {
             }
         });
 
+        // Toggle switches
+        this.initializeToggle('botATRToggle', 'botATRSection', 'botATR');
+        this.initializeToggle('vsrToggle', 'vsrSection', 'vsr');
+        this.initializeToggle('donchianToggle', 'donchianSection', 'donchian');
+        this.initializeToggle('tenkansenToggle', 'tenkansenSection', 'tenkansen');
+
         // Settings buttons
         document.getElementById('resetSettingsBtn').addEventListener('click', () => {
             this.resetIndicatorSettings();
@@ -1418,6 +1500,25 @@ class TradingApp {
 
         document.getElementById('applySettingsBtn').addEventListener('click', () => {
             this.applyIndicatorSettings();
+        });
+    }
+
+    // Initialize toggle switch
+    initializeToggle(toggleId, sectionId, indicatorKey) {
+        const toggle = document.getElementById(toggleId);
+        const section = document.getElementById(sectionId);
+        const label = toggle.nextElementSibling;
+        
+        toggle.addEventListener('click', () => {
+            const isActive = toggle.classList.toggle('active');
+            
+            if (isActive) {
+                section.classList.remove('disabled');
+                label.textContent = 'Enabled';
+            } else {
+                section.classList.add('disabled');
+                label.textContent = 'Disabled';
+            }
         });
     }
 
@@ -1431,15 +1532,18 @@ class TradingApp {
     resetIndicatorSettings() {
         this.indicatorSettings = {
             botATR: {
+                enabled: true,
                 emaLength: 30,
                 atrLength: 14,
                 atrMultiplier: 2.0
             },
             vsr: {
+                enabled: true,
                 length: 10,
                 threshold: 10
             },
             donchian: {
+                enabled: true,
                 length: 50,
                 colors: {
                     upper: 'rgba(0, 0, 255, 0.8)',
@@ -1448,6 +1552,7 @@ class TradingApp {
                 }
             },
             tenkansen: {
+                enabled: true,
                 length: 50,
                 color: 'rgba(255, 165, 0, 0.8)'
             }
@@ -1466,11 +1571,23 @@ class TradingApp {
         document.getElementById('donchian-middle-color').value = '#0000ff';
         document.getElementById('tenkansen-color').value = '#ffa500';
 
+        // Reset toggle states
+        this.setToggleState('botATRToggle', 'botATRSection', true);
+        this.setToggleState('vsrToggle', 'vsrSection', true);
+        this.setToggleState('donchianToggle', 'donchianSection', true);
+        this.setToggleState('tenkansenToggle', 'tenkansenSection', true);
+
         this.updateStatus('Settings reset to default', 'info');
     }
 
     // Apply indicator settings
     applyIndicatorSettings() {
+        // Get enabled states from toggles
+        const botATREnabled = document.getElementById('botATRToggle').classList.contains('active');
+        const vsrEnabled = document.getElementById('vsrToggle').classList.contains('active');
+        const donchianEnabled = document.getElementById('donchianToggle').classList.contains('active');
+        const tenkansenEnabled = document.getElementById('tenkansenToggle').classList.contains('active');
+
         // Get values from form
         const botEmaLength = parseInt(document.getElementById('bot-ema-length').value);
         const botAtrLength = parseInt(document.getElementById('bot-atr-length').value);
@@ -1516,16 +1633,20 @@ class TradingApp {
             return;
         }
 
-        // Update settings
+        // Update settings with enabled states
+        this.indicatorSettings.botATR.enabled = botATREnabled;
         this.indicatorSettings.botATR.emaLength = botEmaLength;
         this.indicatorSettings.botATR.atrLength = botAtrLength;
         this.indicatorSettings.botATR.atrMultiplier = botAtrMultiplier;
+        this.indicatorSettings.vsr.enabled = vsrEnabled;
         this.indicatorSettings.vsr.length = vsrLength;
         this.indicatorSettings.vsr.threshold = vsrThreshold;
+        this.indicatorSettings.donchian.enabled = donchianEnabled;
         this.indicatorSettings.donchian.length = donchianLength;
         this.indicatorSettings.donchian.colors.upper = donchianUpperColor;
         this.indicatorSettings.donchian.colors.lower = donchianLowerColor;
         this.indicatorSettings.donchian.colors.middle = donchianMiddleColor;
+        this.indicatorSettings.tenkansen.enabled = tenkansenEnabled;
         this.indicatorSettings.tenkansen.length = tenkansenLength;
         this.indicatorSettings.tenkansen.color = tenkansenColor;
 
@@ -1536,6 +1657,11 @@ class TradingApp {
         if (this.currentData && this.currentData.length > 0) {
             this.updateStatus('Applying new indicator settings...', 'loading');
             this.reloadIndicators();
+            
+            // Re-run backtest with new settings
+            setTimeout(() => {
+                this.runBacktest();
+            }, 500);
         } else {
             this.updateStatus('Settings applied. Load data to see changes.', 'success');
         }
@@ -1546,40 +1672,62 @@ class TradingApp {
         if (!this.currentData || this.currentData.length === 0) return;
 
         try {
-            // Recalculate ATR indicators
-            const botATR = new BotATRIndicator(
-                this.indicatorSettings.botATR.emaLength,
-                this.indicatorSettings.botATR.atrLength,
-                this.indicatorSettings.botATR.atrMultiplier
-            );
-            const atrData = botATR.calculateArray(this.currentData);
-            this.chartManager.setTrail1Data(atrData.ema);
-            this.chartManager.setTrail2Data(atrData.trail);
+            // Recalculate and show/hide ATR indicators based on enabled state
+            if (this.indicatorSettings.botATR.enabled) {
+                const botATR = new BotATRIndicator(
+                    this.indicatorSettings.botATR.emaLength,
+                    this.indicatorSettings.botATR.atrLength,
+                    this.indicatorSettings.botATR.atrMultiplier
+                );
+                const atrData = botATR.calculateArray(this.currentData);
+                this.chartManager.setTrail1Data(atrData.ema);
+                this.chartManager.setTrail2Data(atrData.trail);
+            } else {
+                // Clear ATR indicators
+                this.chartManager.setTrail1Data([]);
+                this.chartManager.setTrail2Data([]);
+            }
 
-            // Recalculate VSR indicators
-            const vsr = new VSRIndicator(
-                this.indicatorSettings.vsr.length,
-                this.indicatorSettings.vsr.threshold
-            );
-            const vsrData = vsr.calculateArray(this.currentData);
-            this.chartManager.setVSRUpperLineData(vsrData.upper);
-            this.chartManager.setVSRLowerLineData(vsrData.lower);
+            // Recalculate and show/hide VSR indicators based on enabled state
+            if (this.indicatorSettings.vsr.enabled) {
+                const vsr = new VSRIndicator(
+                    this.indicatorSettings.vsr.length,
+                    this.indicatorSettings.vsr.threshold
+                );
+                const vsrData = vsr.calculateArray(this.currentData);
+                this.chartManager.setVSRUpperLineData(vsrData.upper);
+                this.chartManager.setVSRLowerLineData(vsrData.lower);
+            } else {
+                // Clear VSR indicators
+                this.chartManager.setVSRUpperLineData([]);
+                this.chartManager.setVSRLowerLineData([]);
+            }
 
-            // Recalculate Donchian Channel
-            const donchian = new DonchianIndicator(
-                this.indicatorSettings.donchian.length,
-                this.indicatorSettings.donchian.colors
-            );
-            const donchianData = donchian.calculateArray(this.currentData);
-            this.chartManager.setDonchianData(donchianData, this.indicatorSettings.donchian.colors);
+            // Recalculate and show/hide Donchian Channel based on enabled state
+            if (this.indicatorSettings.donchian.enabled) {
+                const donchian = new DonchianIndicator(
+                    this.indicatorSettings.donchian.length,
+                    this.indicatorSettings.donchian.colors
+                );
+                const donchianData = donchian.calculateArray(this.currentData);
+                this.chartManager.setDonchianData(donchianData, this.indicatorSettings.donchian.colors);
+            } else {
+                // Clear Donchian Channel
+                this.chartManager.setDonchianData({ upper: [], middle: [], lower: [] }, this.indicatorSettings.donchian.colors);
+            }
 
-            // Recalculate Tenkan-sen
-            const tenkansen = new TenkansenIndicator(
-                this.indicatorSettings.tenkansen.length,
-                this.indicatorSettings.tenkansen.color
-            );
-            const tenkansenData = tenkansen.calculateArray(this.currentData);
-            this.chartManager.setTenkansenData(tenkansenData, this.indicatorSettings.tenkansen.color);
+            // Recalculate and show/hide Tenkan-sen based on enabled state
+            if (this.indicatorSettings.tenkansen.enabled) {
+                const tenkansen = new TenkansenIndicator(
+                    this.indicatorSettings.tenkansen.length,
+                    this.indicatorSettings.tenkansen.color
+                );
+                const tenkansenData = tenkansen.calculateArray(this.currentData);
+                this.chartManager.setTenkansenData(tenkansenData, this.indicatorSettings.tenkansen.color);
+            } else {
+                // Clear Tenkan-sen
+                this.chartManager.setTenkansenData([], this.indicatorSettings.tenkansen.color);
+            }
 
             // Update replay engine with new settings
             this.replayEngine.botATR = new BotATRIndicator(

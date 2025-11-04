@@ -69,15 +69,48 @@ class BinanceAPI {
     }
 
     // Convert Binance kline data to chart format
+    // Note: Binance timestamps are in UTC (milliseconds)
+    // We convert to seconds for LightweightCharts
+    // Display conversion to UTC+7 (Vietnam) is handled in the UI layer
     formatKlineData(klines) {
         return klines.map(kline => ({
-            time: Math.floor(kline[0] / 1000), // Convert to seconds
+            time: Math.floor(kline[0] / 1000), // Convert milliseconds to seconds (UTC)
             open: parseFloat(kline[1]),
             high: parseFloat(kline[2]),
             low: parseFloat(kline[3]),
             close: parseFloat(kline[4]),
             volume: parseFloat(kline[5])
         }));
+    }
+
+    // Convert UTC timestamp (seconds) to Vietnam timezone (UTC+7)
+    // This is a utility function for display purposes
+    static convertToVietnamTime(timestampSeconds) {
+        const ms = timestampSeconds * 1000;
+        const date = new Date(ms);
+        const utcTime = date.getTime();
+        const vnTime = new Date(utcTime + (7 * 60 * 60 * 1000));
+        return vnTime;
+    }
+
+    // Format timestamp to Vietnam timezone string
+    static formatToVietnamTime(timestampSeconds, format = 'short') {
+        const vnTime = BinanceAPI.convertToVietnamTime(timestampSeconds);
+        
+        const day = String(vnTime.getUTCDate()).padStart(2, '0');
+        const month = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
+        const year = vnTime.getUTCFullYear();
+        const hours = String(vnTime.getUTCHours()).padStart(2, '0');
+        const minutes = String(vnTime.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(vnTime.getUTCSeconds()).padStart(2, '0');
+        
+        if (format === 'short') {
+            return `${day}/${month} ${hours}:${minutes}`;
+        } else if (format === 'full') {
+            return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+        } else {
+            return vnTime.toISOString();
+        }
     }
 
     // Main method to fetch historical data with batching
