@@ -1,0 +1,22 @@
+{
+    "name": "lwc-plugin-bandfill",
+    "version": "1.0.0",
+    "keywords": [
+        "lwc-plugin",
+        "lightweight-charts"
+    ],
+    "type": "module",
+    "main": "./lwc-plugin-bandfill.umd.cjs",
+    "module": "./lwc-plugin-bandfill.js",
+    "types": "./lwc-plugin-bandfill.d.ts",
+    "exports": {
+        "import": {
+            "types": "./lwc-plugin-bandfill.d.ts",
+            "default": "./lwc-plugin-bandfill.js"
+        },
+        "require": {
+            "types": "./lwc-plugin-bandfill.d.cts",
+            "default": "./lwc-plugin-bandfill.umd.cjs"
+        }
+    }
+}
