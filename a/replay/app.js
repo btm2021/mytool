@@ -62,6 +62,23 @@ class TradingApp {
                     length: 50,
                     color: 'rgba(255, 165, 0, 0.8)'
                 },
+                smc: {
+                    enabled: false,
+                    leftBars: 8,
+                    rightBars: 8,
+                    useBos: false,
+                    sweepX: false,
+                    colors: {
+                        chochBullish: '#0ecb81',
+                        chochBearish: '#f6465d',
+                        bosBullish: 'rgba(14, 203, 129, 0.7)',
+                        bosBearish: 'rgba(246, 70, 93, 0.7)',
+                        strongHigh: '#e53935',
+                        strongLow: '#00897b',
+                        weakHigh: '#f57f17',
+                        weakLow: '#43a047'
+                    }
+                },
                 tradeMarkers: {
                     enabled: true,
                     buyColor: '#00ff00',
@@ -644,6 +661,43 @@ class TradingApp {
                 );
                 const tenkansenData = tenkansen.calculateArray(data);
                 this.chartManager.setTenkansenData(tenkansenData, this.indicatorSettings.tenkansen.color);
+            }
+
+            // Calculate and show SMC if enabled
+            if (this.indicatorSettings.smc.enabled) {
+                const smc = new SMCIndicator({
+                    leftBars: this.indicatorSettings.smc.leftBars,
+                    rightBars: this.indicatorSettings.smc.rightBars,
+                    useBos: this.indicatorSettings.smc.useBos,
+                    sweepX: this.indicatorSettings.smc.sweepX
+                });
+                const smcData = smc.calculateArray(data);
+                
+                // Color candles based on trend
+                const coloredCandles = data.map(candle => {
+                    const trend = smcData.marketTrends.find(t => 
+                        candle.time >= t.startTime && 
+                        (!t.endTime || candle.time <= t.endTime)
+                    );
+                    
+                    if (trend) {
+                        const color = trend.direction === 'bullish' ? 
+                            'rgba(14, 203, 129, 0.8)' : 
+                            'rgba(246, 70, 93, 0.8)';
+                        return {
+                            ...candle,
+                            color: color,
+                            wickColor: color
+                        };
+                    }
+                    return candle;
+                });
+                
+                // Update candlestick data with colored candles
+                this.chartManager.setCandlestickData(coloredCandles);
+                
+                // Set SMC data with lines and markers
+                this.chartManager.setSMCData(smcData, this.indicatorSettings.smc.colors, data);
             }
 
           // this.chartManager.fitContent();
@@ -1561,6 +1615,10 @@ class TradingApp {
         document.getElementById('vsr2-threshold').value = this.indicatorSettings.vsr2.threshold;
         document.getElementById('donchian-length').value = this.indicatorSettings.donchian.length;
         document.getElementById('tenkansen-length').value = this.indicatorSettings.tenkansen.length;
+        document.getElementById('smc-left-bars').value = this.indicatorSettings.smc.leftBars;
+        document.getElementById('smc-right-bars').value = this.indicatorSettings.smc.rightBars;
+        document.getElementById('smc-use-bos').checked = this.indicatorSettings.smc.useBos;
+        document.getElementById('smc-sweep-x').checked = this.indicatorSettings.smc.sweepX;
         
         // Populate color values
         document.getElementById('donchian-upper-color').value = this.rgbaToHex(this.indicatorSettings.donchian.colors.upper);
@@ -1577,6 +1635,7 @@ class TradingApp {
         this.setToggleState('tradeMarkersToggle', 'tradeMarkersSection', this.indicatorSettings.tradeMarkers.enabled);
         this.setToggleState('donchianToggle', 'donchianSection', this.indicatorSettings.donchian.enabled);
         this.setToggleState('tenkansenToggle', 'tenkansenSection', this.indicatorSettings.tenkansen.enabled);
+        this.setToggleState('smcToggle', 'smcSection', this.indicatorSettings.smc.enabled);
 
         // Show modal
         const modal = document.getElementById('indicatorSettingsModal');
@@ -1632,6 +1691,7 @@ class TradingApp {
         this.initializeToggle('tradeMarkersToggle', 'tradeMarkersSection', 'tradeMarkers');
         this.initializeToggle('donchianToggle', 'donchianSection', 'donchian');
         this.initializeToggle('tenkansenToggle', 'tenkansenSection', 'tenkansen');
+        this.initializeToggle('smcToggle', 'smcSection', 'smc');
 
         // Settings buttons
         document.getElementById('resetSettingsBtn').addEventListener('click', () => {
@@ -1707,6 +1767,23 @@ class TradingApp {
                 enabled: false,
                 length: 50,
                 color: 'rgba(255, 165, 0, 0.8)'
+            },
+            smc: {
+                enabled: false,
+                leftBars: 8,
+                rightBars: 8,
+                useBos: false,
+                sweepX: false,
+                colors: {
+                    chochBullish: '#0ecb81',
+                    chochBearish: '#f6465d',
+                    bosBullish: 'rgba(14, 203, 129, 0.7)',
+                    bosBearish: 'rgba(246, 70, 93, 0.7)',
+                    strongHigh: '#e53935',
+                    strongLow: '#00897b',
+                    weakHigh: '#f57f17',
+                    weakLow: '#43a047'
+                }
             }
         };
 
@@ -1729,6 +1806,10 @@ class TradingApp {
         document.getElementById('donchian-lower-color').value = '#0000ff';
         document.getElementById('donchian-middle-color').value = '#0000ff';
         document.getElementById('tenkansen-color').value = '#ffa500';
+        document.getElementById('smc-left-bars').value = 8;
+        document.getElementById('smc-right-bars').value = 8;
+        document.getElementById('smc-use-bos').checked = false;
+        document.getElementById('smc-sweep-x').checked = false;
 
         // Reset toggle states
         this.setToggleState('botATR1Toggle', 'botATR1Section', true);
@@ -1739,6 +1820,7 @@ class TradingApp {
         this.setToggleState('tradeMarkersToggle', 'tradeMarkersSection', true);
         this.setToggleState('donchianToggle', 'donchianSection', true);
         this.setToggleState('tenkansenToggle', 'tenkansenSection', false);
+        this.setToggleState('smcToggle', 'smcSection', false);
 
         this.updateStatus('Settings reset to default', 'info');
     }
@@ -1754,6 +1836,7 @@ class TradingApp {
         const tradeMarkersEnabled = document.getElementById('tradeMarkersToggle').classList.contains('active');
         const donchianEnabled = document.getElementById('donchianToggle').classList.contains('active');
         const tenkansenEnabled = document.getElementById('tenkansenToggle').classList.contains('active');
+        const smcEnabled = document.getElementById('smcToggle').classList.contains('active');
 
         // Get ATR Bot 1 values
         const bot1EmaLength = parseInt(document.getElementById('bot1-ema-length').value);
@@ -1774,6 +1857,10 @@ class TradingApp {
         const vsr2Threshold = parseInt(document.getElementById('vsr2-threshold').value);
         const donchianLength = parseInt(document.getElementById('donchian-length').value);
         const tenkansenLength = parseInt(document.getElementById('tenkansen-length').value);
+        const smcLeftBars = parseInt(document.getElementById('smc-left-bars').value);
+        const smcRightBars = parseInt(document.getElementById('smc-right-bars').value);
+        const smcUseBos = document.getElementById('smc-use-bos').checked;
+        const smcSweepX = document.getElementById('smc-sweep-x').checked;
         
         // Get color values
         const donchianUpperColor = this.hexToRgba(document.getElementById('donchian-upper-color').value, 0.8);
@@ -1814,6 +1901,14 @@ class TradingApp {
             this.updateStatus('Tenkan-sen Length must be between 1 and 200', 'error');
             return;
         }
+        if (smcLeftBars < 1 || smcLeftBars > 50) {
+            this.updateStatus('SMC Left Bars must be between 1 and 50', 'error');
+            return;
+        }
+        if (smcRightBars < 1 || smcRightBars > 50) {
+            this.updateStatus('SMC Right Bars must be between 1 and 50', 'error');
+            return;
+        }
 
         // Update settings with enabled states
         this.indicatorSettings.botATR1.enabled = botATR1Enabled;
@@ -1846,6 +1941,12 @@ class TradingApp {
         this.indicatorSettings.tenkansen.enabled = tenkansenEnabled;
         this.indicatorSettings.tenkansen.length = tenkansenLength;
         this.indicatorSettings.tenkansen.color = tenkansenColor;
+        
+        this.indicatorSettings.smc.enabled = smcEnabled;
+        this.indicatorSettings.smc.leftBars = smcLeftBars;
+        this.indicatorSettings.smc.rightBars = smcRightBars;
+        this.indicatorSettings.smc.useBos = smcUseBos;
+        this.indicatorSettings.smc.sweepX = smcSweepX;
 
         // Close modal
         this.closeSettingsModal();
@@ -1979,6 +2080,47 @@ class TradingApp {
             } else {
                 // Clear Tenkan-sen
                 this.chartManager.setTenkansenData([], this.indicatorSettings.tenkansen.color);
+            }
+
+            // Recalculate and show/hide SMC based on enabled state
+            if (this.indicatorSettings.smc.enabled) {
+                const smc = new SMCIndicator({
+                    leftBars: this.indicatorSettings.smc.leftBars,
+                    rightBars: this.indicatorSettings.smc.rightBars,
+                    useBos: this.indicatorSettings.smc.useBos,
+                    sweepX: this.indicatorSettings.smc.sweepX
+                });
+                const smcData = smc.calculateArray(this.currentData);
+                
+                // Color candles based on trend
+                const coloredCandles = this.currentData.map(candle => {
+                    const trend = smcData.marketTrends.find(t => 
+                        candle.time >= t.startTime && 
+                        (!t.endTime || candle.time <= t.endTime)
+                    );
+                    
+                    if (trend) {
+                        const color = trend.direction === 'bullish' ? 
+                            'rgba(14, 203, 129, 0.8)' : 
+                            'rgba(246, 70, 93, 0.8)';
+                        return {
+                            ...candle,
+                            color: color,
+                            wickColor: color
+                        };
+                    }
+                    return candle;
+                });
+                
+                // Update candlestick data with colored candles
+                this.chartManager.setCandlestickData(coloredCandles);
+                
+                // Set SMC data with lines and markers
+                this.chartManager.setSMCData(smcData, this.indicatorSettings.smc.colors, this.currentData);
+            } else {
+                // Clear SMC and restore normal candle colors
+                this.chartManager.clearSMCData();
+                this.chartManager.setCandlestickData(this.currentData);
             }
 
             // Update replay engine with new settings (use ATR Bot 1 for backtest)

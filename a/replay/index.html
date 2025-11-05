@@ -455,6 +455,37 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- SMC Settings -->
+                    <div class="settings-section" id="smcSection">
+                        <div class="settings-section-header">
+                            <h3>Smart Money Concept (SMC)</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch" id="smcToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Disabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="smc-left-bars">Left Bars:</label>
+                                <input type="number" id="smc-left-bars" value="8" min="1" max="50">
+                            </div>
+                            <div class="setting-group">
+                                <label for="smc-right-bars">Right Bars:</label>
+                                <input type="number" id="smc-right-bars" value="8" min="1" max="50">
+                            </div>
+                            <div class="setting-group">
+                                <label for="smc-use-bos">Show BoS:</label>
+                                <input type="checkbox" id="smc-use-bos">
+                            </div>
+                            <div class="setting-group">
+                                <label for="smc-sweep-x">Show Liquidity Sweeps:</label>
+                                <input type="checkbox" id="smc-sweep-x">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="settings-controls">
@@ -470,6 +501,7 @@
     <script src="vsr-indicator.js"></script>
     <script src="donchian.js"></script>
     <script src="tenkansen.js"></script>
+    <script src="smc-indicator.js"></script>
     <script src="chart-manager.js"></script>
     <script src="replay-engine.js"></script>
     <script src="backtest-engine.js"></script>

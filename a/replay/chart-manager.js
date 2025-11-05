@@ -249,6 +249,8 @@ class ChartManager {
         if (this.volumeSeries) {
             this.volumeSeries.setData([]);
         }
+        // Clear SMC data
+        this.clearSMCData();
     }
 
     // Add a single candle to the chart
@@ -871,6 +873,288 @@ class ChartManager {
         }
     }
 
+    // Set SMC (Smart Money Concept) data
+    setSMCData(smcData, colors = {}, candles = []) {
+        if (!smcData || !this.candlestickSeries) {
+            this.clearSMCData();
+            return;
+        }
+
+        // Clear existing SMC data
+        this.clearSMCData();
+
+        // Initialize SMC storage
+        if (!this.smcLineSeries) {
+            this.smcLineSeries = [];
+        }
+        if (!this.smcMarkers) {
+            this.smcMarkers = [];
+        }
+
+        const markers = [];
+
+        // Draw CHoCH lines and markers
+        if (smcData.chochPoints && smcData.chochPoints.length > 0) {
+            smcData.chochPoints.forEach(choch => {
+                const color = choch.direction === 'bullish' ? 
+                    (colors.chochBullish || '#0ecb81') : 
+                    (colors.chochBearish || '#f6465d');
+                
+                // Create line series for CHoCH
+                const lineSeries = this.chart.addLineSeries({
+                    color: color,
+                    lineWidth: 2,
+                    lineStyle: LightweightCharts.LineStyle.Solid,
+                    crosshairMarkerVisible: false,
+                    priceLineVisible: false,
+                    lastValueVisible: false
+                });
+                
+                // Set line data from start to end
+                lineSeries.setData([
+                    { time: choch.startTime, value: choch.price },
+                    { time: choch.endTime, value: choch.price }
+                ]);
+                
+                this.smcLineSeries.push(lineSeries);
+                
+                // Add marker at start position
+                markers.push({
+                    time: choch.startTime,
+                    position: choch.direction === 'bullish' ? 'belowBar' : 'aboveBar',
+                    color: color,
+                    shape: 'arrowDown',
+                    text: 'CHoCH',
+                    size: 1
+                });
+            });
+        }
+
+        // Draw BoS lines and markers
+        if (smcData.bosPoints && smcData.bosPoints.length > 0) {
+            smcData.bosPoints.forEach(bos => {
+                const color = bos.direction === 'bullish' ? 
+                    (colors.bosBullish || 'rgba(14, 203, 129, 0.7)') : 
+                    (colors.bosBearish || 'rgba(246, 70, 93, 0.7)');
+                
+                // Create line series for BoS
+                const lineSeries = this.chart.addLineSeries({
+                    color: color,
+                    lineWidth: 2,
+                    lineStyle: LightweightCharts.LineStyle.Dotted,
+                    crosshairMarkerVisible: false,
+                    priceLineVisible: false,
+                    lastValueVisible: false
+                });
+                
+                // Set line data from start to end
+                lineSeries.setData([
+                    { time: bos.startTime, value: bos.price },
+                    { time: bos.endTime, value: bos.price }
+                ]);
+                
+                this.smcLineSeries.push(lineSeries);
+                
+                // Add marker at start position
+                markers.push({
+                    time: bos.startTime,
+                    position: bos.direction === 'bullish' ? 'belowBar' : 'aboveBar',
+                    color: color,
+                    shape: 'arrowDown',
+                    text: 'BoS',
+                    size: 1
+                });
+            });
+        }
+
+        // Draw Liquidity Sweep lines and markers
+        if (smcData.liquiditySweeps && smcData.liquiditySweeps.length > 0) {
+            smcData.liquiditySweeps.forEach(sweep => {
+                const color = '#f0b90b';
+                
+                // Create line series for Liquidity Sweep
+                const lineSeries = this.chart.addLineSeries({
+                    color: color,
+                    lineWidth: 2,
+                    lineStyle: LightweightCharts.LineStyle.Dashed,
+                    crosshairMarkerVisible: false,
+                    priceLineVisible: false,
+                    lastValueVisible: false
+                });
+                
+                // Set line data from start to end
+                lineSeries.setData([
+                    { time: sweep.startTime, value: sweep.price },
+                    { time: sweep.endTime, value: sweep.price }
+                ]);
+                
+                this.smcLineSeries.push(lineSeries);
+                
+                // Add marker at start position
+                markers.push({
+                    time: sweep.startTime,
+                    position: sweep.direction === 'bullish' ? 'belowBar' : 'aboveBar',
+                    color: color,
+                    shape: 'arrowDown',
+                    text: 'LS',
+                    size: 1
+                });
+            });
+        }
+
+        // Draw Strong/Weak High/Low lines (only last ones, extending to current time)
+        const lastCandleTime = candles.length > 0 ? candles[candles.length - 1].time : null;
+        
+        if (lastCandleTime) {
+            // Strong Highs
+            if (smcData.strongHighs && smcData.strongHighs.length > 0) {
+                smcData.strongHighs.filter(h => h.isLast).forEach(high => {
+                    const lineSeries = this.chart.addLineSeries({
+                        color: colors.strongHigh || '#e53935',
+                        lineWidth: 1,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        crosshairMarkerVisible: false,
+                        priceLineVisible: false,
+                        lastValueVisible: false
+                    });
+                    
+                    lineSeries.setData([
+                        { time: high.time, value: high.price },
+                        { time: lastCandleTime, value: high.price }
+                    ]);
+                    
+                    this.smcLineSeries.push(lineSeries);
+                    
+                    markers.push({
+                        time: high.time,
+                        position: 'aboveBar',
+                        color: colors.strongHigh || '#e53935',
+                        shape: 'arrowDown',
+                        text: 'SH',
+                        size: 1
+                    });
+                });
+            }
+
+            // Weak Highs
+            if (smcData.weakHighs && smcData.weakHighs.length > 0) {
+                smcData.weakHighs.filter(h => h.isLast).forEach(high => {
+                    const lineSeries = this.chart.addLineSeries({
+                        color: colors.weakHigh || '#f57f17',
+                        lineWidth: 1,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        crosshairMarkerVisible: false,
+                        priceLineVisible: false,
+                        lastValueVisible: false
+                    });
+                    
+                    lineSeries.setData([
+                        { time: high.time, value: high.price },
+                        { time: lastCandleTime, value: high.price }
+                    ]);
+                    
+                    this.smcLineSeries.push(lineSeries);
+                    
+                    markers.push({
+                        time: high.time,
+                        position: 'aboveBar',
+                        color: colors.weakHigh || '#f57f17',
+                        shape: 'arrowDown',
+                        text: 'WH',
+                        size: 1
+                    });
+                });
+            }
+
+            // Strong Lows
+            if (smcData.strongLows && smcData.strongLows.length > 0) {
+                smcData.strongLows.filter(l => l.isLast).forEach(low => {
+                    const lineSeries = this.chart.addLineSeries({
+                        color: colors.strongLow || '#00897b',
+                        lineWidth: 1,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        crosshairMarkerVisible: false,
+                        priceLineVisible: false,
+                        lastValueVisible: false
+                    });
+                    
+                    lineSeries.setData([
+                        { time: low.time, value: low.price },
+                        { time: lastCandleTime, value: low.price }
+                    ]);
+                    
+                    this.smcLineSeries.push(lineSeries);
+                    
+                    markers.push({
+                        time: low.time,
+                        position: 'belowBar',
+                        color: colors.strongLow || '#00897b',
+                        shape: 'arrowUp',
+                        text: 'SL',
+                        size: 1
+                    });
+                });
+            }
+
+            // Weak Lows
+            if (smcData.weakLows && smcData.weakLows.length > 0) {
+                smcData.weakLows.filter(l => l.isLast).forEach(low => {
+                    const lineSeries = this.chart.addLineSeries({
+                        color: colors.weakLow || '#43a047',
+                        lineWidth: 1,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        crosshairMarkerVisible: false,
+                        priceLineVisible: false,
+                        lastValueVisible: false
+                    });
+                    
+                    lineSeries.setData([
+                        { time: low.time, value: low.price },
+                        { time: lastCandleTime, value: low.price }
+                    ]);
+                    
+                    this.smcLineSeries.push(lineSeries);
+                    
+                    markers.push({
+                        time: low.time,
+                        position: 'belowBar',
+                        color: colors.weakLow || '#43a047',
+                        shape: 'arrowUp',
+                        text: 'WL',
+                        size: 1
+                    });
+                });
+            }
+        }
+
+        // Store SMC markers
+        this.smcMarkers = markers;
+
+        // Set markers on candlestick series
+        this.candlestickSeries.setMarkers(markers);
+    }
+
+    // Clear SMC data
+    clearSMCData() {
+        // Remove all SMC line series
+        if (this.smcLineSeries && this.smcLineSeries.length > 0) {
+            this.smcLineSeries.forEach(series => {
+                if (series && this.chart) {
+                    this.chart.removeSeries(series);
+                }
+            });
+            this.smcLineSeries = [];
+        }
+        
+        // Clear SMC markers
+        if (this.smcMarkers && this.smcMarkers.length > 0) {
+            if (this.candlestickSeries) {
+                this.candlestickSeries.setMarkers([]);
+            }
+            this.smcMarkers = [];
+        }
+    }
+
     // Set trade markers (buy/sell arrows)
     setTradeMarkers(entries, buyColor = '#00ff00', sellColor = '#ff0000') {
         if (!this.candlestickSeries || !entries || entries.length === 0) {
@@ -951,6 +1235,9 @@ class ChartManager {
             this.donchianLowerSeries = null;
             this.donchianMiddleSeries = null;
             this.tenkansenSeries = null;
+            this.clearSMCData();
+            this.smcMarkers = null;
+            this.smcLineSeries = null;
         }
         window.removeEventListener('resize', this.handleResize);
     }
