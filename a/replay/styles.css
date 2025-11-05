@@ -145,6 +145,13 @@ button:disabled {
     border-color: #0066cc;
 }
 
+.tool-btn.active {
+    background-color: #0066cc;
+    color: #fff;
+    border-color: #0066cc;
+    box-shadow: 0 0 10px rgba(0, 102, 204, 0.5);
+}
+
 .speed-controls {
     display: flex;
     gap: 2px;

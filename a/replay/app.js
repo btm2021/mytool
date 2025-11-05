@@ -93,6 +93,7 @@ class TradingApp {
             this.initializeCacheModal();
             this.initializeTradesModal();
             this.initializeSymbolSelector();
+            this.setupMeasureToolHandlers();
         } catch (error) {
             console.error('Error in TradingApp constructor:', error);
             // Set a basic status message if possible
@@ -443,6 +444,11 @@ class TradingApp {
         // Indicator settings
         safeAddEventListener('indicatorSettingsBtn', 'click', () => {
             this.showIndicatorSettings();
+        });
+
+        // Measure tool
+        safeAddEventListener('measureToolBtn', 'click', () => {
+            this.toggleMeasureTool();
         });
 
         // Table controls - these might not exist initially
@@ -1643,6 +1649,52 @@ class TradingApp {
 
         // Initialize event listeners if not already done
         this.initializeSettingsModal();
+    }
+
+    // Toggle measure tool drawing mode
+    toggleMeasureTool() {
+        const btn = document.getElementById('measureToolBtn');
+        
+        if (this.chartManager.isInDrawingMode()) {
+            // Stop drawing mode
+            this.chartManager.stopMeasureDrawing();
+            btn.classList.remove('active');
+            this.updateStatus('Measure tool disabled', 'info');
+        } else {
+            // Start drawing mode
+            this.chartManager.startMeasureDrawing();
+            btn.classList.add('active');
+            this.updateStatus('Measure tool enabled - Click twice on chart to measure', 'info');
+        }
+    }
+
+    // Setup chart click and mouse move handlers for measure tool
+    setupMeasureToolHandlers() {
+        if (!this.chartManager || !this.chartManager.chart) return;
+
+        // Set callback for when measure is completed
+        this.chartManager.setMeasureCompleteCallback(() => {
+            // Update button UI
+            const btn = document.getElementById('measureToolBtn');
+            if (btn) {
+                btn.classList.remove('active');
+            }
+            this.updateStatus('Measure tool completed and disabled', 'success');
+        });
+
+        // Subscribe to chart click events
+        this.chartManager.chart.subscribeClick((param) => {
+            if (this.chartManager.isInDrawingMode()) {
+                this.chartManager.handleMeasureClick(param);
+            }
+        });
+
+        // Subscribe to crosshair move events
+        this.chartManager.chart.subscribeCrosshairMove((param) => {
+            if (this.chartManager.isInDrawingMode()) {
+                this.chartManager.handleMeasureMouseMove(param);
+            }
+        });
     }
 
     // Set toggle state

@@ -4,6 +4,14 @@ class ChartManager {
         this.chart = null;
         this.candlestickSeries = null;
         this.emaSeries = null;
+        
+        // Measure tool state
+        this.measureTools = [];
+        this.isDrawingMode = false;
+        this.drawingStartPoint = null;
+        this.tempMeasureTool = null;
+        this.onMeasureComplete = null;
+        
         this.initialize();
     }
 
@@ -95,7 +103,8 @@ class ChartManager {
             lineWidth: 0,
             title: '',
             priceLineVisible: false,
-            lastValueVisible: false
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
         });
 
         this.trail2_1Series = this.chart.addLineSeries({
@@ -103,7 +112,8 @@ class ChartManager {
             lineWidth: 0,
             title: '',
             priceLineVisible: false,
-            lastValueVisible: false
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
         });
 
         this.atrBandFill1Series = this.chart.addCustomSeries(new Bandfillcolor.Bandfillcolor(), {
@@ -122,7 +132,8 @@ class ChartManager {
             lineWidth: 0,
             title: '',
             priceLineVisible: false,
-            lastValueVisible: false
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
         });
 
         this.trail2_2Series = this.chart.addLineSeries({
@@ -130,7 +141,8 @@ class ChartManager {
             lineWidth: 0,
             title: '',
             priceLineVisible: false,
-            lastValueVisible: false
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
         });
 
         this.atrBandFill2Series = this.chart.addCustomSeries(new Bandfillcolor.Bandfillcolor(), {
@@ -162,7 +174,8 @@ class ChartManager {
             lineWidth: 1,
             title: '',
             priceLineVisible: false,
-            lastValueVisible: false
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
         });
 
         this.donchianLowerSeries = this.chart.addLineSeries({
@@ -170,7 +183,8 @@ class ChartManager {
             lineWidth: 1,
             title: '',
             priceLineVisible: false,
-            lastValueVisible: false
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
         });
 
         this.donchianMiddleSeries = this.chart.addLineSeries({
@@ -179,7 +193,8 @@ class ChartManager {
             lineStyle: LightweightCharts.LineStyle.Dotted,
             title: '',
             priceLineVisible: false,
-            lastValueVisible: false
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
         });
 
         // Create Tenkan-sen series
@@ -188,7 +203,8 @@ class ChartManager {
             lineWidth: 1,
             title: '',
             priceLineVisible: false,
-            lastValueVisible: false
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
         });
 
         // Handle resize
@@ -1204,9 +1220,218 @@ class ChartManager {
         return this.chart;
     }
 
+    // Measure Tool Methods
+    startMeasureDrawing() {
+        this.isDrawingMode = true;
+        this.drawingStartPoint = null;
+        this.tempMeasureTool = null;
+        
+        // Change cursor to crosshair
+        const container = document.getElementById(this.containerId);
+        if (container) {
+            container.style.cursor = 'crosshair';
+        }
+    }
+
+    stopMeasureDrawing() {
+        this.isDrawingMode = false;
+        this.drawingStartPoint = null;
+        
+        // Remove temp tool if exists
+        if (this.tempMeasureTool && this.candlestickSeries) {
+            this.candlestickSeries.detachPrimitive(this.tempMeasureTool);
+            this.tempMeasureTool = null;
+        }
+        
+        // Reset cursor
+        const container = document.getElementById(this.containerId);
+        if (container) {
+            container.style.cursor = 'default';
+        }
+    }
+
+    handleMeasureClick(param) {
+        if (!this.isDrawingMode || !param.time || !param.point) return;
+
+        const price = this.candlestickSeries.coordinateToPrice(param.point.y);
+        
+        if (!this.drawingStartPoint) {
+            // First click - set start point
+            this.drawingStartPoint = {
+                time: param.time,
+                price: price
+            };
+        } else {
+            // Second click - create measure tool
+            const endPoint = {
+                time: param.time,
+                price: price
+            };
+            
+            // Remove temp tool if exists
+            if (this.tempMeasureTool && this.candlestickSeries) {
+                this.candlestickSeries.detachPrimitive(this.tempMeasureTool);
+                this.tempMeasureTool = null;
+            }
+            
+            // Create permanent measure tool
+            this.addMeasureTool(this.drawingStartPoint, endPoint);
+            
+            // Reset for next drawing
+            this.drawingStartPoint = null;
+            
+            // Auto stop drawing mode after completing a measure
+            this.stopMeasureDrawing();
+            
+            // Trigger callback to update UI
+            if (this.onMeasureComplete) {
+                this.onMeasureComplete();
+            }
+        }
+    }
+
+    handleMeasureMouseMove(param) {
+        if (!this.isDrawingMode || !this.drawingStartPoint || !param.time || !param.point) return;
+
+        const price = this.candlestickSeries.coordinateToPrice(param.point.y);
+        
+        // Remove previous temp tool
+        if (this.tempMeasureTool && this.candlestickSeries) {
+            this.candlestickSeries.detachPrimitive(this.tempMeasureTool);
+        }
+        
+        // Create new temp tool
+        try {
+            // Check if PriceMeasureTool is available
+            if (typeof LwcPluginRuletool !== 'undefined' && LwcPluginRuletool.PriceMeasureTool) {
+                this.tempMeasureTool = new LwcPluginRuletool.PriceMeasureTool(
+                    this.drawingStartPoint,
+                    { time: param.time, price: price },
+                    {
+                        fillColor: 'rgba(41, 98, 255, 0.15)',
+                        borderColor: 'rgba(41, 98, 255, 0.5)',
+                        borderWidth: 1,
+                        leverage: 200,
+                        positionSize: 20,
+                        showDeleteButton: false
+                    }
+                );
+                
+                this.candlestickSeries.attachPrimitive(this.tempMeasureTool);
+            }
+        } catch (error) {
+            console.error('Error creating temp measure tool:', error);
+        }
+    }
+
+    addMeasureTool(startPoint, endPoint, options = {}) {
+        if (!this.candlestickSeries) return null;
+
+        try {
+            // Check if PriceMeasureTool is available
+          
+
+            const defaultOptions = {
+                fillColor: 'rgba(41, 98, 255, 0.15)',
+                borderColor: 'rgba(41, 98, 255, 1)',
+                borderWidth: 2,
+                textColor: '#ffffff',
+                fontSize: 12,
+                fontFamily: 'Arial, sans-serif',
+                backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                padding: 8,
+                leverage: 200,
+                positionSize: 20,
+                showDeleteButton: true
+            };
+
+            if (typeof LwcPluginRuletool === 'undefined' || !LwcPluginRuletool.PriceMeasureTool) {
+                console.error('PriceMeasureTool is not loaded');
+                return null;
+            }
+
+            const measureTool = new LwcPluginRuletool.PriceMeasureTool(
+                startPoint,
+                endPoint,
+                { 
+                    ...defaultOptions, 
+                    ...options,
+                    onDelete: () => {
+                        // Find and remove this tool
+                        const index = this.measureTools.findIndex(t => t.tool === measureTool);
+                        if (index !== -1) {
+                            this.candlestickSeries.detachPrimitive(measureTool);
+                            this.measureTools.splice(index, 1);
+                            console.log('Measure tool deleted');
+                        }
+                    }
+                }
+            );
+
+            this.candlestickSeries.attachPrimitive(measureTool);
+            
+            const toolData = {
+                id: Date.now() + Math.random(),
+                tool: measureTool,
+                startPoint,
+                endPoint,
+                options: { ...defaultOptions, ...options }
+            };
+            
+            this.measureTools.push(toolData);
+            
+            return toolData;
+        } catch (error) {
+            console.error('Error adding measure tool:', error);
+            return null;
+        }
+    }
+
+    removeMeasureTool(toolId) {
+        const index = this.measureTools.findIndex(t => t.id === toolId);
+        if (index === -1) return false;
+
+        const toolData = this.measureTools[index];
+        if (toolData.tool && this.candlestickSeries) {
+            this.candlestickSeries.detachPrimitive(toolData.tool);
+        }
+
+        this.measureTools.splice(index, 1);
+        return true;
+    }
+
+    removeAllMeasureTools() {
+        this.measureTools.forEach(toolData => {
+            if (toolData.tool && this.candlestickSeries) {
+                this.candlestickSeries.detachPrimitive(toolData.tool);
+            }
+        });
+        this.measureTools = [];
+    }
+
+    getMeasureTools() {
+        return this.measureTools.map(t => ({
+            id: t.id,
+            startPoint: t.startPoint,
+            endPoint: t.endPoint,
+            options: t.options
+        }));
+    }
+
+    isInDrawingMode() {
+        return this.isDrawingMode;
+    }
+
+    setMeasureCompleteCallback(callback) {
+        this.onMeasureComplete = callback;
+    }
+
     // Destroy chart
     destroy() {
         if (this.chart) {
+            // Clean up measure tools
+            this.removeAllMeasureTools();
+            
             this.chart.remove();
             this.chart = null;
             this.candlestickSeries = null;
@@ -1238,6 +1463,7 @@ class ChartManager {
             this.clearSMCData();
             this.smcMarkers = null;
             this.smcLineSeries = null;
+            this.measureTools = null;
         }
         window.removeEventListener('resize', this.handleResize);
     }

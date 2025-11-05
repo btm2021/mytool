@@ -1,0 +1,22 @@
+{
+    "name": "lwc-plugin-ruletool",
+    "version": "1.0.0",
+    "keywords": [
+        "lwc-plugin",
+        "lightweight-charts"
+    ],
+    "type": "module",
+    "main": "./lwc-plugin-ruletool.umd.cjs",
+    "module": "./lwc-plugin-ruletool.js",
+    "types": "./lwc-plugin-ruletool.d.ts",
+    "exports": {
+        "import": {
+            "types": "./lwc-plugin-ruletool.d.ts",
+            "default": "./lwc-plugin-ruletool.js"
+        },
+        "require": {
+            "types": "./lwc-plugin-ruletool.d.cts",
+            "default": "./lwc-plugin-ruletool.umd.cjs"
+        }
+    }
+}
