@@ -61,6 +61,11 @@ class TradingApp {
                     enabled: false,
                     length: 50,
                     color: 'rgba(255, 165, 0, 0.8)'
+                },
+                tradeMarkers: {
+                    enabled: true,
+                    buyColor: '#00ff00',
+                    sellColor: '#ff0000'
                 }
             };
 
@@ -438,15 +443,6 @@ class TradingApp {
         safeAddEventListener('candleCount', 'keypress', (e) => {
             if (e.key === 'Enter') this.loadData();
         });
-
-        // Symbol change event
-        safeAddEventListener('symbol', 'change', () => {
-            // Auto load data when symbol changes
-            const symbolElement = document.getElementById('symbol');
-            if (symbolElement && symbolElement.value) {
-                this.loadData();
-            }
-        });
     }
 
     // Load data from Binance with smart caching
@@ -650,7 +646,7 @@ class TradingApp {
                 this.chartManager.setTenkansenData(tenkansenData, this.indicatorSettings.tenkansen.color);
             }
 
-            this.chartManager.fitContent();
+          // this.chartManager.fitContent();
 
             this.updateStatus(`${symbol} ${timeframe} - ${data.length} nến`, 'success');
             this.updateUI();
@@ -782,6 +778,10 @@ class TradingApp {
 
         this.simpleBacktest = null;
         this.currentTableData = [];
+        
+        // Clear trade markers from chart
+        this.chartManager.clearTradeMarkers();
+        
         this.updateStatus('Đã xóa', 'info');
     }
 
@@ -824,6 +824,17 @@ class TradingApp {
 
         // Display table with closed entries
         this.populateBacktestTable(closedEntries);
+
+        // Display trade markers on chart if enabled
+        if (this.indicatorSettings.tradeMarkers.enabled) {
+            this.chartManager.setTradeMarkers(
+                closedEntries,
+                this.indicatorSettings.tradeMarkers.buyColor,
+                this.indicatorSettings.tradeMarkers.sellColor
+            );
+        } else {
+            this.chartManager.clearTradeMarkers();
+        }
     }
 
 
@@ -1563,6 +1574,7 @@ class TradingApp {
         this.setToggleState('vsr1Toggle', 'vsr1Section', this.indicatorSettings.vsr1.enabled);
         this.setToggleState('vsr2Toggle', 'vsr2Section', this.indicatorSettings.vsr2.enabled);
         this.setToggleState('volumeToggle', 'volumeSection', this.indicatorSettings.volume.enabled);
+        this.setToggleState('tradeMarkersToggle', 'tradeMarkersSection', this.indicatorSettings.tradeMarkers.enabled);
         this.setToggleState('donchianToggle', 'donchianSection', this.indicatorSettings.donchian.enabled);
         this.setToggleState('tenkansenToggle', 'tenkansenSection', this.indicatorSettings.tenkansen.enabled);
 
@@ -1617,6 +1629,7 @@ class TradingApp {
         this.initializeToggle('vsr1Toggle', 'vsr1Section', 'vsr1');
         this.initializeToggle('vsr2Toggle', 'vsr2Section', 'vsr2');
         this.initializeToggle('volumeToggle', 'volumeSection', 'volume');
+        this.initializeToggle('tradeMarkersToggle', 'tradeMarkersSection', 'tradeMarkers');
         this.initializeToggle('donchianToggle', 'donchianSection', 'donchian');
         this.initializeToggle('tenkansenToggle', 'tenkansenSection', 'tenkansen');
 
@@ -1723,6 +1736,7 @@ class TradingApp {
         this.setToggleState('vsr1Toggle', 'vsr1Section', true);
         this.setToggleState('vsr2Toggle', 'vsr2Section', true);
         this.setToggleState('volumeToggle', 'volumeSection', true);
+        this.setToggleState('tradeMarkersToggle', 'tradeMarkersSection', true);
         this.setToggleState('donchianToggle', 'donchianSection', true);
         this.setToggleState('tenkansenToggle', 'tenkansenSection', false);
 
@@ -1737,6 +1751,7 @@ class TradingApp {
         const vsr1Enabled = document.getElementById('vsr1Toggle').classList.contains('active');
         const vsr2Enabled = document.getElementById('vsr2Toggle').classList.contains('active');
         const volumeEnabled = document.getElementById('volumeToggle').classList.contains('active');
+        const tradeMarkersEnabled = document.getElementById('tradeMarkersToggle').classList.contains('active');
         const donchianEnabled = document.getElementById('donchianToggle').classList.contains('active');
         const tenkansenEnabled = document.getElementById('tenkansenToggle').classList.contains('active');
 
@@ -1822,6 +1837,7 @@ class TradingApp {
         this.indicatorSettings.vsr2.threshold = vsr2Threshold;
 
         this.indicatorSettings.volume.enabled = volumeEnabled;
+        this.indicatorSettings.tradeMarkers.enabled = tradeMarkersEnabled;
         this.indicatorSettings.donchian.enabled = donchianEnabled;
         this.indicatorSettings.donchian.length = donchianLength;
         this.indicatorSettings.donchian.colors.upper = donchianUpperColor;
@@ -1975,6 +1991,22 @@ class TradingApp {
                 this.indicatorSettings.vsr1.length,
                 this.indicatorSettings.vsr1.threshold
             );
+
+            // Refresh trade markers if backtest has been run
+            if (this.simpleBacktest) {
+                const allEntries = this.simpleBacktest.getAllEntries();
+                const closedEntries = allEntries.filter(e => e.status === 'CLOSED');
+                
+                if (this.indicatorSettings.tradeMarkers.enabled) {
+                    this.chartManager.setTradeMarkers(
+                        closedEntries,
+                        this.indicatorSettings.tradeMarkers.buyColor,
+                        this.indicatorSettings.tradeMarkers.sellColor
+                    );
+                } else {
+                    this.chartManager.clearTradeMarkers();
+                }
+            }
 
             this.updateStatus('Indicator settings applied successfully', 'success');
         } catch (error) {

@@ -9,6 +9,14 @@ const tools = [
         url: 'https://btm2021.github.io/mytool/a/newchart/'
     },
     {
+        id: 'Replay',
+        title: 'Replay Chart',
+        description: 'Replay Chart',
+        category: 'Trading',
+        icon: '📊',
+        url: 'https://btm2021.github.io/mytool/a/replay/'
+    },
+    {
         id: 'Screener',
         title: 'Screener',
         description: 'Quét sàn',

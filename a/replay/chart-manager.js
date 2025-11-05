@@ -871,6 +871,42 @@ class ChartManager {
         }
     }
 
+    // Set trade markers (buy/sell arrows)
+    setTradeMarkers(entries, buyColor = '#00ff00', sellColor = '#ff0000') {
+        if (!this.candlestickSeries || !entries || entries.length === 0) {
+            // Clear markers if no data
+            if (this.candlestickSeries) {
+                this.candlestickSeries.setMarkers([]);
+            }
+            return;
+        }
+
+        const markers = [];
+
+        entries.forEach(entry => {
+            // Only show entry markers for closed entries with entry time
+            if (entry.status === 'CLOSED' && entry.entryTime) {
+                // Entry marker (buy or sell only)
+                markers.push({
+                    time: entry.entryTime,
+                    position: entry.side === 'LONG' ? 'belowBar' : 'aboveBar',
+                    color: entry.side === 'LONG' ? buyColor : sellColor,
+                    shape: entry.side === 'LONG' ? 'arrowUp' : 'arrowDown',
+                    text: '',
+                    size: 1
+                });
+            }
+        });
+
+        this.candlestickSeries.setMarkers(markers);
+    }
+
+    // Clear trade markers
+    clearTradeMarkers() {
+        if (this.candlestickSeries) {
+            this.candlestickSeries.setMarkers([]);
+        }
+    }
 
     // Fit chart content to visible area
     fitContent() {
