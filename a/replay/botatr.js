@@ -22,11 +22,11 @@ class BotATRIndicator {
         if (prevClose === null) {
             return high - low;
         }
-        
+
         const tr1 = high - low;
         const tr2 = Math.abs(high - prevClose);
         const tr3 = Math.abs(low - prevClose);
-        
+
         return Math.max(tr1, tr2, tr3);
     }
 
@@ -51,12 +51,12 @@ class BotATRIndicator {
     // Calculate Trail2 (ATR Dynamic Trailing Stop)
     calculateTrail2(trail1, prevTrail2, atrValue) {
         const sl2 = atrValue * this.atrMultiplier;
-        
+
         // nz function equivalent
         const nzPrevTrail2 = prevTrail2 !== null ? prevTrail2 : 0;
-        
+
         let trail2;
-        
+
         if (trail1 > nzPrevTrail2) {
             // Trail1 > Trail2[1]
             if (this.prevTrail1 !== null && this.prevTrail1 > nzPrevTrail2) {
@@ -76,32 +76,32 @@ class BotATRIndicator {
                 trail2 = trail1 + sl2;
             }
         }
-        
+
         return trail2;
     }
 
     // Calculate single point
     calculate(candle) {
         const { high, low, close, time } = candle;
-        
+
         // Calculate True Range
         const trueRange = this.calculateTrueRange(high, low, close, this.prevClose);
-        
+
         // Calculate ATR
         const atrValue = this.calculateATR(trueRange);
-        
+
         // Calculate EMA (Trail1)
         this.ema = this.calculateEMA(close, this.ema, this.emaMultiplier);
         const trail1 = this.ema;
-        
+
         // Calculate Trail2
         const trail2 = this.calculateTrail2(trail1, this.trail2, atrValue);
-        
+
         // Store previous values for next calculation
         this.prevClose = close;
         this.prevTrail1 = trail1;
         this.trail2 = trail2;
-        
+
         return {
             time: time,
             trail1: trail1,
@@ -117,28 +117,28 @@ class BotATRIndicator {
             ema: [],
             trail: []
         };
-        
+
         for (let i = 0; i < candles.length; i++) {
             const result = this.calculate(candles[i]);
-            
+
             results.ema.push({
                 time: result.time,
                 value: result.trail1
             });
-            
+
             results.trail.push({
                 time: result.time,
                 value: result.trail2
             });
         }
-        
+
         return results;
     }
 
     // Calculate incrementally (for replay mode)
     calculateIncremental(candle) {
         const result = this.calculate(candle);
-        
+
         return {
             ema: {
                 time: result.time,
@@ -202,7 +202,7 @@ class SimpleBacktestSystem {
     processCandle(candle) {
         const result = this.botATR.calculate(candle);
         const { trail1, trail2 } = result;
-        
+
         // Determine current side based on trail comparison
         let currentSide = null;
         if (trail1 > trail2) {
@@ -269,31 +269,31 @@ class SimpleBacktestSystem {
             side: side,
             status: 'PENDING', // Will be executed next candle
             capital: this.capital,
-            
+
             // Signal data
             signalCandle: this.candleIndex,
             signalTime: candle.time,
             signalTrail1: trail1,
             signalTrail2: trail2,
-            
+
             // Entry execution data (filled when executed)
             entryCandle: null,
             entryTime: null,
             entryPrice: null,
             coinAmount: null,
-            
+
             // Exit data (filled when closed)
             exitCandle: null,
             exitTime: null,
             exitPrice: null,
-            
+
             // Performance data
             pnl: null,
             pnlPercent: null,
-            
+
             // OHLCV data during entry period
             candleData: [],
-            
+
             // Timestamps
             createdAt: Date.now()
         };
@@ -312,7 +312,7 @@ class SimpleBacktestSystem {
         }
 
         const entry = this.currentEntry;
-        
+
         // Entry at close price of the second candle after signal
         entry.entryCandle = this.candleIndex;
         entry.entryTime = candle.time;
@@ -347,7 +347,7 @@ class SimpleBacktestSystem {
         }
 
         const entry = this.currentEntry;
-        
+
         // Set exit data
         entry.exitCandle = this.candleIndex;
         entry.exitTime = candle.time;
@@ -430,19 +430,19 @@ class SimpleBacktestSystem {
         const entryPrice = entry.entryPrice;
         const coinAmount = entry.coinAmount;
         const side = entry.side;
-        
+
         let maxPnL = -Infinity;
         let maxPrice = 0;
         let maxCandle = null;
-        
+
         // Analyze each candle to find maximum profit
         entry.candleData.forEach(candle => {
             // For each candle, check both high and low prices
             const prices = [candle.high, candle.low];
-            
+
             prices.forEach(price => {
                 let pnl = 0;
-                
+
                 if (side === 'LONG') {
                     // Long position: profit when price goes up
                     pnl = (price - entryPrice) * coinAmount;
@@ -450,7 +450,7 @@ class SimpleBacktestSystem {
                     // Short position: profit when price goes down  
                     pnl = (entryPrice - price) * coinAmount;
                 }
-                
+
                 // Check if this is the maximum profit so far
                 if (pnl > maxPnL) {
                     maxPnL = pnl;
@@ -459,13 +459,13 @@ class SimpleBacktestSystem {
                 }
             });
         });
-        
+
         // Store maximum PnL data
         entry.maxPnL = maxPnL > -Infinity ? maxPnL : (entry.pnl || 0);
         entry.maxPnLPercent = (entry.maxPnL / this.capital) * 100;
         entry.maxPrice = maxPrice;
         entry.maxPnLCandle = maxCandle;
-        
+
         // Determine if this is a win based on max PnL >= 50 USDT
         entry.isWinByMaxPnL = entry.maxPnL >= 50;
     }
@@ -490,20 +490,20 @@ class SimpleBacktestSystem {
         for (let i = 0; i < candles.length; i++) {
             const candle = candles[i];
             const processingResult = this.processCandle(candle);
-            
+
             results.processedCandles++;
             results.processingLog.push(processingResult);
 
             // Log significant events
             if (processingResult.sideChanged) {
-               // console.log(`Candle ${i}: Side changed from ${processingResult.previousSide} to ${processingResult.currentSide}`);
-                
+                // console.log(`Candle ${i}: Side changed from ${processingResult.previousSide} to ${processingResult.currentSide}`);
+
                 if (processingResult.entryClosed) {
-                //    console.log(`  - Closed entry: ${processingResult.entryClosed.side} PnL: ${processingResult.entryClosed.pnl?.toFixed(2)} USDT (${processingResult.entryClosed.pnlPercent?.toFixed(2)}%)`);
+                    //    console.log(`  - Closed entry: ${processingResult.entryClosed.side} PnL: ${processingResult.entryClosed.pnl?.toFixed(2)} USDT (${processingResult.entryClosed.pnlPercent?.toFixed(2)}%)`);
                 }
-                
+
                 if (processingResult.entryCreated) {
-                 //   console.log(`  - Created new ${processingResult.entryCreated.side} entry (pending execution)`);
+                    //   console.log(`  - Created new ${processingResult.entryCreated.side} entry (pending execution)`);
                 }
             }
         }
@@ -529,7 +529,7 @@ class SimpleBacktestSystem {
      */
     getStatistics() {
         const closedEntries = this.entries.filter(entry => entry.status === 'CLOSED');
-        
+
         if (closedEntries.length === 0) {
             return {
                 totalEntries: 0,
@@ -549,11 +549,11 @@ class SimpleBacktestSystem {
         const totalPnL = closedEntries.reduce((sum, entry) => sum + entry.pnl, 0);
         const averagePnL = totalPnL / closedEntries.length;
 
-        const bestEntry = closedEntries.reduce((best, entry) => 
+        const bestEntry = closedEntries.reduce((best, entry) =>
             entry.pnl > best.pnl ? entry : best
         );
-        
-        const worstEntry = closedEntries.reduce((worst, entry) => 
+
+        const worstEntry = closedEntries.reduce((worst, entry) =>
             entry.pnl < worst.pnl ? entry : worst
         );
 

@@ -9,7 +9,7 @@
     <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
     <script src="./dist/rectfill/lwc-plugin-fill.umd.cjs"></script>
-    <script src="./dist/bandfill/lwc-plugin-bandfill.umd.cjs"></script>
+    <script src="./dist/bandfill/lwc-plugin-bandfillcolor.umd.cjs"></script>
 
 </head>
 
@@ -45,6 +45,7 @@
         </div>
 
         <div class="nav-group backtest-controls">
+            <button id="tradesBtn">Trades</button>
             <button id="clearBacktestBtn">Clear</button>
             <button id="cacheManagerBtn">Cache</button>
             <button id="indicatorSettingsBtn">Settings</button>
@@ -59,44 +60,44 @@
 
     <div class="content">
         <div class="main-layout">
-            <!-- Chart Section - 75% width -->
-            <div class="chart-section">
+            <!-- Chart Section - Full width -->
+            <div class="chart-section" style="width: 100%;">
                 <div id="chart"></div>
             </div>
+        </div>
+    </div>
 
-            <!-- Table Section - 25% width -->
-            <div class="table-section">
-                <div id="backtest-results" class="backtest-panel">
-                    <div class="table-container">
-                        <div class="table-header">
-                            <span>Lệnh Giao Dịch</span>
-                            <div class="table-controls">
-                                <button id="exportTableBtn">CSV</button>
-                                <button id="sortTableBtn">Sort</button>
-                                <span id="tableRowCount">0</span>
-                            </div>
-                        </div>
-                        <div class="table-wrapper">
-                            <table id="backtest-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Side</th>
-                                        <th>Entry</th>
-                                        <th>Max Price</th>
-                                        <th>Max PnL</th>
-                                        <th>Max %</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="backtest-table-body">
-                                </tbody>
-                            </table>
-                        </div>
-                        <!-- Statistics moved to bottom -->
-                        <div class="table-stats">
-                            <div id="backtest-stats"></div>
-                        </div>
-                    </div>
+    <!-- Trades Modal -->
+    <div id="tradesModal" class="modal" style="display: none;">
+        <div class="modal-content trades-modal">
+            <div class="modal-header">
+                <span class="modal-title">Lệnh Giao Dịch</span>
+                <span class="modal-close trades-modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="table-stats">
+                    <div id="backtest-stats"></div>
+                </div>
+                <div class="table-controls-bar">
+                    <button id="exportTableBtn">Export CSV</button>
+                    <button id="sortTableBtn">Sort by PnL</button>
+                    <span class="table-row-count">Total: <span id="tableRowCount">0</span></span>
+                </div>
+                <div class="table-wrapper">
+                    <table id="backtest-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Side</th>
+                                <th>Entry</th>
+                                <th>Max Price</th>
+                                <th>Max PnL</th>
+                                <th>Max %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="backtest-table-body">
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -267,12 +268,12 @@
             </div>
             <div class="modal-body">
                 <div class="settings-grid">
-                    <!-- Bot ATR Settings -->
-                    <div class="settings-section" id="botATRSection">
+                    <!-- Bot ATR 1 Settings -->
+                    <div class="settings-section" id="botATR1Section">
                         <div class="settings-section-header">
-                            <h3>Bot ATR</h3>
+                            <h3>Bot ATR 1 (30/14/2)</h3>
                             <div class="indicator-toggle">
-                                <div class="toggle-switch active" id="botATRToggle">
+                                <div class="toggle-switch active" id="botATR1Toggle">
                                     <div class="toggle-slider"></div>
                                 </div>
                                 <span class="toggle-label">Enabled</span>
@@ -280,16 +281,51 @@
                         </div>
                         <div class="settings-fields">
                             <div class="setting-group">
-                                <label for="bot-ema-length">EMA Length:</label>
-                                <input type="number" id="bot-ema-length" value="30" min="1" max="200">
+                                <label for="bot1-ema-length">EMA Length:</label>
+                                <input type="number" id="bot1-ema-length" value="30" min="1" max="200">
                             </div>
                             <div class="setting-group">
-                                <label for="bot-atr-length">ATR Length:</label>
-                                <input type="number" id="bot-atr-length" value="14" min="1" max="100">
+                                <label for="bot1-atr-length">ATR Length:</label>
+                                <input type="number" id="bot1-atr-length" value="14" min="1" max="100">
                             </div>
                             <div class="setting-group">
-                                <label for="bot-atr-multiplier">ATR Multiplier:</label>
-                                <input type="number" id="bot-atr-multiplier" value="2.0" min="0.1" max="10" step="0.1">
+                                <label for="bot1-atr-multiplier">ATR Multiplier:</label>
+                                <input type="number" id="bot1-atr-multiplier" value="2.0" min="0.1" max="10" step="0.1">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot1-fill-opacity">Fill Opacity:</label>
+                                <input type="number" id="bot1-fill-opacity" value="0.2" min="0" max="1" step="0.05">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bot ATR 2 Settings -->
+                    <div class="settings-section" id="botATR2Section">
+                        <div class="settings-section-header">
+                            <h3>Bot ATR 2 (55/14/2)</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="botATR2Toggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="bot2-ema-length">EMA Length:</label>
+                                <input type="number" id="bot2-ema-length" value="55" min="1" max="200">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-atr-length">ATR Length:</label>
+                                <input type="number" id="bot2-atr-length" value="14" min="1" max="100">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-atr-multiplier">ATR Multiplier:</label>
+                                <input type="number" id="bot2-atr-multiplier" value="2.0" min="0.1" max="10" step="0.1">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-fill-opacity">Fill Opacity:</label>
+                                <input type="number" id="bot2-fill-opacity" value="0.15" min="0" max="1" step="0.05">
                             </div>
                         </div>
                     </div>

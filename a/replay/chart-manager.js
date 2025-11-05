@@ -66,26 +66,64 @@ class ChartManager {
             borderDownColor: '#ff0000',
         });
 
-        // Create Trail1 series (EMA)
-        this.trail1Series = this.chart.addLineSeries({
-            color: 'rgba(0, 255, 0, 0.8)',
-            lineWidth: 2,
-            title: 'Trail1 (EMA)',
+        // Create ATR Bot 1 series (lines hidden, only show bandfill)
+        this.trail1_1Series = this.chart.addLineSeries({
+            color: 'rgba(0, 255, 0, 0)',
+            lineWidth: 0,
+            title: '',
             priceLineVisible: false,
-            axisLabelVisible: false
+            lastValueVisible: false
         });
 
-        // Create Trail2 series (ATR Trailing Stop)
-        this.trail2Series = this.chart.addLineSeries({
-            color: 'rgba(255, 0, 0, 0.8)',
-            lineWidth: 2,
-            title: 'Trail2 (ATR)',
+        this.trail2_1Series = this.chart.addLineSeries({
+            color: 'rgba(255, 0, 0, 0)',
+            lineWidth: 0,
+            title: '',
             priceLineVisible: false,
-            axisLabelVisible: false
+            lastValueVisible: false
         });
 
-        // Create BandFill for ATR (fill between Trail1 and Trail2)
-        this.atrBandFill = null;
+        this.atrBandFill1Series = this.chart.addCustomSeries(new Bandfillcolor.Bandfillcolor(), {
+            highLineColor: 'rgba(0, 255, 0, 0)',
+            lowLineColor: 'rgba(255, 0, 0, 0)',
+            areaColor: 'rgba(128, 128, 0, 0.2)',
+            highLineWidth: 0,
+            lowLineWidth: 0,
+            title: '',
+            lastValueVisible: false
+        });
+
+        // Create ATR Bot 2 series (lines hidden, only show bandfill)
+        this.trail1_2Series = this.chart.addLineSeries({
+            color: 'rgba(0, 150, 255, 0)',
+            lineWidth: 0,
+            title: '',
+            priceLineVisible: false,
+            lastValueVisible: false
+        });
+
+        this.trail2_2Series = this.chart.addLineSeries({
+            color: 'rgba(255, 150, 0, 0)',
+            lineWidth: 0,
+            title: '',
+            priceLineVisible: false,
+            lastValueVisible: false
+        });
+
+        this.atrBandFill2Series = this.chart.addCustomSeries(new Bandfillcolor.Bandfillcolor(), {
+            highLineColor: 'rgba(0, 150, 255, 0)',
+            lowLineColor: 'rgba(255, 150, 0, 0)',
+            areaColor: 'rgba(128, 200, 255, 0.15)',
+            highLineWidth: 0,
+            lowLineWidth: 0,
+            title: '',
+            lastValueVisible: false
+        });
+
+        // Backward compatibility aliases
+        this.trail1Series = this.trail1_1Series;
+        this.trail2Series = this.trail2_1Series;
+        this.atrBandFillSeries = this.atrBandFill1Series;
 
 
         // VSR will use FillRect plugin instead of line series
@@ -96,35 +134,35 @@ class ChartManager {
         this.donchianUpperSeries = this.chart.addLineSeries({
             color: 'rgba(0, 0, 255, 0.8)',
             lineWidth: 1,
-            title: 'Donchian Upper',
+            title: '',
             priceLineVisible: false,
-            axisLabelVisible: false,
+            lastValueVisible: false
         });
 
         this.donchianLowerSeries = this.chart.addLineSeries({
             color: 'rgba(0, 0, 255, 0.8)',
             lineWidth: 1,
-            title: 'Donchian Lower',
+            title: '',
             priceLineVisible: false,
-            axisLabelVisible: false,
+            lastValueVisible: false
         });
 
         this.donchianMiddleSeries = this.chart.addLineSeries({
             color: 'rgba(0, 0, 255, 0.5)',
             lineWidth: 1,
             lineStyle: LightweightCharts.LineStyle.Dotted,
-            title: 'Donchian Middle',
+            title: '',
             priceLineVisible: false,
-            axisLabelVisible: false,
+            lastValueVisible: false
         });
 
         // Create Tenkan-sen series
         this.tenkansenSeries = this.chart.addLineSeries({
             color: 'rgba(255, 165, 0, 0.8)',
             lineWidth: 1,
-            title: 'Tenkan-sen',
+            title: '',
             priceLineVisible: false,
-            axisLabelVisible: false,
+            lastValueVisible: false
         });
 
         // Handle resize
@@ -148,14 +186,26 @@ class ChartManager {
         if (this.candlestickSeries) {
             this.candlestickSeries.setData([]);
         }
-        if (this.trail1Series) {
-            this.trail1Series.setData([]);
+        // Clear ATR Bot 1
+        if (this.trail1_1Series) {
+            this.trail1_1Series.setData([]);
         }
-        if (this.trail2Series) {
-            this.trail2Series.setData([]);
+        if (this.trail2_1Series) {
+            this.trail2_1Series.setData([]);
         }
-        // Clear ATR BandFill
-        this.clearATRBandFill();
+        if (this.atrBandFill1Series) {
+            this.atrBandFill1Series.setData([]);
+        }
+        // Clear ATR Bot 2
+        if (this.trail1_2Series) {
+            this.trail1_2Series.setData([]);
+        }
+        if (this.trail2_2Series) {
+            this.trail2_2Series.setData([]);
+        }
+        if (this.atrBandFill2Series) {
+            this.atrBandFill2Series.setData([]);
+        }
         // Clear VSR rectangles
         this.clearVSRRectangles();
         if (this.donchianUpperSeries) {
@@ -258,116 +308,285 @@ class ChartManager {
         }
     }
 
-    // Set all Trail1 data at once
-    setTrail1Data(data) {
-        // Store for BandFill
-        this._trail1Data = data;
-
-        if (this.trail1Series && data && data.length > 0) {
-            // Determine precision based on data values
-            const values = data.map(d => d.value);
-            const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
-
-            let precision = 2;
-            let minMove = 0.01;
-
-            if (avgValue < 1) {
-                precision = 6;
-                minMove = 0.0001;
-            } else if (avgValue < 10) {
-                precision = 4;
-                minMove = 0.0001;
-            } else if (avgValue < 100) {
-                precision = 3;
-                minMove = 0.001;
-            }
-
-            this.trail1Series.applyOptions({
-                priceFormat: {
-                    type: 'price',
-                    precision: precision,
-                    minMove: minMove,
-                },
-            });
-
-            this.trail1Series.setData(data);
-        }
-
-        // Update BandFill if both trails are set
-        this.updateATRBandFill();
+    // Set all Trail1 data at once (Bot 1 - backward compatibility)
+    setTrail1Data(data, opacity = 0.2) {
+        this.setTrail1_1Data(data, opacity);
     }
 
-    // Set all Trail2 data at once
-    setTrail2Data(data) {
-        // Store for BandFill
-        this._trail2Data = data;
-
-        if (this.trail2Series && data && data.length > 0) {
-            // Determine precision based on data values
-            const values = data.map(d => d.value);
-            const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
-
-            let precision = 2;
-            let minMove = 0.01;
-
-            if (avgValue < 1) {
-                precision = 6;
-                minMove = 0.0001;
-            } else if (avgValue < 10) {
-                precision = 4;
-                minMove = 0.0001;
-            } else if (avgValue < 100) {
-                precision = 3;
-                minMove = 0.001;
-            }
-
-            this.trail2Series.applyOptions({
-                priceFormat: {
-                    type: 'price',
-                    precision: precision,
-                    minMove: minMove,
-                },
-            });
-
-            this.trail2Series.setData(data);
-        }
-
-        // Update BandFill if both trails are set
-        this.updateATRBandFill();
+    // Set all Trail2 data at once (Bot 1 - backward compatibility)
+    setTrail2Data(data, opacity = 0.2) {
+        this.setTrail2_1Data(data, opacity);
     }
 
-    // Update ATR BandFill between Trail1 and Trail2
+    // Set ATR Bot 1 Trail1 data
+    setTrail1_1Data(data, opacity = 0.2, color = null) {
+        this._trail1_1Data = data;
+        this._opacity1 = opacity;
+
+        if (this.trail1_1Series) {
+            if (data && data.length > 0) {
+                const values = data.map(d => d.value);
+                const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+
+                let precision = 2;
+                let minMove = 0.01;
+
+                if (avgValue < 1) {
+                    precision = 6;
+                    minMove = 0.0001;
+                } else if (avgValue < 10) {
+                    precision = 4;
+                    minMove = 0.0001;
+                } else if (avgValue < 100) {
+                    precision = 3;
+                    minMove = 0.001;
+                }
+
+                const options = {
+                    priceFormat: {
+                        type: 'price',
+                        precision: precision,
+                        minMove: minMove,
+                    }
+                };
+
+                if (color) {
+                    options.color = color;
+                }
+
+                this.trail1_1Series.applyOptions(options);
+                this.trail1_1Series.setData(data);
+            } else {
+                // Clear data when empty
+                this.trail1_1Series.setData([]);
+            }
+        }
+
+        this.updateATRBandFill1(opacity);
+    }
+
+    // Set ATR Bot 1 Trail2 data
+    setTrail2_1Data(data, opacity = 0.2, color = null) {
+        this._trail2_1Data = data;
+        this._opacity1 = opacity;
+
+        if (this.trail2_1Series) {
+            if (data && data.length > 0) {
+                const values = data.map(d => d.value);
+                const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+
+                let precision = 2;
+                let minMove = 0.01;
+
+                if (avgValue < 1) {
+                    precision = 6;
+                    minMove = 0.0001;
+                } else if (avgValue < 10) {
+                    precision = 4;
+                    minMove = 0.0001;
+                } else if (avgValue < 100) {
+                    precision = 3;
+                    minMove = 0.001;
+                }
+
+                const options = {
+                    priceFormat: {
+                        type: 'price',
+                        precision: precision,
+                        minMove: minMove,
+                    }
+                };
+
+                if (color) {
+                    options.color = color;
+                }
+
+                this.trail2_1Series.applyOptions(options);
+                this.trail2_1Series.setData(data);
+            } else {
+                // Clear data when empty
+                this.trail2_1Series.setData([]);
+            }
+        }
+
+        this.updateATRBandFill1(opacity);
+    }
+
+    // Set ATR Bot 2 Trail1 data
+    setTrail1_2Data(data, opacity = 0.15, color = null) {
+        this._trail1_2Data = data;
+        this._opacity2 = opacity;
+
+        if (this.trail1_2Series) {
+            if (data && data.length > 0) {
+                const values = data.map(d => d.value);
+                const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+
+                let precision = 2;
+                let minMove = 0.01;
+
+                if (avgValue < 1) {
+                    precision = 6;
+                    minMove = 0.0001;
+                } else if (avgValue < 10) {
+                    precision = 4;
+                    minMove = 0.0001;
+                } else if (avgValue < 100) {
+                    precision = 3;
+                    minMove = 0.001;
+                }
+
+                const options = {
+                    priceFormat: {
+                        type: 'price',
+                        precision: precision,
+                        minMove: minMove,
+                    }
+                };
+
+                if (color) {
+                    options.color = color;
+                }
+
+                this.trail1_2Series.applyOptions(options);
+                this.trail1_2Series.setData(data);
+            } else {
+                // Clear data when empty
+                this.trail1_2Series.setData([]);
+            }
+        }
+
+        this.updateATRBandFill2(opacity);
+    }
+
+    // Set ATR Bot 2 Trail2 data
+    setTrail2_2Data(data, opacity = 0.15, color = null) {
+        this._trail2_2Data = data;
+        this._opacity2 = opacity;
+
+        if (this.trail2_2Series) {
+            if (data && data.length > 0) {
+                const values = data.map(d => d.value);
+                const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+
+                let precision = 2;
+                let minMove = 0.01;
+
+                if (avgValue < 1) {
+                    precision = 6;
+                    minMove = 0.0001;
+                } else if (avgValue < 10) {
+                    precision = 4;
+                    minMove = 0.0001;
+                } else if (avgValue < 100) {
+                    precision = 3;
+                    minMove = 0.001;
+                }
+
+                const options = {
+                    priceFormat: {
+                        type: 'price',
+                        precision: precision,
+                        minMove: minMove,
+                    }
+                };
+
+                if (color) {
+                    options.color = color;
+                }
+
+                this.trail2_2Series.applyOptions(options);
+                this.trail2_2Series.setData(data);
+            } else {
+                // Clear data when empty
+                this.trail2_2Series.setData([]);
+            }
+        }
+
+        this.updateATRBandFill2(opacity);
+    }
+
+    // Update ATR BandFill between Trail1 and Trail2 (Bot 1)
     updateATRBandFill() {
-        // Remove existing BandFill if any
-        if (this.atrBandFill && this.candlestickSeries) {
-            this.candlestickSeries.detachPrimitive(this.atrBandFill);
-            this.atrBandFill = null;
-        }
+        this.updateATRBandFill1();
+    }
 
-        // Create new BandFill if both trails have data
-        if (this._trail1Data && this._trail2Data &&
-            this._trail1Data.length > 0 && this._trail2Data.length > 0 &&
-            this.trail1Series && this.trail2Series && this.candlestickSeries) {
+    // Update ATR Bot 1 BandFill
+    updateATRBandFill1(opacity = 0.2) {
+        if (!this.atrBandFill1Series) return;
 
-            this.atrBandFill = new Bandfill.BandFill({
-                upperSeries: this.trail1Series,
-                lowerSeries: this.trail2Series,
-                topColor: 'rgba(0, 255, 0, 0.15)',
-                bottomColor: 'rgba(255, 0, 0, 0.15)'
-            });
+        if (this._trail1_1Data && this._trail2_1Data &&
+            this._trail1_1Data.length > 0 && this._trail2_1Data.length > 0) {
 
-            this.candlestickSeries.attachPrimitive(this.atrBandFill);
+            const bandData = [];
+            const trail1Map = new Map(this._trail1_1Data.map(d => [d.time, d.value]));
+            const trail2Map = new Map(this._trail2_1Data.map(d => [d.time, d.value]));
+
+            const allTimes = new Set([...trail1Map.keys(), ...trail2Map.keys()]);
+            const sortedTimes = Array.from(allTimes).sort((a, b) => a - b);
+
+            for (const time of sortedTimes) {
+                const trail1Value = trail1Map.get(time);
+                const trail2Value = trail2Map.get(time);
+
+                if (trail1Value !== undefined && trail2Value !== undefined) {
+                    const color = trail1Value > trail2Value
+                        ? `rgba(0, 255, 0, ${opacity})`
+                        : `rgba(255, 0, 0, ${opacity})`;
+
+                    bandData.push({
+                        time: time,
+                        high: Math.max(trail1Value, trail2Value),
+                        low: Math.min(trail1Value, trail2Value),
+                        color: color
+                    });
+                }
+            }
+
+            this.atrBandFill1Series.setData(bandData);
+        } else {
+            // Clear bandfill when data is empty
+            this.atrBandFill1Series.setData([]);
         }
     }
 
-    // Clear ATR BandFill
-    clearATRBandFill() {
-        if (this.atrBandFill && this.candlestickSeries) {
-            this.candlestickSeries.detachPrimitive(this.atrBandFill);
-            this.atrBandFill = null;
+    // Update ATR Bot 2 BandFill
+    updateATRBandFill2(opacity = 0.15) {
+        if (!this.atrBandFill2Series) return;
+
+        if (this._trail1_2Data && this._trail2_2Data &&
+            this._trail1_2Data.length > 0 && this._trail2_2Data.length > 0) {
+
+            const bandData = [];
+            const trail1Map = new Map(this._trail1_2Data.map(d => [d.time, d.value]));
+            const trail2Map = new Map(this._trail2_2Data.map(d => [d.time, d.value]));
+
+            const allTimes = new Set([...trail1Map.keys(), ...trail2Map.keys()]);
+            const sortedTimes = Array.from(allTimes).sort((a, b) => a - b);
+
+            for (const time of sortedTimes) {
+                const trail1Value = trail1Map.get(time);
+                const trail2Value = trail2Map.get(time);
+
+                if (trail1Value !== undefined && trail2Value !== undefined) {
+                    const color = trail1Value > trail2Value
+                        ? `rgba(0, 150, 255, ${opacity})`
+                        : `rgba(255, 150, 0, ${opacity})`;
+
+                    bandData.push({
+                        time: time,
+                        high: Math.max(trail1Value, trail2Value),
+                        low: Math.min(trail1Value, trail2Value),
+                        color: color
+                    });
+                }
+            }
+
+            this.atrBandFill2Series.setData(bandData);
+        } else {
+            // Clear bandfill when data is empty
+            this.atrBandFill2Series.setData([]);
         }
-        this._trail1Data = null;
-        this._trail2Data = null;
     }
 
     // Set VSR data using FillRect plugin
@@ -408,6 +627,10 @@ class ChartManager {
                     }
                 );
 
+                // Hide axis markers by overriding the views
+                rect.priceAxisViews = () => [];
+                rect.timeAxisViews = () => [];
+
                 this.candlestickSeries.attachPrimitive(rect);
                 this.vsrRectangles.push(rect);
             }
@@ -436,6 +659,10 @@ class ChartManager {
                     showLabels: false
                 }
             );
+
+            // Hide axis markers by overriding the views
+            rect.priceAxisViews = () => [];
+            rect.timeAxisViews = () => [];
 
             this.candlestickSeries.attachPrimitive(rect);
             this.vsrRectangles.push(rect);
@@ -483,11 +710,18 @@ class ChartManager {
     }
 
     setTenkansenData(data, color = null) {
-        if (color && this.tenkansenSeries) {
-            this.tenkansenSeries.applyOptions({ color: color });
-        }
-        if (this.tenkansenSeries && data.tenkansen) {
-            this.tenkansenSeries.setData(data.tenkansen);
+        if (this.tenkansenSeries) {
+            if (color) {
+                this.tenkansenSeries.applyOptions({ color: color });
+            }
+            // Handle both array format and object format
+            if (Array.isArray(data)) {
+                this.tenkansenSeries.setData(data);
+            } else if (data && data.tenkansen) {
+                this.tenkansenSeries.setData(data.tenkansen);
+            } else {
+                this.tenkansenSeries.setData([]);
+            }
         }
     }
 
@@ -510,10 +744,22 @@ class ChartManager {
             this.chart.remove();
             this.chart = null;
             this.candlestickSeries = null;
+            // ATR Bot 1
+            this.trail1_1Series = null;
+            this.trail2_1Series = null;
+            this.atrBandFill1Series = null;
+            this._trail1_1Data = null;
+            this._trail2_1Data = null;
+            // ATR Bot 2
+            this.trail1_2Series = null;
+            this.trail2_2Series = null;
+            this.atrBandFill2Series = null;
+            this._trail1_2Data = null;
+            this._trail2_2Data = null;
+            // Backward compatibility
             this.trail1Series = null;
             this.trail2Series = null;
-            this.clearATRBandFill();
-            this.atrBandFill = null;
+            this.atrBandFillSeries = null;
             this.clearVSRRectangles();
             this.vsrRectangles = null;
             this.donchianUpperSeries = null;

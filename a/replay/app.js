@@ -13,11 +13,23 @@ class TradingApp {
 
             // Indicator settings with default values
             this.indicatorSettings = {
-                botATR: {
+                botATR1: {
                     enabled: true,
                     emaLength: 30,
                     atrLength: 14,
-                    atrMultiplier: 2.0
+                    atrMultiplier: 2.0,
+                    trail1Color: 'rgba(0, 255, 0, 0.8)',
+                    trail2Color: 'rgba(255, 0, 0, 0.8)',
+                    fillOpacity: 0.2
+                },
+                botATR2: {
+                    enabled: true,
+                    emaLength: 55,
+                    atrLength: 14,
+                    atrMultiplier: 2.0,
+                    trail1Color: 'rgba(0, 150, 255, 0.8)',
+                    trail2Color: 'rgba(255, 150, 0, 0.8)',
+                    fillOpacity: 0.15
                 },
                 vsr: {
                     enabled: true,
@@ -34,7 +46,7 @@ class TradingApp {
                     }
                 },
                 tenkansen: {
-                    enabled: true,
+                    enabled: false,
                     length: 50,
                     color: 'rgba(255, 165, 0, 0.8)'
                 }
@@ -45,6 +57,7 @@ class TradingApp {
             this.updateUI();
             this.initializeBacktestSystem();
             this.initializeCacheModal();
+            this.initializeTradesModal();
             this.initializeSymbolSelector();
         } catch (error) {
             console.error('Error in TradingApp constructor:', error);
@@ -109,6 +122,10 @@ class TradingApp {
                 if (cacheModal && cacheModal.style.display === 'block') {
                     this.closeCacheModal();
                 }
+                const tradesModal = document.getElementById('tradesModal');
+                if (tradesModal && tradesModal.style.display === 'block') {
+                    this.closeTradesModal();
+                }
             }
         });
 
@@ -161,6 +178,36 @@ class TradingApp {
     // Close cache modal
     closeCacheModal() {
         const modal = document.getElementById('cacheModal');
+        modal.style.display = 'none';
+    }
+
+    // Initialize trades modal functionality
+    initializeTradesModal() {
+        const modal = document.getElementById('tradesModal');
+        const closeBtn = document.querySelector('.trades-modal-close');
+
+        // Close modal when clicking X
+        closeBtn.addEventListener('click', () => {
+            this.closeTradesModal();
+        });
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeTradesModal();
+            }
+        });
+    }
+
+    // Show trades modal
+    showTradesModal() {
+        const modal = document.getElementById('tradesModal');
+        modal.style.display = 'block';
+    }
+
+    // Close trades modal
+    closeTradesModal() {
+        const modal = document.getElementById('tradesModal');
         modal.style.display = 'none';
     }
 
@@ -349,6 +396,11 @@ class TradingApp {
             this.clearBacktest();
         });
 
+        // Trades modal
+        safeAddEventListener('tradesBtn', 'click', () => {
+            this.showTradesModal();
+        });
+
         // Cache controls
         safeAddEventListener('cacheManagerBtn', 'click', () => {
             this.showCacheModal();
@@ -497,16 +549,44 @@ class TradingApp {
             // Show all data on chart initially
             this.chartManager.setCandlestickData(data);
 
-            // Calculate and show full ATR indicators if enabled
-            if (this.indicatorSettings.botATR.enabled) {
-                const botATR = new BotATRIndicator(
-                    this.indicatorSettings.botATR.emaLength,
-                    this.indicatorSettings.botATR.atrLength,
-                    this.indicatorSettings.botATR.atrMultiplier
+            // Calculate and show ATR Bot 1 if enabled
+            if (this.indicatorSettings.botATR1.enabled) {
+                const botATR1 = new BotATRIndicator(
+                    this.indicatorSettings.botATR1.emaLength,
+                    this.indicatorSettings.botATR1.atrLength,
+                    this.indicatorSettings.botATR1.atrMultiplier
                 );
-                const atrData = botATR.calculateArray(data);
-                this.chartManager.setTrail1Data(atrData.ema);
-                this.chartManager.setTrail2Data(atrData.trail);
+                const atrData1 = botATR1.calculateArray(data);
+                this.chartManager.setTrail1_1Data(
+                    atrData1.ema, 
+                    this.indicatorSettings.botATR1.fillOpacity,
+                    this.indicatorSettings.botATR1.trail1Color
+                );
+                this.chartManager.setTrail2_1Data(
+                    atrData1.trail, 
+                    this.indicatorSettings.botATR1.fillOpacity,
+                    this.indicatorSettings.botATR1.trail2Color
+                );
+            }
+
+            // Calculate and show ATR Bot 2 if enabled
+            if (this.indicatorSettings.botATR2.enabled) {
+                const botATR2 = new BotATRIndicator(
+                    this.indicatorSettings.botATR2.emaLength,
+                    this.indicatorSettings.botATR2.atrLength,
+                    this.indicatorSettings.botATR2.atrMultiplier
+                );
+                const atrData2 = botATR2.calculateArray(data);
+                this.chartManager.setTrail1_2Data(
+                    atrData2.ema, 
+                    this.indicatorSettings.botATR2.fillOpacity,
+                    this.indicatorSettings.botATR2.trail1Color
+                );
+                this.chartManager.setTrail2_2Data(
+                    atrData2.trail, 
+                    this.indicatorSettings.botATR2.fillOpacity,
+                    this.indicatorSettings.botATR2.trail2Color
+                );
             }
 
             // Calculate and show VSR indicators if enabled
@@ -1421,10 +1501,19 @@ class TradingApp {
 
     // Show indicator settings modal
     showIndicatorSettings() {
-        // Populate current values
-        document.getElementById('bot-ema-length').value = this.indicatorSettings.botATR.emaLength;
-        document.getElementById('bot-atr-length').value = this.indicatorSettings.botATR.atrLength;
-        document.getElementById('bot-atr-multiplier').value = this.indicatorSettings.botATR.atrMultiplier;
+        // Populate ATR Bot 1 values
+        document.getElementById('bot1-ema-length').value = this.indicatorSettings.botATR1.emaLength;
+        document.getElementById('bot1-atr-length').value = this.indicatorSettings.botATR1.atrLength;
+        document.getElementById('bot1-atr-multiplier').value = this.indicatorSettings.botATR1.atrMultiplier;
+        document.getElementById('bot1-fill-opacity').value = this.indicatorSettings.botATR1.fillOpacity;
+
+        // Populate ATR Bot 2 values
+        document.getElementById('bot2-ema-length').value = this.indicatorSettings.botATR2.emaLength;
+        document.getElementById('bot2-atr-length').value = this.indicatorSettings.botATR2.atrLength;
+        document.getElementById('bot2-atr-multiplier').value = this.indicatorSettings.botATR2.atrMultiplier;
+        document.getElementById('bot2-fill-opacity').value = this.indicatorSettings.botATR2.fillOpacity;
+
+        // Populate other indicators
         document.getElementById('vsr-length').value = this.indicatorSettings.vsr.length;
         document.getElementById('vsr-threshold').value = this.indicatorSettings.vsr.threshold;
         document.getElementById('donchian-length').value = this.indicatorSettings.donchian.length;
@@ -1437,7 +1526,8 @@ class TradingApp {
         document.getElementById('tenkansen-color').value = this.rgbaToHex(this.indicatorSettings.tenkansen.color);
 
         // Set toggle states
-        this.setToggleState('botATRToggle', 'botATRSection', this.indicatorSettings.botATR.enabled);
+        this.setToggleState('botATR1Toggle', 'botATR1Section', this.indicatorSettings.botATR1.enabled);
+        this.setToggleState('botATR2Toggle', 'botATR2Section', this.indicatorSettings.botATR2.enabled);
         this.setToggleState('vsrToggle', 'vsrSection', this.indicatorSettings.vsr.enabled);
         this.setToggleState('donchianToggle', 'donchianSection', this.indicatorSettings.donchian.enabled);
         this.setToggleState('tenkansenToggle', 'tenkansenSection', this.indicatorSettings.tenkansen.enabled);
@@ -1488,7 +1578,8 @@ class TradingApp {
         });
 
         // Toggle switches
-        this.initializeToggle('botATRToggle', 'botATRSection', 'botATR');
+        this.initializeToggle('botATR1Toggle', 'botATR1Section', 'botATR1');
+        this.initializeToggle('botATR2Toggle', 'botATR2Section', 'botATR2');
         this.initializeToggle('vsrToggle', 'vsrSection', 'vsr');
         this.initializeToggle('donchianToggle', 'donchianSection', 'donchian');
         this.initializeToggle('tenkansenToggle', 'tenkansenSection', 'tenkansen');
@@ -1531,11 +1622,23 @@ class TradingApp {
     // Reset indicator settings to default
     resetIndicatorSettings() {
         this.indicatorSettings = {
-            botATR: {
+            botATR1: {
                 enabled: true,
                 emaLength: 30,
                 atrLength: 14,
-                atrMultiplier: 2.0
+                atrMultiplier: 2.0,
+                trail1Color: 'rgba(0, 255, 0, 0.8)',
+                trail2Color: 'rgba(255, 0, 0, 0.8)',
+                fillOpacity: 0.2
+            },
+            botATR2: {
+                enabled: true,
+                emaLength: 55,
+                atrLength: 14,
+                atrMultiplier: 2.0,
+                trail1Color: 'rgba(0, 150, 255, 0.8)',
+                trail2Color: 'rgba(255, 150, 0, 0.8)',
+                fillOpacity: 0.15
             },
             vsr: {
                 enabled: true,
@@ -1552,16 +1655,21 @@ class TradingApp {
                 }
             },
             tenkansen: {
-                enabled: true,
+                enabled: false,
                 length: 50,
                 color: 'rgba(255, 165, 0, 0.8)'
             }
         };
 
         // Update form values
-        document.getElementById('bot-ema-length').value = 30;
-        document.getElementById('bot-atr-length').value = 14;
-        document.getElementById('bot-atr-multiplier').value = 2.0;
+        document.getElementById('bot1-ema-length').value = 30;
+        document.getElementById('bot1-atr-length').value = 14;
+        document.getElementById('bot1-atr-multiplier').value = 2.0;
+        document.getElementById('bot1-fill-opacity').value = 0.2;
+        document.getElementById('bot2-ema-length').value = 55;
+        document.getElementById('bot2-atr-length').value = 14;
+        document.getElementById('bot2-atr-multiplier').value = 2.0;
+        document.getElementById('bot2-fill-opacity').value = 0.15;
         document.getElementById('vsr-length').value = 10;
         document.getElementById('vsr-threshold').value = 10;
         document.getElementById('donchian-length').value = 50;
@@ -1572,10 +1680,11 @@ class TradingApp {
         document.getElementById('tenkansen-color').value = '#ffa500';
 
         // Reset toggle states
-        this.setToggleState('botATRToggle', 'botATRSection', true);
+        this.setToggleState('botATR1Toggle', 'botATR1Section', true);
+        this.setToggleState('botATR2Toggle', 'botATR2Section', true);
         this.setToggleState('vsrToggle', 'vsrSection', true);
         this.setToggleState('donchianToggle', 'donchianSection', true);
-        this.setToggleState('tenkansenToggle', 'tenkansenSection', true);
+        this.setToggleState('tenkansenToggle', 'tenkansenSection', false);
 
         this.updateStatus('Settings reset to default', 'info');
     }
@@ -1583,15 +1692,25 @@ class TradingApp {
     // Apply indicator settings
     applyIndicatorSettings() {
         // Get enabled states from toggles
-        const botATREnabled = document.getElementById('botATRToggle').classList.contains('active');
+        const botATR1Enabled = document.getElementById('botATR1Toggle').classList.contains('active');
+        const botATR2Enabled = document.getElementById('botATR2Toggle').classList.contains('active');
         const vsrEnabled = document.getElementById('vsrToggle').classList.contains('active');
         const donchianEnabled = document.getElementById('donchianToggle').classList.contains('active');
         const tenkansenEnabled = document.getElementById('tenkansenToggle').classList.contains('active');
 
-        // Get values from form
-        const botEmaLength = parseInt(document.getElementById('bot-ema-length').value);
-        const botAtrLength = parseInt(document.getElementById('bot-atr-length').value);
-        const botAtrMultiplier = parseFloat(document.getElementById('bot-atr-multiplier').value);
+        // Get ATR Bot 1 values
+        const bot1EmaLength = parseInt(document.getElementById('bot1-ema-length').value);
+        const bot1AtrLength = parseInt(document.getElementById('bot1-atr-length').value);
+        const bot1AtrMultiplier = parseFloat(document.getElementById('bot1-atr-multiplier').value);
+        const bot1FillOpacity = parseFloat(document.getElementById('bot1-fill-opacity').value);
+
+        // Get ATR Bot 2 values
+        const bot2EmaLength = parseInt(document.getElementById('bot2-ema-length').value);
+        const bot2AtrLength = parseInt(document.getElementById('bot2-atr-length').value);
+        const bot2AtrMultiplier = parseFloat(document.getElementById('bot2-atr-multiplier').value);
+        const bot2FillOpacity = parseFloat(document.getElementById('bot2-fill-opacity').value);
+
+        // Get other indicator values
         const vsrLength = parseInt(document.getElementById('vsr-length').value);
         const vsrThreshold = parseInt(document.getElementById('vsr-threshold').value);
         const donchianLength = parseInt(document.getElementById('donchian-length').value);
@@ -1604,16 +1723,20 @@ class TradingApp {
         const tenkansenColor = this.hexToRgba(document.getElementById('tenkansen-color').value, 0.8);
 
         // Validate values
-        if (botEmaLength < 1 || botEmaLength > 200) {
-            this.updateStatus('Bot EMA Length must be between 1 and 200', 'error');
+        if (bot1EmaLength < 1 || bot1EmaLength > 200 || bot2EmaLength < 1 || bot2EmaLength > 200) {
+            this.updateStatus('EMA Length must be between 1 and 200', 'error');
             return;
         }
-        if (botAtrLength < 1 || botAtrLength > 100) {
-            this.updateStatus('Bot ATR Length must be between 1 and 100', 'error');
+        if (bot1AtrLength < 1 || bot1AtrLength > 100 || bot2AtrLength < 1 || bot2AtrLength > 100) {
+            this.updateStatus('ATR Length must be between 1 and 100', 'error');
             return;
         }
-        if (botAtrMultiplier < 0.1 || botAtrMultiplier > 10) {
-            this.updateStatus('Bot ATR Multiplier must be between 0.1 and 10', 'error');
+        if (bot1AtrMultiplier < 0.1 || bot1AtrMultiplier > 10 || bot2AtrMultiplier < 0.1 || bot2AtrMultiplier > 10) {
+            this.updateStatus('ATR Multiplier must be between 0.1 and 10', 'error');
+            return;
+        }
+        if (bot1FillOpacity < 0 || bot1FillOpacity > 1 || bot2FillOpacity < 0 || bot2FillOpacity > 1) {
+            this.updateStatus('Fill Opacity must be between 0 and 1', 'error');
             return;
         }
         if (vsrLength < 1 || vsrLength > 100) {
@@ -1634,10 +1757,18 @@ class TradingApp {
         }
 
         // Update settings with enabled states
-        this.indicatorSettings.botATR.enabled = botATREnabled;
-        this.indicatorSettings.botATR.emaLength = botEmaLength;
-        this.indicatorSettings.botATR.atrLength = botAtrLength;
-        this.indicatorSettings.botATR.atrMultiplier = botAtrMultiplier;
+        this.indicatorSettings.botATR1.enabled = botATR1Enabled;
+        this.indicatorSettings.botATR1.emaLength = bot1EmaLength;
+        this.indicatorSettings.botATR1.atrLength = bot1AtrLength;
+        this.indicatorSettings.botATR1.atrMultiplier = bot1AtrMultiplier;
+        this.indicatorSettings.botATR1.fillOpacity = bot1FillOpacity;
+
+        this.indicatorSettings.botATR2.enabled = botATR2Enabled;
+        this.indicatorSettings.botATR2.emaLength = bot2EmaLength;
+        this.indicatorSettings.botATR2.atrLength = bot2AtrLength;
+        this.indicatorSettings.botATR2.atrMultiplier = bot2AtrMultiplier;
+        this.indicatorSettings.botATR2.fillOpacity = bot2FillOpacity;
+
         this.indicatorSettings.vsr.enabled = vsrEnabled;
         this.indicatorSettings.vsr.length = vsrLength;
         this.indicatorSettings.vsr.threshold = vsrThreshold;
@@ -1672,20 +1803,52 @@ class TradingApp {
         if (!this.currentData || this.currentData.length === 0) return;
 
         try {
-            // Recalculate and show/hide ATR indicators based on enabled state
-            if (this.indicatorSettings.botATR.enabled) {
-                const botATR = new BotATRIndicator(
-                    this.indicatorSettings.botATR.emaLength,
-                    this.indicatorSettings.botATR.atrLength,
-                    this.indicatorSettings.botATR.atrMultiplier
+            // Recalculate and show/hide ATR Bot 1 based on enabled state
+            if (this.indicatorSettings.botATR1.enabled) {
+                const botATR1 = new BotATRIndicator(
+                    this.indicatorSettings.botATR1.emaLength,
+                    this.indicatorSettings.botATR1.atrLength,
+                    this.indicatorSettings.botATR1.atrMultiplier
                 );
-                const atrData = botATR.calculateArray(this.currentData);
-                this.chartManager.setTrail1Data(atrData.ema);
-                this.chartManager.setTrail2Data(atrData.trail);
+                const atrData1 = botATR1.calculateArray(this.currentData);
+                this.chartManager.setTrail1_1Data(
+                    atrData1.ema, 
+                    this.indicatorSettings.botATR1.fillOpacity,
+                    this.indicatorSettings.botATR1.trail1Color
+                );
+                this.chartManager.setTrail2_1Data(
+                    atrData1.trail, 
+                    this.indicatorSettings.botATR1.fillOpacity,
+                    this.indicatorSettings.botATR1.trail2Color
+                );
             } else {
-                // Clear ATR indicators
-                this.chartManager.setTrail1Data([]);
-                this.chartManager.setTrail2Data([]);
+                // Clear ATR Bot 1
+                this.chartManager.setTrail1_1Data([]);
+                this.chartManager.setTrail2_1Data([]);
+            }
+
+            // Recalculate and show/hide ATR Bot 2 based on enabled state
+            if (this.indicatorSettings.botATR2.enabled) {
+                const botATR2 = new BotATRIndicator(
+                    this.indicatorSettings.botATR2.emaLength,
+                    this.indicatorSettings.botATR2.atrLength,
+                    this.indicatorSettings.botATR2.atrMultiplier
+                );
+                const atrData2 = botATR2.calculateArray(this.currentData);
+                this.chartManager.setTrail1_2Data(
+                    atrData2.ema, 
+                    this.indicatorSettings.botATR2.fillOpacity,
+                    this.indicatorSettings.botATR2.trail1Color
+                );
+                this.chartManager.setTrail2_2Data(
+                    atrData2.trail, 
+                    this.indicatorSettings.botATR2.fillOpacity,
+                    this.indicatorSettings.botATR2.trail2Color
+                );
+            } else {
+                // Clear ATR Bot 2
+                this.chartManager.setTrail1_2Data([]);
+                this.chartManager.setTrail2_2Data([]);
             }
 
             // Recalculate and show/hide VSR indicators based on enabled state
@@ -1729,11 +1892,11 @@ class TradingApp {
                 this.chartManager.setTenkansenData([], this.indicatorSettings.tenkansen.color);
             }
 
-            // Update replay engine with new settings
+            // Update replay engine with new settings (use ATR Bot 1 for backtest)
             this.replayEngine.botATR = new BotATRIndicator(
-                this.indicatorSettings.botATR.emaLength,
-                this.indicatorSettings.botATR.atrLength,
-                this.indicatorSettings.botATR.atrMultiplier
+                this.indicatorSettings.botATR1.emaLength,
+                this.indicatorSettings.botATR1.atrLength,
+                this.indicatorSettings.botATR1.atrMultiplier
             );
             this.replayEngine.vsr = new VSRIndicator(
                 this.indicatorSettings.vsr.length,
