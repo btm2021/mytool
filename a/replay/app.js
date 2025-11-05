@@ -31,10 +31,22 @@ class TradingApp {
                     trail2Color: 'rgba(255, 150, 0, 0.8)',
                     fillOpacity: 0.15
                 },
-                vsr: {
+                vsr1: {
                     enabled: true,
                     length: 10,
-                    threshold: 10
+                    threshold: 10,
+                    fillColor: 'rgba(255, 251, 0, 0.5)'
+                },
+                vsr2: {
+                    enabled: true,
+                    length: 20,
+                    threshold: 20,
+                    fillColor: 'rgba(255, 100, 200, 0.4)'
+                },
+                volume: {
+                    enabled: true,
+                    upColor: 'rgba(0, 255, 0, 0.5)',
+                    downColor: 'rgba(255, 0, 0, 0.5)'
                 },
                 donchian: {
                     enabled: true,
@@ -589,15 +601,33 @@ class TradingApp {
                 );
             }
 
-            // Calculate and show VSR indicators if enabled
-            if (this.indicatorSettings.vsr.enabled) {
-                const vsr = new VSRIndicator(
-                    this.indicatorSettings.vsr.length,
-                    this.indicatorSettings.vsr.threshold
+            // Calculate and show VSR1 indicators if enabled
+            if (this.indicatorSettings.vsr1.enabled) {
+                const vsr1 = new VSRIndicator(
+                    this.indicatorSettings.vsr1.length,
+                    this.indicatorSettings.vsr1.threshold
                 );
-                const vsrData = vsr.calculateArray(data);
-                this.chartManager.setVSRUpperLineData(vsrData.upper);
-                this.chartManager.setVSRLowerLineData(vsrData.lower);
+                const vsr1Data = vsr1.calculateArray(data);
+                this.chartManager.setVSR1Data(vsr1Data.upper, vsr1Data.lower, this.indicatorSettings.vsr1.fillColor);
+            }
+
+            // Calculate and show VSR2 indicators if enabled
+            if (this.indicatorSettings.vsr2.enabled) {
+                const vsr2 = new VSRIndicator(
+                    this.indicatorSettings.vsr2.length,
+                    this.indicatorSettings.vsr2.threshold
+                );
+                const vsr2Data = vsr2.calculateArray(data);
+                this.chartManager.setVSR2Data(vsr2Data.upper, vsr2Data.lower, this.indicatorSettings.vsr2.fillColor);
+            }
+
+            // Show volume if enabled
+            if (this.indicatorSettings.volume.enabled) {
+                this.chartManager.setVolumeData(
+                    data,
+                    this.indicatorSettings.volume.upColor,
+                    this.indicatorSettings.volume.downColor
+                );
             }
 
             // Calculate and show Donchian Channel if enabled
@@ -1514,8 +1544,10 @@ class TradingApp {
         document.getElementById('bot2-fill-opacity').value = this.indicatorSettings.botATR2.fillOpacity;
 
         // Populate other indicators
-        document.getElementById('vsr-length').value = this.indicatorSettings.vsr.length;
-        document.getElementById('vsr-threshold').value = this.indicatorSettings.vsr.threshold;
+        document.getElementById('vsr1-length').value = this.indicatorSettings.vsr1.length;
+        document.getElementById('vsr1-threshold').value = this.indicatorSettings.vsr1.threshold;
+        document.getElementById('vsr2-length').value = this.indicatorSettings.vsr2.length;
+        document.getElementById('vsr2-threshold').value = this.indicatorSettings.vsr2.threshold;
         document.getElementById('donchian-length').value = this.indicatorSettings.donchian.length;
         document.getElementById('tenkansen-length').value = this.indicatorSettings.tenkansen.length;
         
@@ -1528,7 +1560,9 @@ class TradingApp {
         // Set toggle states
         this.setToggleState('botATR1Toggle', 'botATR1Section', this.indicatorSettings.botATR1.enabled);
         this.setToggleState('botATR2Toggle', 'botATR2Section', this.indicatorSettings.botATR2.enabled);
-        this.setToggleState('vsrToggle', 'vsrSection', this.indicatorSettings.vsr.enabled);
+        this.setToggleState('vsr1Toggle', 'vsr1Section', this.indicatorSettings.vsr1.enabled);
+        this.setToggleState('vsr2Toggle', 'vsr2Section', this.indicatorSettings.vsr2.enabled);
+        this.setToggleState('volumeToggle', 'volumeSection', this.indicatorSettings.volume.enabled);
         this.setToggleState('donchianToggle', 'donchianSection', this.indicatorSettings.donchian.enabled);
         this.setToggleState('tenkansenToggle', 'tenkansenSection', this.indicatorSettings.tenkansen.enabled);
 
@@ -1580,7 +1614,9 @@ class TradingApp {
         // Toggle switches
         this.initializeToggle('botATR1Toggle', 'botATR1Section', 'botATR1');
         this.initializeToggle('botATR2Toggle', 'botATR2Section', 'botATR2');
-        this.initializeToggle('vsrToggle', 'vsrSection', 'vsr');
+        this.initializeToggle('vsr1Toggle', 'vsr1Section', 'vsr1');
+        this.initializeToggle('vsr2Toggle', 'vsr2Section', 'vsr2');
+        this.initializeToggle('volumeToggle', 'volumeSection', 'volume');
         this.initializeToggle('donchianToggle', 'donchianSection', 'donchian');
         this.initializeToggle('tenkansenToggle', 'tenkansenSection', 'tenkansen');
 
@@ -1670,8 +1706,10 @@ class TradingApp {
         document.getElementById('bot2-atr-length').value = 14;
         document.getElementById('bot2-atr-multiplier').value = 2.0;
         document.getElementById('bot2-fill-opacity').value = 0.15;
-        document.getElementById('vsr-length').value = 10;
-        document.getElementById('vsr-threshold').value = 10;
+        document.getElementById('vsr1-length').value = 10;
+        document.getElementById('vsr1-threshold').value = 10;
+        document.getElementById('vsr2-length').value = 20;
+        document.getElementById('vsr2-threshold').value = 20;
         document.getElementById('donchian-length').value = 50;
         document.getElementById('tenkansen-length').value = 50;
         document.getElementById('donchian-upper-color').value = '#0000ff';
@@ -1682,7 +1720,9 @@ class TradingApp {
         // Reset toggle states
         this.setToggleState('botATR1Toggle', 'botATR1Section', true);
         this.setToggleState('botATR2Toggle', 'botATR2Section', true);
-        this.setToggleState('vsrToggle', 'vsrSection', true);
+        this.setToggleState('vsr1Toggle', 'vsr1Section', true);
+        this.setToggleState('vsr2Toggle', 'vsr2Section', true);
+        this.setToggleState('volumeToggle', 'volumeSection', true);
         this.setToggleState('donchianToggle', 'donchianSection', true);
         this.setToggleState('tenkansenToggle', 'tenkansenSection', false);
 
@@ -1694,7 +1734,9 @@ class TradingApp {
         // Get enabled states from toggles
         const botATR1Enabled = document.getElementById('botATR1Toggle').classList.contains('active');
         const botATR2Enabled = document.getElementById('botATR2Toggle').classList.contains('active');
-        const vsrEnabled = document.getElementById('vsrToggle').classList.contains('active');
+        const vsr1Enabled = document.getElementById('vsr1Toggle').classList.contains('active');
+        const vsr2Enabled = document.getElementById('vsr2Toggle').classList.contains('active');
+        const volumeEnabled = document.getElementById('volumeToggle').classList.contains('active');
         const donchianEnabled = document.getElementById('donchianToggle').classList.contains('active');
         const tenkansenEnabled = document.getElementById('tenkansenToggle').classList.contains('active');
 
@@ -1711,8 +1753,10 @@ class TradingApp {
         const bot2FillOpacity = parseFloat(document.getElementById('bot2-fill-opacity').value);
 
         // Get other indicator values
-        const vsrLength = parseInt(document.getElementById('vsr-length').value);
-        const vsrThreshold = parseInt(document.getElementById('vsr-threshold').value);
+        const vsr1Length = parseInt(document.getElementById('vsr1-length').value);
+        const vsr1Threshold = parseInt(document.getElementById('vsr1-threshold').value);
+        const vsr2Length = parseInt(document.getElementById('vsr2-length').value);
+        const vsr2Threshold = parseInt(document.getElementById('vsr2-threshold').value);
         const donchianLength = parseInt(document.getElementById('donchian-length').value);
         const tenkansenLength = parseInt(document.getElementById('tenkansen-length').value);
         
@@ -1739,11 +1783,11 @@ class TradingApp {
             this.updateStatus('Fill Opacity must be between 0 and 1', 'error');
             return;
         }
-        if (vsrLength < 1 || vsrLength > 100) {
+        if (vsr1Length < 1 || vsr1Length > 100 || vsr2Length < 1 || vsr2Length > 100) {
             this.updateStatus('VSR Length must be between 1 and 100', 'error');
             return;
         }
-        if (vsrThreshold < 1 || vsrThreshold > 100) {
+        if (vsr1Threshold < 1 || vsr1Threshold > 100 || vsr2Threshold < 1 || vsr2Threshold > 100) {
             this.updateStatus('VSR Threshold must be between 1 and 100', 'error');
             return;
         }
@@ -1769,9 +1813,15 @@ class TradingApp {
         this.indicatorSettings.botATR2.atrMultiplier = bot2AtrMultiplier;
         this.indicatorSettings.botATR2.fillOpacity = bot2FillOpacity;
 
-        this.indicatorSettings.vsr.enabled = vsrEnabled;
-        this.indicatorSettings.vsr.length = vsrLength;
-        this.indicatorSettings.vsr.threshold = vsrThreshold;
+        this.indicatorSettings.vsr1.enabled = vsr1Enabled;
+        this.indicatorSettings.vsr1.length = vsr1Length;
+        this.indicatorSettings.vsr1.threshold = vsr1Threshold;
+
+        this.indicatorSettings.vsr2.enabled = vsr2Enabled;
+        this.indicatorSettings.vsr2.length = vsr2Length;
+        this.indicatorSettings.vsr2.threshold = vsr2Threshold;
+
+        this.indicatorSettings.volume.enabled = volumeEnabled;
         this.indicatorSettings.donchian.enabled = donchianEnabled;
         this.indicatorSettings.donchian.length = donchianLength;
         this.indicatorSettings.donchian.colors.upper = donchianUpperColor;
@@ -1851,19 +1901,42 @@ class TradingApp {
                 this.chartManager.setTrail2_2Data([]);
             }
 
-            // Recalculate and show/hide VSR indicators based on enabled state
-            if (this.indicatorSettings.vsr.enabled) {
-                const vsr = new VSRIndicator(
-                    this.indicatorSettings.vsr.length,
-                    this.indicatorSettings.vsr.threshold
+            // Recalculate and show/hide VSR1 indicators based on enabled state
+            if (this.indicatorSettings.vsr1.enabled) {
+                const vsr1 = new VSRIndicator(
+                    this.indicatorSettings.vsr1.length,
+                    this.indicatorSettings.vsr1.threshold
                 );
-                const vsrData = vsr.calculateArray(this.currentData);
-                this.chartManager.setVSRUpperLineData(vsrData.upper);
-                this.chartManager.setVSRLowerLineData(vsrData.lower);
+                const vsr1Data = vsr1.calculateArray(this.currentData);
+                this.chartManager.setVSR1Data(vsr1Data.upper, vsr1Data.lower, this.indicatorSettings.vsr1.fillColor);
             } else {
-                // Clear VSR indicators
-                this.chartManager.setVSRUpperLineData([]);
-                this.chartManager.setVSRLowerLineData([]);
+                // Clear VSR1 indicators
+                this.chartManager.clearVSR1Rectangles();
+            }
+
+            // Recalculate and show/hide VSR2 indicators based on enabled state
+            if (this.indicatorSettings.vsr2.enabled) {
+                const vsr2 = new VSRIndicator(
+                    this.indicatorSettings.vsr2.length,
+                    this.indicatorSettings.vsr2.threshold
+                );
+                const vsr2Data = vsr2.calculateArray(this.currentData);
+                this.chartManager.setVSR2Data(vsr2Data.upper, vsr2Data.lower, this.indicatorSettings.vsr2.fillColor);
+            } else {
+                // Clear VSR2 indicators
+                this.chartManager.clearVSR2Rectangles();
+            }
+
+            // Show/hide volume based on enabled state
+            if (this.indicatorSettings.volume.enabled) {
+                this.chartManager.setVolumeData(
+                    this.currentData,
+                    this.indicatorSettings.volume.upColor,
+                    this.indicatorSettings.volume.downColor
+                );
+            } else {
+                // Clear volume
+                this.chartManager.setVolumeData([]);
             }
 
             // Recalculate and show/hide Donchian Channel based on enabled state
@@ -1899,8 +1972,8 @@ class TradingApp {
                 this.indicatorSettings.botATR1.atrMultiplier
             );
             this.replayEngine.vsr = new VSRIndicator(
-                this.indicatorSettings.vsr.length,
-                this.indicatorSettings.vsr.threshold
+                this.indicatorSettings.vsr1.length,
+                this.indicatorSettings.vsr1.threshold
             );
 
             this.updateStatus('Indicator settings applied successfully', 'success');

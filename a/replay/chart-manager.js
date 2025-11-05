@@ -66,6 +66,29 @@ class ChartManager {
             borderDownColor: '#ff0000',
         });
 
+        // Create volume histogram series
+        this.volumeSeries = this.chart.addHistogramSeries({
+            color: '#26a69a',
+            priceFormat: {
+                type: 'volume',
+            },
+            priceScaleId: 'volume',
+            scaleMargins: {
+                top: 0.8,
+                bottom: 0,
+            },
+            title: '',
+            lastValueVisible: false
+        });
+
+        // Configure volume price scale
+        this.chart.priceScale('volume').applyOptions({
+            scaleMargins: {
+                top: 0.8,
+                bottom: 0,
+            },
+        });
+
         // Create ATR Bot 1 series (lines hidden, only show bandfill)
         this.trail1_1Series = this.chart.addLineSeries({
             color: 'rgba(0, 255, 0, 0)',
@@ -127,8 +150,11 @@ class ChartManager {
 
 
         // VSR will use FillRect plugin instead of line series
-        // Store VSR rectangles array
-        this.vsrRectangles = [];
+        // Store VSR rectangles arrays for both VSR indicators
+        this.vsr1Rectangles = [];
+        this.vsr2Rectangles = [];
+        // Backward compatibility
+        this.vsrRectangles = this.vsr1Rectangles;
 
         // Create Donchian Channel series
         this.donchianUpperSeries = this.chart.addLineSeries({
@@ -220,6 +246,9 @@ class ChartManager {
         if (this.tenkansenSeries) {
             this.tenkansenSeries.setData([]);
         }
+        if (this.volumeSeries) {
+            this.volumeSeries.setData([]);
+        }
     }
 
     // Add a single candle to the chart
@@ -244,15 +273,33 @@ class ChartManager {
     }
 
 
-    // Clear all VSR rectangles
+    // Clear all VSR rectangles (backward compatibility)
     clearVSRRectangles() {
-        if (this.vsrRectangles && this.vsrRectangles.length > 0) {
-            this.vsrRectangles.forEach(rect => {
+        this.clearVSR1Rectangles();
+        this.clearVSR2Rectangles();
+    }
+
+    // Clear VSR1 rectangles
+    clearVSR1Rectangles() {
+        if (this.vsr1Rectangles && this.vsr1Rectangles.length > 0) {
+            this.vsr1Rectangles.forEach(rect => {
                 if (this.candlestickSeries) {
                     this.candlestickSeries.detachPrimitive(rect);
                 }
             });
-            this.vsrRectangles = [];
+            this.vsr1Rectangles = [];
+        }
+    }
+
+    // Clear VSR2 rectangles
+    clearVSR2Rectangles() {
+        if (this.vsr2Rectangles && this.vsr2Rectangles.length > 0) {
+            this.vsr2Rectangles.forEach(rect => {
+                if (this.candlestickSeries) {
+                    this.candlestickSeries.detachPrimitive(rect);
+                }
+            });
+            this.vsr2Rectangles = [];
         }
     }
 
@@ -669,9 +716,93 @@ class ChartManager {
         }
     }
 
+    // Set VSR1 data using FillRect plugin
+    setVSR1Data(upperData, lowerData, fillColor = 'rgba(255, 251, 0, 0.5)') {
+        this.clearVSR1Rectangles();
+
+        if (!upperData || !lowerData || upperData.length === 0 || lowerData.length === 0) {
+            return;
+        }
+
+        this._createVSRRectangles(upperData, lowerData, fillColor, this.vsr1Rectangles);
+    }
+
+    // Set VSR2 data using FillRect plugin
+    setVSR2Data(upperData, lowerData, fillColor = 'rgba(255, 100, 200, 0.4)') {
+        this.clearVSR2Rectangles();
+
+        if (!upperData || !lowerData || upperData.length === 0 || lowerData.length === 0) {
+            return;
+        }
+
+        this._createVSRRectangles(upperData, lowerData, fillColor, this.vsr2Rectangles);
+    }
+
+    // Helper method to create VSR rectangles
+    _createVSRRectangles(upperData, lowerData, fillColor, rectanglesArray) {
+        let currentUpper = null;
+        let currentLower = null;
+        let startTime = null;
+
+        for (let i = 0; i < Math.max(upperData.length, lowerData.length); i++) {
+            const upperPoint = upperData[i];
+            const lowerPoint = lowerData[i];
+
+            const upperValue = upperPoint ? upperPoint.value : currentUpper;
+            const lowerValue = lowerPoint ? lowerPoint.value : currentLower;
+            const currentTime = (upperPoint || lowerPoint).time;
+
+            const valuesChanged = (upperValue !== currentUpper || lowerValue !== currentLower);
+
+            if (valuesChanged && currentUpper !== null && currentLower !== null && startTime !== null) {
+                const rect = new FillRect.FillRect(
+                    { time: startTime, price: currentLower },
+                    { time: currentTime, price: currentUpper },
+                    {
+                        fillColor: fillColor,
+                        showLabels: false
+                    }
+                );
+
+                rect.priceAxisViews = () => [];
+                rect.timeAxisViews = () => [];
+
+                this.candlestickSeries.attachPrimitive(rect);
+                rectanglesArray.push(rect);
+            }
+
+            if (valuesChanged) {
+                currentUpper = upperValue;
+                currentLower = lowerValue;
+                startTime = currentTime;
+            }
+        }
+
+        if (currentUpper !== null && currentLower !== null && startTime !== null) {
+            const lastTime = Math.max(
+                upperData.length > 0 ? upperData[upperData.length - 1].time : 0,
+                lowerData.length > 0 ? lowerData[lowerData.length - 1].time : 0
+            );
+
+            const rect = new FillRect.FillRect(
+                { time: startTime, price: currentLower },
+                { time: lastTime, price: currentUpper },
+                {
+                    fillColor: fillColor,
+                    showLabels: false
+                }
+            );
+
+            rect.priceAxisViews = () => [];
+            rect.timeAxisViews = () => [];
+
+            this.candlestickSeries.attachPrimitive(rect);
+            rectanglesArray.push(rect);
+        }
+    }
+
     // Backward compatibility - convert old API to new
     setVSRUpperLineData(data) {
-        // Store for later use with setVSRLowerLineData
         this._vsrUpperData = data;
         if (this._vsrLowerData) {
             this.setVSRData(this._vsrUpperData, this._vsrLowerData);
@@ -679,10 +810,25 @@ class ChartManager {
     }
 
     setVSRLowerLineData(data) {
-        // Store for later use with setVSRUpperLineData
         this._vsrLowerData = data;
         if (this._vsrUpperData) {
             this.setVSRData(this._vsrUpperData, this._vsrLowerData);
+        }
+    }
+
+    // Set volume data
+    setVolumeData(data, upColor = 'rgba(0, 255, 0, 0.5)', downColor = 'rgba(255, 0, 0, 0.5)') {
+        if (this.volumeSeries && data && data.length > 0) {
+            // Convert candle data to volume histogram data with colors
+            const volumeData = data.map(candle => ({
+                time: candle.time,
+                value: candle.volume || 0,
+                color: candle.close >= candle.open ? upColor : downColor
+            }));
+
+            this.volumeSeries.setData(volumeData);
+        } else if (this.volumeSeries) {
+            this.volumeSeries.setData([]);
         }
     }
 
@@ -761,7 +907,10 @@ class ChartManager {
             this.trail2Series = null;
             this.atrBandFillSeries = null;
             this.clearVSRRectangles();
+            this.vsr1Rectangles = null;
+            this.vsr2Rectangles = null;
             this.vsrRectangles = null;
+            this.volumeSeries = null;
             this.donchianUpperSeries = null;
             this.donchianLowerSeries = null;
             this.donchianMiddleSeries = null;

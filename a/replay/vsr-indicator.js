@@ -17,6 +17,7 @@ class VSRIndicator {
         this.volumeHistory = [];
         this.changeHistory = [];
         this.stdevHistory = [];
+        this.candleHistory = [];
         this.upperLevels = [];
         this.lowerLevels = [];
         this.isInitialized = false;
@@ -62,7 +63,13 @@ class VSRIndicator {
      * @returns {Object} VSR calculation result
      */
     calculate(candle) {
-        const { high, low, close, volume, time } = candle;
+        const { open, high, low, close, volume, time } = candle;
+        
+        // Store current candle for orderblock detection
+        if (!this.candleHistory) {
+            this.candleHistory = [];
+        }
+        this.candleHistory.push({ open, high, low, close, time });
         
         // Store current volume
         this.volumeHistory.push(volume);
@@ -101,10 +108,32 @@ class VSRIndicator {
         let upper = null;
         let lower = null;
         
-        if (signalExceedsThreshold) {
-            // When signal > threshold, store current high/low levels
-            upper = Math.max(high, close);
-            lower = Math.min(low, close);
+        if (signalExceedsThreshold && this.candleHistory.length > 1) {
+            // Determine current candle color
+            const currentIsBullish = close > open;
+            
+            // Find the nearest opposite color candle before current
+            let oppositeCandle = null;
+            for (let i = this.candleHistory.length - 2; i >= 0; i--) {
+                const prevCandle = this.candleHistory[i];
+                const prevIsBullish = prevCandle.close > prevCandle.open;
+                
+                // Found opposite color candle
+                if (prevIsBullish !== currentIsBullish) {
+                    oppositeCandle = prevCandle;
+                    break;
+                }
+            }
+            
+            // Use opposite candle's high/low if found, otherwise use current candle
+            if (oppositeCandle) {
+                upper = oppositeCandle.high;
+                lower = oppositeCandle.low;
+            } else {
+                // Fallback to current candle if no opposite candle found
+                upper = Math.max(high, close);
+                lower = Math.min(low, close);
+            }
         }
         
         // Update level histories using valuewhen logic
@@ -125,6 +154,7 @@ class VSRIndicator {
             this.volumeHistory = this.volumeHistory.slice(-maxHistory);
             this.changeHistory = this.changeHistory.slice(-maxHistory);
             this.stdevHistory = this.stdevHistory.slice(-maxHistory);
+            this.candleHistory = this.candleHistory.slice(-maxHistory);
         }
         
         return {
