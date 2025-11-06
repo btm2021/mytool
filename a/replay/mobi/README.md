@@ -32,14 +32,7 @@ Phiên bản mobile của webapp Binance Chart, được tối ưu cho màn hìn
    - Bật/tắt từng indicator
 
 4. **Settings**
-   - Số lượng nến (mặc định 5000)
-   - Xóa cache
-
-### Cache System
-- Tự động cache dữ liệu vào IndexedDB
-- Giảm số lần gọi API
-- Cache tồn tại 24 giờ
-- Có thể xóa cache thủ công
+   - Số lượng nến (mặc định 2000, max 3000)
 
 ## Cấu trúc thư mục
 
@@ -50,7 +43,6 @@ mobi/
 ├── app.js              # Logic chính của app
 ├── chart-manager.js    # Quản lý chart và indicators
 ├── binance-api.js      # API Binance
-├── cache-manager.js    # Quản lý cache IndexedDB
 └── README.md           # File này
 ```
 
@@ -76,7 +68,6 @@ npx http-server
 
 Tất cả dependencies được load từ CDN:
 - **Lightweight Charts** v4.2.1 - Chart library
-- **Dexie** v3.2.4 - IndexedDB wrapper (dự phòng)
 - **FillRect Plugin** - VSR rectangles
 - **BandFill Plugin** - ATR band fill
 
@@ -104,7 +95,7 @@ Các file được dùng chung từ thư mục gốc:
   - Sau: 5000 nến = ~50-200 rectangles (giảm 95%+)
 - **VSR disabled by default**: Tắt mặc định vì tốn performance nhất
 - **Lazy loading symbols**: Load danh sách symbol theo yêu cầu
-- **Efficient cache system**: IndexedDB cache 24h
+- **No cache system**: Fetch trực tiếp từ API, đơn giản hơn
 - **Debounced updates**: Delay 300ms khi toggle indicators
 - **Performance logging**: Console log để debug timing
 
@@ -127,7 +118,7 @@ Các file được dùng chung từ thư mục gốc:
 1. **Không ảnh hưởng code gốc**: Tất cả code mobile nằm riêng trong thư mục `mobi/`
 2. **Shared indicators**: Dùng chung các indicator từ thư mục gốc
 3. **Responsive**: Tự động điều chỉnh khi xoay màn hình
-4. **Offline-ready**: Cache giúp xem lại dữ liệu đã tải
+4. **No cache**: Luôn fetch dữ liệu mới từ API
 
 ## Khác biệt với Desktop Version
 
@@ -140,6 +131,7 @@ Các file được dùng chung từ thư mục gốc:
 | Replay | ✅ | ❌ (không cần) |
 | Backtest | ✅ | ❌ (không cần) |
 | Measure tool | ✅ | ❌ (không cần) |
+| Cache system | ✅ | ❌ (đơn giản hơn) |
 | Real-time | ❌ | ❌ |
 
 ## Future Enhancements
@@ -151,3 +143,4 @@ Các file được dùng chung từ thư mục gốc:
 - [ ] Multiple chart layouts
 - [ ] Drawing tools
 - [ ] Export chart as image
+- [ ] Optional cache system (if needed)

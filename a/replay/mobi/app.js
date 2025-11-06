@@ -2,7 +2,6 @@ class MobileApp {
     constructor() {
         this.binanceAPI = new BinanceAPI();
         this.chartManager = new ChartManager('chart');
-        this.cacheManager = new CacheManager();
         
         this.currentSymbol = null;
         this.currentTimeframe = '15m';
@@ -107,10 +106,6 @@ class MobileApp {
             }
             this.candleCount = value;
             this.saveSettings();
-        });
-        
-        document.getElementById('clearCacheBtn').addEventListener('click', () => {
-            this.clearCache();
         });
     }
     
@@ -219,44 +214,23 @@ class MobileApp {
         this.showLoading(true);
         
         try {
-            // Check cache
-            const cacheInfo = await this.cacheManager.needsMoreData(
-                this.currentSymbol, 
-                this.currentTimeframe, 
-                this.candleCount
-            );
-            
-            let data = null;
-            
-            if (!cacheInfo.needsFetch) {
-                // Use cache
-                const cacheResult = await this.cacheManager.loadFromCache(
-                    this.currentSymbol, 
-                    this.currentTimeframe, 
-                    this.candleCount
-                );
-                data = cacheResult.candles;
-            } else {
-                // Fetch from API
-                data = await this.binanceAPI.fetchHistoricalData(
-                    this.currentSymbol,
-                    this.currentTimeframe,
-                    this.candleCount
-                );
-                
-                if (data && data.length > 0) {
-                    await this.cacheManager.saveToCache(
-                        this.currentSymbol, 
-                        this.currentTimeframe, 
-                        data
-                    );
+            // Fetch directly from API (no cache)
+            const data = await this.binanceAPI.fetchHistoricalData(
+                this.currentSymbol,
+                this.currentTimeframe,
+                this.candleCount,
+                (current, total, message) => {
+                    const progress = Math.round((current / total) * 100);
+                    document.querySelector('.loading-text').textContent = `${message} ${progress}%`;
                 }
-            }
+            );
             
             if (data && data.length > 0) {
                 this.currentData = data;
                 this.updateChart();
                 this.updateHeader(data[data.length - 1]);
+            } else {
+                alert('No data received');
             }
             
         } catch (error) {
@@ -264,6 +238,7 @@ class MobileApp {
             alert('Error loading data: ' + error.message);
         } finally {
             this.showLoading(false);
+            document.querySelector('.loading-text').textContent = 'Loading...';
         }
     }
     
@@ -506,17 +481,6 @@ class MobileApp {
         }
     }
     
-    async clearCache() {
-        if (confirm('Clear all cache?')) {
-            try {
-                await this.cacheManager.clearAllCache();
-                alert('Cache cleared successfully');
-            } catch (error) {
-                console.error('Error clearing cache:', error);
-                alert('Error clearing cache');
-            }
-        }
-    }
 }
 
 // Initialize app
