@@ -16,6 +16,14 @@ const tools = [
         icon: '📊',
         url: 'https://btm2021.github.io/mytool/a/replay/'
     },
+     {
+        id: 'Mobi',
+        title: 'Mobi Chart',
+        description: 'Mobi Chart',
+        category: 'Trading',
+        icon: '📊',
+        url: 'https://btm2021.github.io/mytool/a/replay/mobi'
+    },
     {
         id: 'Screener',
         title: 'Screener',
