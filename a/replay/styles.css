@@ -15,39 +15,97 @@ body {
 .navbar {
     background-color: #000;
     border-bottom: 1px solid #333;
-    padding: 8px 15px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
+    padding: 8px 12px;
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 1000;
-    height: 45px;
-    flex-wrap: wrap;
+    min-height: 45px;
+}
+
+.navbar-content {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Hamburger Menu Button - Hidden by default */
+.hamburger-btn {
+    display: none;
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+.hamburger-icon {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background-color: #fff;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.hamburger-icon::before,
+.hamburger-icon::after {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 2px;
+    background-color: #fff;
+    position: absolute;
+    transition: all 0.3s ease;
+}
+
+.hamburger-icon::before {
+    top: -8px;
+}
+
+.hamburger-icon::after {
+    top: 8px;
+}
+
+/* Hamburger active state (X icon) */
+.hamburger-btn.active .hamburger-icon {
+    background-color: transparent;
+}
+
+.hamburger-btn.active .hamburger-icon::before {
+    top: 0;
+    transform: rotate(45deg);
+}
+
+.hamburger-btn.active .hamburger-icon::after {
+    top: 0;
+    transform: rotate(-45deg);
 }
 
 .nav-group {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    flex-wrap: nowrap;
 }
 
 .nav-group label {
     font-size: 11px;
     color: #ccc;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .content {
     margin-top: 45px;
     height: calc(100vh - 45px);
     overflow: hidden;
+    position: relative;
 }
 
-/* New 2-column layout */
+/* Main layout - Chart only (table moved to modal) */
 .main-layout {
     display: flex;
     height: 100%;
@@ -55,16 +113,15 @@ body {
 }
 
 .chart-section {
-    width: 70%;
+    width: 100%;
     height: 100%;
     background-color: #000;
+    position: relative;
 }
 
+/* Legacy table section - hidden by default, shown in modal */
 .table-section {
-    width: 30%;
-    height: 100%;
-    background-color: #111;
-    border-left: 1px solid #333;
+    display: none;
 }
 
 input,
@@ -125,8 +182,9 @@ select {
 
 button {
     cursor: pointer;
-    padding: 4px 12px;
+    padding: 4px 10px;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 button:hover:not(:disabled) {
@@ -137,6 +195,10 @@ button:hover:not(:disabled) {
 button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+button:active:not(:disabled) {
+    transform: scale(0.98);
 }
 
 .speed-btn.active {
@@ -165,11 +227,24 @@ button:disabled {
 #status {
     font-size: 11px;
     color: #ccc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
 }
 
 #progress {
     font-size: 11px;
     color: #0066cc;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.status-info {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
 }
 
 #chart {
@@ -423,51 +498,194 @@ button:disabled {
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
+    .navbar-content {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    
     .navbar {
-        height: auto;
-        min-height: 45px;
-        flex-direction: column;
-        gap: 10px;
-        padding: 10px;
+        padding: 8px;
+    }
+    
+    .nav-group.data-controls {
+        grid-column: 1 / -1;
+    }
+    
+    .nav-group.status-info {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+    
+    .content {
+        margin-top: 140px;
+        height: calc(100vh - 140px);
+    }
+}
+
+@media (max-width: 900px) {
+    /* Show hamburger menu */
+    .hamburger-btn {
+        display: block;
+    }
+    
+    .navbar {
+        padding: 8px;
+        display: flex;
+        align-items: center;
+    }
+    
+    /* Hide navbar content by default on mobile */
+    .navbar-content {
+        position: fixed;
+        top: 45px;
+        left: 0;
+        right: 0;
+        background-color: #000;
+        border-bottom: 1px solid #333;
+        display: none;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 12px;
+        max-height: calc(100vh - 45px);
+        overflow-y: auto;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Show navbar content when active */
+    .navbar-content.active {
+        display: grid;
     }
 
     .nav-group {
-        justify-content: center;
+        width: 100%;
+        justify-content: flex-start;
+        padding: 8px 0;
+        border-bottom: 1px solid #222;
+    }
+    
+    .nav-group:last-child {
+        border-bottom: none;
+    }
+    
+    .nav-group.status-info {
+        justify-content: space-between;
     }
 
     .content {
-        margin-top: 80px;
-        height: calc(100vh - 80px);
+        margin-top: 45px;
+        height: calc(100vh - 45px);
+    }
+    
+    /* When menu is open, add overlay */
+    body.menu-open {
+        overflow: hidden;
+    }
+    
+    body.menu-open::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
     }
 }
 
 @media (max-width: 768px) {
-    .navbar {
-        height: auto;
-        min-height: 60px;
+    .nav-group {
+        gap: 4px;
+        flex-wrap: wrap;
     }
-
-    .content {
-        margin-top: 100px;
-        height: calc(100vh - 100px);
+    
+    .nav-group label {
+        font-size: 10px;
     }
-
-    #chart {
-        height: 50vh;
+    
+    input, select, button:not(.hamburger-btn) {
+        font-size: 10px;
+        padding: 3px 6px;
+        height: 24px;
+    }
+    
+    input[type="number"] {
+        width: 55px;
+    }
+    
+    .symbol-selector-btn {
+        min-width: 90px;
+        font-size: 10px;
     }
 
     #backtest-stats {
-        flex-direction: column;
-    }
-
-    .table-wrapper {
-        max-height: 200px;
-    }
-
-    .nav-group {
+        flex-direction: row;
         flex-wrap: wrap;
         gap: 5px;
+    }
+    
+    .stat-item {
+        min-width: calc(50% - 5px);
+        padding: 6px;
+    }
+    
+    .speed-btn {
+        padding: 3px 5px;
+        font-size: 9px;
+    }
+    
+    #status {
+        max-width: 150px;
+        font-size: 10px;
+    }
+    
+    #progress {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-group {
+        gap: 3px;
+    }
+    
+    .nav-group label {
+        font-size: 9px;
+    }
+    
+    input, select, button:not(.hamburger-btn) {
+        font-size: 9px;
+        padding: 2px 4px;
+        height: 22px;
+    }
+    
+    input[type="number"] {
+        width: 45px;
+    }
+    
+    .symbol-selector-btn {
+        min-width: 70px;
+        font-size: 9px;
+    }
+    
+    .speed-btn {
+        padding: 2px 4px;
+        font-size: 8px;
+    }
+    
+    #status {
+        max-width: 100px;
+        font-size: 9px;
+    }
+    
+    #progress {
+        font-size: 9px;
+    }
+    
+    .stat-item {
+        min-width: 100%;
+        padding: 5px;
     }
 }
 
@@ -994,44 +1212,7 @@ Styles */
     }
 }
 
-/* Main layout responsive */
-@media (max-width: 1024px) {
-    .main-layout {
-        flex-direction: column;
-    }
-
-    .chart-section {
-        width: 100%;
-        height: 60%;
-    }
-
-    .table-section {
-        width: 100%;
-        height: 40%;
-        border-left: none;
-        border-top: 1px solid #333;
-    }
-}
-
-@media (max-width: 768px) {
-    .chart-section {
-        height: 50%;
-    }
-
-    .table-section {
-        height: 50%;
-    }
-
-    #backtest-table th,
-    #backtest-table td {
-        padding: 4px 6px;
-        font-size: 10px;
-    }
-
-    .table-header {
-        font-size: 9px;
-    }
-}
+/* Main layout is now handled in main responsive section above */
 
 /* Indicator Settings Modal */
 .settings-modal {

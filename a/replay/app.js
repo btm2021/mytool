@@ -407,22 +407,44 @@ class TradingApp {
             }
         };
 
+        // Hamburger menu toggle
+        safeAddEventListener('hamburgerBtn', 'click', () => {
+            this.toggleMobileMenu();
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const navbarContent = document.getElementById('navbarContent');
+            const hamburgerBtn = document.getElementById('hamburgerBtn');
+            
+            if (navbarContent && navbarContent.classList.contains('active')) {
+                // Check if click is outside navbar content and hamburger button
+                if (!navbarContent.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+                    this.closeMobileMenu();
+                }
+            }
+        });
+
         // Load data button
         safeAddEventListener('loadData', 'click', () => {
             this.loadData();
+            this.closeMobileMenu();
         });
 
         // Replay controls
         safeAddEventListener('replayBtn', 'click', () => {
             this.startReplay();
+            this.closeMobileMenu();
         });
 
         safeAddEventListener('playPauseBtn', 'click', () => {
             this.togglePlayPause();
+            this.closeMobileMenu();
         });
 
         safeAddEventListener('stepBtn', 'click', () => {
             this.step();
+            this.closeMobileMenu();
         });
 
         // Speed controls
@@ -435,26 +457,31 @@ class TradingApp {
         // Backtest controls
         safeAddEventListener('clearBacktestBtn', 'click', () => {
             this.clearBacktest();
+            this.closeMobileMenu();
         });
 
         // Trades modal
         safeAddEventListener('tradesBtn', 'click', () => {
             this.showTradesModal();
+            this.closeMobileMenu();
         });
 
         // Cache controls
         safeAddEventListener('cacheManagerBtn', 'click', () => {
             this.showCacheModal();
+            this.closeMobileMenu();
         });
 
         // Indicator settings
         safeAddEventListener('indicatorSettingsBtn', 'click', () => {
             this.showIndicatorSettings();
+            this.closeMobileMenu();
         });
 
         // Measure tool
         safeAddEventListener('measureToolBtn', 'click', () => {
             this.toggleMeasureTool();
+            this.closeMobileMenu();
         });
 
         // Table controls - these might not exist initially
@@ -743,6 +770,9 @@ class TradingApp {
             return;
         }
 
+        // Initialize indicators with current settings before starting replay
+        this.replayEngine.initializeIndicators(this.indicatorSettings);
+        
         this.replayEngine.startReplay();
         this.updateStatus('Replay bắt đầu', 'info');
         this.updateUI();
@@ -809,6 +839,40 @@ class TradingApp {
         } else {
             document.getElementById('progress').textContent = '';
         }
+    }
+
+    // Toggle mobile menu
+    toggleMobileMenu() {
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const navbarContent = document.getElementById('navbarContent');
+        const body = document.body;
+
+        if (!hamburgerBtn || !navbarContent) return;
+
+        const isActive = navbarContent.classList.contains('active');
+
+        if (isActive) {
+            // Close menu
+            hamburgerBtn.classList.remove('active');
+            navbarContent.classList.remove('active');
+            body.classList.remove('menu-open');
+        } else {
+            // Open menu
+            hamburgerBtn.classList.add('active');
+            navbarContent.classList.add('active');
+            body.classList.add('menu-open');
+        }
+    }
+
+    // Close mobile menu (helper method)
+    closeMobileMenu() {
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const navbarContent = document.getElementById('navbarContent');
+        const body = document.body;
+
+        if (hamburgerBtn) hamburgerBtn.classList.remove('active');
+        if (navbarContent) navbarContent.classList.remove('active');
+        body.classList.remove('menu-open');
     }
 
     // Run backtest on current data
