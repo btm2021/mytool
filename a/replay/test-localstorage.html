@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test LocalStorage Settings</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        button:hover {
+            background: #0052a3;
+        }
+        pre {
+            background: #000;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>LocalStorage Settings Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Test SettingsStorage Class</h2>
+        <button onclick="testSettingsStorage()">Run Test</button>
+        <pre id="test1-result"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>2. View Current Settings in LocalStorage</h2>
+        <button onclick="viewSettings()">View Settings</button>
+        <button onclick="clearSettings()">Clear Settings</button>
+        <pre id="test2-result"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test Save & Load</h2>
+        <button onclick="testSaveLoad()">Test Save/Load</button>
+        <pre id="test3-result"></pre>
+    </div>
+
+    <script src="settings-storage.js"></script>
+    <script>
+        function testSettingsStorage() {
+            const result = document.getElementById('test1-result');
+            try {
+                const storage = new SettingsStorage();
+                result.innerHTML = '<span class="success">✓ SettingsStorage class loaded successfully</span>\n';
+                result.innerHTML += 'Default settings:\n' + JSON.stringify(storage.getDefaultSettings(), null, 2);
+            } catch (error) {
+                result.innerHTML = '<span class="error">✗ Error: ' + error.message + '</span>';
+            }
+        }
+
+        function viewSettings() {
+            const result = document.getElementById('test2-result');
+            try {
+                const saved = localStorage.getItem('indicatorSettings');
+                if (saved) {
+                    result.innerHTML = '<span class="success">✓ Settings found in localStorage</span>\n';
+                    result.innerHTML += JSON.stringify(JSON.parse(saved), null, 2);
+                } else {
+                    result.innerHTML = '<span class="error">✗ No settings found in localStorage</span>';
+                }
+            } catch (error) {
+                result.innerHTML = '<span class="error">✗ Error: ' + error.message + '</span>';
+            }
+        }
+
+        function clearSettings() {
+            const result = document.getElementById('test2-result');
+            try {
+                localStorage.removeItem('indicatorSettings');
+                result.innerHTML = '<span class="success">✓ Settings cleared from localStorage</span>';
+            } catch (error) {
+                result.innerHTML = '<span class="error">✗ Error: ' + error.message + '</span>';
+            }
+        }
+
+        function testSaveLoad() {
+            const result = document.getElementById('test3-result');
+            try {
+                const storage = new SettingsStorage();
+                
+                // Test save
+                const testSettings = storage.getDefaultSettings();
+                testSettings.botATR1.emaLength = 99; // Change a value
+                testSettings.botATR1.trail1Color = '#ff00ff'; // Change color
+                
+                storage.save(testSettings);
+                result.innerHTML = '<span class="success">✓ Settings saved</span>\n';
+                result.innerHTML += 'Saved settings:\n' + JSON.stringify(testSettings.botATR1, null, 2) + '\n\n';
+                
+                // Test load
+                const loaded = storage.load();
+                result.innerHTML += '<span class="success">✓ Settings loaded</span>\n';
+                result.innerHTML += 'Loaded settings:\n' + JSON.stringify(loaded.botATR1, null, 2) + '\n\n';
+                
+                // Verify
+                if (loaded.botATR1.emaLength === 99 && loaded.botATR1.trail1Color === '#ff00ff') {
+                    result.innerHTML += '<span class="success">✓ Save/Load test PASSED</span>';
+                } else {
+                    result.innerHTML += '<span class="error">✗ Save/Load test FAILED</span>';
+                }
+            } catch (error) {
+                result.innerHTML = '<span class="error">✗ Error: ' + error.message + '</span>';
+            }
+        }
+
+        // Auto run first test
+        window.onload = function() {
+            testSettingsStorage();
+        };
+    </script>
+</body>
+</html>

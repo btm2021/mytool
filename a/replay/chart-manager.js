@@ -383,6 +383,197 @@ class ChartManager {
         this.setTrail2_1Data(data, opacity);
     }
 
+    // Set ATR Bot 1 with full styling options
+    setATRBot1Data(trail1Data, trail2Data, options = {}) {
+        const {
+            trail1Color = '#00ff00',
+            trail1Width = 1,
+            trail2Color = '#ff0000',
+            trail2Width = 1,
+            fillColor = '#808000',
+            fillOpacity = 0.2
+        } = options;
+
+        // Update trail1 series
+        if (this.trail1_1Series && trail1Data) {
+            this.trail1_1Series.applyOptions({
+                color: trail1Color,
+                lineWidth: trail1Width,
+                visible: trail1Width > 0
+            });
+            this.trail1_1Series.setData(trail1Data);
+        }
+
+        // Update trail2 series
+        if (this.trail2_1Series && trail2Data) {
+            this.trail2_1Series.applyOptions({
+                color: trail2Color,
+                lineWidth: trail2Width,
+                visible: trail2Width > 0
+            });
+            this.trail2_1Series.setData(trail2Data);
+        }
+
+        // Update band fill
+        this._trail1_1Data = trail1Data;
+        this._trail2_1Data = trail2Data;
+        this._updateATRBandFill1WithColor(fillColor, fillOpacity);
+    }
+
+    // Set ATR Bot 2 with full styling options
+    setATRBot2Data(trail1Data, trail2Data, options = {}) {
+        const {
+            trail1Color = '#0096ff',
+            trail1Width = 1,
+            trail2Color = '#ff9600',
+            trail2Width = 1,
+            fillColor = '#80c8ff',
+            fillOpacity = 0.15
+        } = options;
+
+        // Update trail1 series
+        if (this.trail1_2Series && trail1Data) {
+            this.trail1_2Series.applyOptions({
+                color: trail1Color,
+                lineWidth: trail1Width,
+                visible: trail1Width > 0
+            });
+            this.trail1_2Series.setData(trail1Data);
+        }
+
+        // Update trail2 series
+        if (this.trail2_2Series && trail2Data) {
+            this.trail2_2Series.applyOptions({
+                color: trail2Color,
+                lineWidth: trail2Width,
+                visible: trail2Width > 0
+            });
+            this.trail2_2Series.setData(trail2Data);
+        }
+
+        // Update band fill
+        this._trail1_2Data = trail1Data;
+        this._trail2_2Data = trail2Data;
+        this._updateATRBandFill2WithColor(fillColor, fillOpacity);
+    }
+
+    // Clear ATR Bot 1
+    clearATRBot1() {
+        if (this.trail1_1Series) {
+            this.trail1_1Series.setData([]);
+        }
+        if (this.trail2_1Series) {
+            this.trail2_1Series.setData([]);
+        }
+        if (this.atrBandFill1Series) {
+            this.atrBandFill1Series.setData([]);
+        }
+        this._trail1_1Data = null;
+        this._trail2_1Data = null;
+    }
+
+    // Clear ATR Bot 2
+    clearATRBot2() {
+        if (this.trail1_2Series) {
+            this.trail1_2Series.setData([]);
+        }
+        if (this.trail2_2Series) {
+            this.trail2_2Series.setData([]);
+        }
+        if (this.atrBandFill2Series) {
+            this.atrBandFill2Series.setData([]);
+        }
+        this._trail1_2Data = null;
+        this._trail2_2Data = null;
+    }
+
+    // Update ATR Bot 1 BandFill with custom color
+    _updateATRBandFill1WithColor(fillColor, opacity = 0.2) {
+        if (!this.atrBandFill1Series) return;
+
+        if (this._trail1_1Data && this._trail2_1Data &&
+            this._trail1_1Data.length > 0 && this._trail2_1Data.length > 0) {
+
+            const bandData = [];
+            const trail1Map = new Map(this._trail1_1Data.map(d => [d.time, d.value]));
+            const trail2Map = new Map(this._trail2_1Data.map(d => [d.time, d.value]));
+
+            const allTimes = new Set([...trail1Map.keys(), ...trail2Map.keys()]);
+            const sortedTimes = Array.from(allTimes).sort((a, b) => a - b);
+
+            // Convert hex color to rgba
+            const rgbaColor = this._hexToRgba(fillColor, opacity);
+
+            for (const time of sortedTimes) {
+                const trail1Value = trail1Map.get(time);
+                const trail2Value = trail2Map.get(time);
+
+                if (trail1Value !== undefined && trail2Value !== undefined) {
+                    bandData.push({
+                        time: time,
+                        high: Math.max(trail1Value, trail2Value),
+                        low: Math.min(trail1Value, trail2Value),
+                        color: rgbaColor
+                    });
+                }
+            }
+
+            this.atrBandFill1Series.setData(bandData);
+        } else {
+            this.atrBandFill1Series.setData([]);
+        }
+    }
+
+    // Update ATR Bot 2 BandFill with custom color
+    _updateATRBandFill2WithColor(fillColor, opacity = 0.15) {
+        if (!this.atrBandFill2Series) return;
+
+        if (this._trail1_2Data && this._trail2_2Data &&
+            this._trail1_2Data.length > 0 && this._trail2_2Data.length > 0) {
+
+            const bandData = [];
+            const trail1Map = new Map(this._trail1_2Data.map(d => [d.time, d.value]));
+            const trail2Map = new Map(this._trail2_2Data.map(d => [d.time, d.value]));
+
+            const allTimes = new Set([...trail1Map.keys(), ...trail2Map.keys()]);
+            const sortedTimes = Array.from(allTimes).sort((a, b) => a - b);
+
+            // Convert hex color to rgba
+            const rgbaColor = this._hexToRgba(fillColor, opacity);
+
+            for (const time of sortedTimes) {
+                const trail1Value = trail1Map.get(time);
+                const trail2Value = trail2Map.get(time);
+
+                if (trail1Value !== undefined && trail2Value !== undefined) {
+                    bandData.push({
+                        time: time,
+                        high: Math.max(trail1Value, trail2Value),
+                        low: Math.min(trail1Value, trail2Value),
+                        color: rgbaColor
+                    });
+                }
+            }
+
+            this.atrBandFill2Series.setData(bandData);
+        } else {
+            this.atrBandFill2Series.setData([]);
+        }
+    }
+
+    // Helper: Convert hex color to rgba
+    _hexToRgba(hex, alpha = 1) {
+        // Remove # if present
+        hex = hex.replace('#', '');
+        
+        // Parse hex values
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
     // Set ATR Bot 1 Trail1 data
     setTrail1_1Data(data, opacity = 0.2, color = null) {
         this._trail1_1Data = data;

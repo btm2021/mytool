@@ -7,84 +7,90 @@ class TradingApp {
             this.backtestEngine = new BacktestEngine(this.replayEngine, this.chartManager);
             this.cacheManager = new CacheManager();
             this.symbolSelector = new SymbolSelector(this.binanceAPI);
+            this.settingsStorage = new SettingsStorage();
             this.currentData = [];
             this.simpleBacktest = null;
             this.currentTableData = [];
 
-            // Indicator settings with default values
-            this.indicatorSettings = {
-                botATR1: {
-                    enabled: true,
-                    emaLength: 30,
-                    atrLength: 14,
-                    atrMultiplier: 2.0,
-                    trail1Color: 'rgba(0, 255, 0, 0.8)',
-                    trail2Color: 'rgba(255, 0, 0, 0.8)',
-                    fillOpacity: 0.2
-                },
-                botATR2: {
-                    enabled: true,
-                    emaLength: 55,
-                    atrLength: 14,
-                    atrMultiplier: 2.0,
-                    trail1Color: 'rgba(0, 150, 255, 0.8)',
-                    trail2Color: 'rgba(255, 150, 0, 0.8)',
-                    fillOpacity: 0.15
-                },
-                vsr1: {
-                    enabled: true,
-                    length: 10,
-                    threshold: 10,
-                    fillColor: 'rgba(255, 251, 0, 0.5)'
-                },
-                vsr2: {
-                    enabled: true,
-                    length: 20,
-                    threshold: 20,
-                    fillColor: 'rgba(255, 100, 200, 0.4)'
-                },
-                volume: {
-                    enabled: true,
-                    upColor: 'rgba(0, 255, 0, 0.5)',
-                    downColor: 'rgba(255, 0, 0, 0.5)'
-                },
-                donchian: {
-                    enabled: true,
-                    length: 50,
-                    colors: {
-                        upper: 'rgba(0, 0, 255, 0.8)',
-                        lower: 'rgba(0, 0, 255, 0.8)',
-                        middle: 'rgba(0, 0, 255, 0.5)'
+            // Load indicator settings from localStorage or use defaults
+            this.indicatorSettings = this.settingsStorage.load();
+
+            // Keep old structure for backward compatibility (will be removed by load())
+            if (false) {
+                this.indicatorSettings = {
+                    botATR1: {
+                        enabled: true,
+                        emaLength: 30,
+                        atrLength: 14,
+                        atrMultiplier: 2.0,
+                        trail1Color: 'rgba(0, 255, 0, 0.8)',
+                        trail2Color: 'rgba(255, 0, 0, 0.8)',
+                        fillOpacity: 0.2
+                    },
+                    botATR2: {
+                        enabled: true,
+                        emaLength: 55,
+                        atrLength: 14,
+                        atrMultiplier: 2.0,
+                        trail1Color: 'rgba(0, 150, 255, 0.8)',
+                        trail2Color: 'rgba(255, 150, 0, 0.8)',
+                        fillOpacity: 0.15
+                    },
+                    vsr1: {
+                        enabled: true,
+                        length: 10,
+                        threshold: 10,
+                        fillColor: 'rgba(255, 251, 0, 0.5)'
+                    },
+                    vsr2: {
+                        enabled: true,
+                        length: 20,
+                        threshold: 20,
+                        fillColor: 'rgba(255, 100, 200, 0.4)'
+                    },
+                    volume: {
+                        enabled: true,
+                        upColor: 'rgba(0, 255, 0, 0.5)',
+                        downColor: 'rgba(255, 0, 0, 0.5)'
+                    },
+                    donchian: {
+                        enabled: true,
+                        length: 50,
+                        colors: {
+                            upper: 'rgba(0, 0, 255, 0.8)',
+                            lower: 'rgba(0, 0, 255, 0.8)',
+                            middle: 'rgba(0, 0, 255, 0.5)'
+                        }
+                    },
+                    tenkansen: {
+                        enabled: false,
+                        length: 50,
+                        color: 'rgba(255, 165, 0, 0.8)'
+                    },
+                    smc: {
+                        enabled: false,
+                        leftBars: 8,
+                        rightBars: 8,
+                        useBos: false,
+                        sweepX: false,
+                        colors: {
+                            chochBullish: '#0ecb81',
+                            chochBearish: '#f6465d',
+                            bosBullish: 'rgba(14, 203, 129, 0.7)',
+                            bosBearish: 'rgba(246, 70, 93, 0.7)',
+                            strongHigh: '#e53935',
+                            strongLow: '#00897b',
+                            weakHigh: '#f57f17',
+                            weakLow: '#43a047'
+                        }
+                    },
+                    tradeMarkers: {
+                        enabled: true,
+                        buyColor: '#00ff00',
+                        sellColor: '#ff0000'
                     }
-                },
-                tenkansen: {
-                    enabled: false,
-                    length: 50,
-                    color: 'rgba(255, 165, 0, 0.8)'
-                },
-                smc: {
-                    enabled: false,
-                    leftBars: 8,
-                    rightBars: 8,
-                    useBos: false,
-                    sweepX: false,
-                    colors: {
-                        chochBullish: '#0ecb81',
-                        chochBearish: '#f6465d',
-                        bosBullish: 'rgba(14, 203, 129, 0.7)',
-                        bosBearish: 'rgba(246, 70, 93, 0.7)',
-                        strongHigh: '#e53935',
-                        strongLow: '#00897b',
-                        weakHigh: '#f57f17',
-                        weakLow: '#43a047'
-                    }
-                },
-                tradeMarkers: {
-                    enabled: true,
-                    buyColor: '#00ff00',
-                    sellColor: '#ff0000'
-                }
-            };
+                };
+            } // End of if (false) - old settings structure
 
             this.initializeEventListeners();
             this.initializeBacktestEventListeners();
@@ -589,12 +595,12 @@ class TradingApp {
                 );
                 const atrData1 = botATR1.calculateArray(data);
                 this.chartManager.setTrail1_1Data(
-                    atrData1.ema, 
+                    atrData1.ema,
                     this.indicatorSettings.botATR1.fillOpacity,
                     this.indicatorSettings.botATR1.trail1Color
                 );
                 this.chartManager.setTrail2_1Data(
-                    atrData1.trail, 
+                    atrData1.trail,
                     this.indicatorSettings.botATR1.fillOpacity,
                     this.indicatorSettings.botATR1.trail2Color
                 );
@@ -609,12 +615,12 @@ class TradingApp {
                 );
                 const atrData2 = botATR2.calculateArray(data);
                 this.chartManager.setTrail1_2Data(
-                    atrData2.ema, 
+                    atrData2.ema,
                     this.indicatorSettings.botATR2.fillOpacity,
                     this.indicatorSettings.botATR2.trail1Color
                 );
                 this.chartManager.setTrail2_2Data(
-                    atrData2.trail, 
+                    atrData2.trail,
                     this.indicatorSettings.botATR2.fillOpacity,
                     this.indicatorSettings.botATR2.trail2Color
                 );
@@ -678,17 +684,17 @@ class TradingApp {
                     sweepX: this.indicatorSettings.smc.sweepX
                 });
                 const smcData = smc.calculateArray(data);
-                
+
                 // Color candles based on trend
                 const coloredCandles = data.map(candle => {
-                    const trend = smcData.marketTrends.find(t => 
-                        candle.time >= t.startTime && 
+                    const trend = smcData.marketTrends.find(t =>
+                        candle.time >= t.startTime &&
                         (!t.endTime || candle.time <= t.endTime)
                     );
-                    
+
                     if (trend) {
-                        const color = trend.direction === 'bullish' ? 
-                            'rgba(14, 203, 129, 0.8)' : 
+                        const color = trend.direction === 'bullish' ?
+                            'rgba(14, 203, 129, 0.8)' :
                             'rgba(246, 70, 93, 0.8)';
                         return {
                             ...candle,
@@ -698,15 +704,15 @@ class TradingApp {
                     }
                     return candle;
                 });
-                
+
                 // Update candlestick data with colored candles
                 this.chartManager.setCandlestickData(coloredCandles);
-                
+
                 // Set SMC data with lines and markers
                 this.chartManager.setSMCData(smcData, this.indicatorSettings.smc.colors, data);
             }
 
-          // this.chartManager.fitContent();
+            // this.chartManager.fitContent();
 
             this.updateStatus(`${symbol} ${timeframe} - ${data.length} nến`, 'success');
             this.updateUI();
@@ -838,10 +844,10 @@ class TradingApp {
 
         this.simpleBacktest = null;
         this.currentTableData = [];
-        
+
         // Clear trade markers from chart
         this.chartManager.clearTradeMarkers();
-        
+
         this.updateStatus('Đã xóa', 'info');
     }
 
@@ -985,22 +991,22 @@ class TradingApp {
     formatTimestampToVN(timestamp) {
         // timestamp is in seconds, convert to milliseconds
         const ms = timestamp * 1000;
-        
+
         // Create date object
         const date = new Date(ms);
-        
+
         // Get UTC time
         const utcTime = date.getTime();
-        
+
         // Add 7 hours for Vietnam timezone (UTC+7)
         const vnTime = new Date(utcTime + (7 * 60 * 60 * 1000));
-        
+
         // Format: DD/MM HH:mm
         const day = String(vnTime.getUTCDate()).padStart(2, '0');
         const month = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
         const hours = String(vnTime.getUTCHours()).padStart(2, '0');
         const minutes = String(vnTime.getUTCMinutes()).padStart(2, '0');
-        
+
         return `${day}/${month} ${hours}:${minutes}`;
     }
 
@@ -1077,8 +1083,8 @@ class TradingApp {
                     return [
                         index + 1,
                         entry.side,
-                        `"${entryDate}"`, 
-                        `"${exitDate}"`, 
+                        `"${entryDate}"`,
+                        `"${exitDate}"`,
                         entry.entryPrice?.toFixed(4) || 'N/A',
                         entry.exitPrice?.toFixed(4) || 'N/A',
                         entry.coinAmount?.toFixed(6) || 'N/A',
@@ -1115,16 +1121,16 @@ class TradingApp {
     formatTimestampToVNFull(timestamp) {
         // timestamp is in seconds, convert to milliseconds
         const ms = timestamp * 1000;
-        
+
         // Create date object
         const date = new Date(ms);
-        
+
         // Get UTC time
         const utcTime = date.getTime();
-        
+
         // Add 7 hours for Vietnam timezone (UTC+7)
         const vnTime = new Date(utcTime + (7 * 60 * 60 * 1000));
-        
+
         // Format: DD/MM/YYYY HH:mm:ss
         const day = String(vnTime.getUTCDate()).padStart(2, '0');
         const month = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
@@ -1132,7 +1138,7 @@ class TradingApp {
         const hours = String(vnTime.getUTCHours()).padStart(2, '0');
         const minutes = String(vnTime.getUTCMinutes()).padStart(2, '0');
         const seconds = String(vnTime.getUTCSeconds()).padStart(2, '0');
-        
+
         return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
     }
 
@@ -1625,7 +1631,7 @@ class TradingApp {
         document.getElementById('smc-right-bars').value = this.indicatorSettings.smc.rightBars;
         document.getElementById('smc-use-bos').checked = this.indicatorSettings.smc.useBos;
         document.getElementById('smc-sweep-x').checked = this.indicatorSettings.smc.sweepX;
-        
+
         // Populate color values
         document.getElementById('donchian-upper-color').value = this.rgbaToHex(this.indicatorSettings.donchian.colors.upper);
         document.getElementById('donchian-lower-color').value = this.rgbaToHex(this.indicatorSettings.donchian.colors.lower);
@@ -1654,7 +1660,7 @@ class TradingApp {
     // Toggle measure tool drawing mode
     toggleMeasureTool() {
         const btn = document.getElementById('measureToolBtn');
-        
+
         if (this.chartManager.isInDrawingMode()) {
             // Stop drawing mode
             this.chartManager.stopMeasureDrawing();
@@ -1702,7 +1708,7 @@ class TradingApp {
         const toggle = document.getElementById(toggleId);
         const section = document.getElementById(sectionId);
         const label = toggle.nextElementSibling;
-        
+
         if (enabled) {
             toggle.classList.add('active');
             section.classList.remove('disabled');
@@ -1760,10 +1766,10 @@ class TradingApp {
         const toggle = document.getElementById(toggleId);
         const section = document.getElementById(sectionId);
         const label = toggle.nextElementSibling;
-        
+
         toggle.addEventListener('click', () => {
             const isActive = toggle.classList.toggle('active');
-            
+
             if (isActive) {
                 section.classList.remove('disabled');
                 label.textContent = 'Enabled';
@@ -1782,62 +1788,9 @@ class TradingApp {
 
     // Reset indicator settings to default
     resetIndicatorSettings() {
-        this.indicatorSettings = {
-            botATR1: {
-                enabled: true,
-                emaLength: 30,
-                atrLength: 14,
-                atrMultiplier: 2.0,
-                trail1Color: 'rgba(0, 255, 0, 0.8)',
-                trail2Color: 'rgba(255, 0, 0, 0.8)',
-                fillOpacity: 0.2
-            },
-            botATR2: {
-                enabled: true,
-                emaLength: 55,
-                atrLength: 14,
-                atrMultiplier: 2.0,
-                trail1Color: 'rgba(0, 150, 255, 0.8)',
-                trail2Color: 'rgba(255, 150, 0, 0.8)',
-                fillOpacity: 0.15
-            },
-            vsr: {
-                enabled: true,
-                length: 10,
-                threshold: 10
-            },
-            donchian: {
-                enabled: true,
-                length: 50,
-                colors: {
-                    upper: 'rgba(0, 0, 255, 0.8)',
-                    lower: 'rgba(0, 0, 255, 0.8)',
-                    middle: 'rgba(0, 0, 255, 0.5)'
-                }
-            },
-            tenkansen: {
-                enabled: false,
-                length: 50,
-                color: 'rgba(255, 165, 0, 0.8)'
-            },
-            smc: {
-                enabled: false,
-                leftBars: 8,
-                rightBars: 8,
-                useBos: false,
-                sweepX: false,
-                colors: {
-                    chochBullish: '#0ecb81',
-                    chochBearish: '#f6465d',
-                    bosBullish: 'rgba(14, 203, 129, 0.7)',
-                    bosBearish: 'rgba(246, 70, 93, 0.7)',
-                    strongHigh: '#e53935',
-                    strongLow: '#00897b',
-                    weakHigh: '#f57f17',
-                    weakLow: '#43a047'
-                }
-            }
-        };
+        // Clear localStorage and load defaults
+        this.settingsStorage.clear();
+        this.indicatorSettings = this.settingsStorage.getDefaultSettings();
 
         // Update form values
         document.getElementById('bot1-ema-length').value = 30;
@@ -1913,7 +1866,7 @@ class TradingApp {
         const smcRightBars = parseInt(document.getElementById('smc-right-bars').value);
         const smcUseBos = document.getElementById('smc-use-bos').checked;
         const smcSweepX = document.getElementById('smc-sweep-x').checked;
-        
+
         // Get color values
         const donchianUpperColor = this.hexToRgba(document.getElementById('donchian-upper-color').value, 0.8);
         const donchianLowerColor = this.hexToRgba(document.getElementById('donchian-lower-color').value, 0.8);
@@ -1993,7 +1946,7 @@ class TradingApp {
         this.indicatorSettings.tenkansen.enabled = tenkansenEnabled;
         this.indicatorSettings.tenkansen.length = tenkansenLength;
         this.indicatorSettings.tenkansen.color = tenkansenColor;
-        
+
         this.indicatorSettings.smc.enabled = smcEnabled;
         this.indicatorSettings.smc.leftBars = smcLeftBars;
         this.indicatorSettings.smc.rightBars = smcRightBars;
@@ -2001,19 +1954,22 @@ class TradingApp {
         this.indicatorSettings.smc.sweepX = smcSweepX;
 
         // Close modal
+        // Save settings to localStorage
+        this.settingsStorage.save(this.indicatorSettings);
+
         this.closeSettingsModal();
 
         // Reload data with new settings
         if (this.currentData && this.currentData.length > 0) {
             this.updateStatus('Applying new indicator settings...', 'loading');
             this.reloadIndicators();
-            
+
             // Re-run backtest with new settings
             setTimeout(() => {
                 this.runBacktest();
             }, 500);
         } else {
-            this.updateStatus('Settings applied. Load data to see changes.', 'success');
+            this.updateStatus('Settings applied and saved.', 'success');
         }
     }
 
@@ -2031,12 +1987,12 @@ class TradingApp {
                 );
                 const atrData1 = botATR1.calculateArray(this.currentData);
                 this.chartManager.setTrail1_1Data(
-                    atrData1.ema, 
+                    atrData1.ema,
                     this.indicatorSettings.botATR1.fillOpacity,
                     this.indicatorSettings.botATR1.trail1Color
                 );
                 this.chartManager.setTrail2_1Data(
-                    atrData1.trail, 
+                    atrData1.trail,
                     this.indicatorSettings.botATR1.fillOpacity,
                     this.indicatorSettings.botATR1.trail2Color
                 );
@@ -2055,12 +2011,12 @@ class TradingApp {
                 );
                 const atrData2 = botATR2.calculateArray(this.currentData);
                 this.chartManager.setTrail1_2Data(
-                    atrData2.ema, 
+                    atrData2.ema,
                     this.indicatorSettings.botATR2.fillOpacity,
                     this.indicatorSettings.botATR2.trail1Color
                 );
                 this.chartManager.setTrail2_2Data(
-                    atrData2.trail, 
+                    atrData2.trail,
                     this.indicatorSettings.botATR2.fillOpacity,
                     this.indicatorSettings.botATR2.trail2Color
                 );
@@ -2143,17 +2099,17 @@ class TradingApp {
                     sweepX: this.indicatorSettings.smc.sweepX
                 });
                 const smcData = smc.calculateArray(this.currentData);
-                
+
                 // Color candles based on trend
                 const coloredCandles = this.currentData.map(candle => {
-                    const trend = smcData.marketTrends.find(t => 
-                        candle.time >= t.startTime && 
+                    const trend = smcData.marketTrends.find(t =>
+                        candle.time >= t.startTime &&
                         (!t.endTime || candle.time <= t.endTime)
                     );
-                    
+
                     if (trend) {
-                        const color = trend.direction === 'bullish' ? 
-                            'rgba(14, 203, 129, 0.8)' : 
+                        const color = trend.direction === 'bullish' ?
+                            'rgba(14, 203, 129, 0.8)' :
                             'rgba(246, 70, 93, 0.8)';
                         return {
                             ...candle,
@@ -2163,10 +2119,10 @@ class TradingApp {
                     }
                     return candle;
                 });
-                
+
                 // Update candlestick data with colored candles
                 this.chartManager.setCandlestickData(coloredCandles);
-                
+
                 // Set SMC data with lines and markers
                 this.chartManager.setSMCData(smcData, this.indicatorSettings.smc.colors, this.currentData);
             } else {
@@ -2190,7 +2146,7 @@ class TradingApp {
             if (this.simpleBacktest) {
                 const allEntries = this.simpleBacktest.getAllEntries();
                 const closedEntries = allEntries.filter(e => e.status === 'CLOSED');
-                
+
                 if (this.indicatorSettings.tradeMarkers.enabled) {
                     this.chartManager.setTradeMarkers(
                         closedEntries,
@@ -2213,12 +2169,12 @@ class TradingApp {
     hexToRgba(hex, alpha = 1) {
         // Remove # if present
         hex = hex.replace('#', '');
-        
+
         // Parse hex values
         const r = parseInt(hex.substring(0, 2), 16);
         const g = parseInt(hex.substring(2, 4), 16);
         const b = parseInt(hex.substring(4, 6), 16);
-        
+
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
@@ -2227,17 +2183,17 @@ class TradingApp {
         // Extract RGB values from rgba string
         const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
         if (!match) return '#000000';
-        
+
         const r = parseInt(match[1]);
         const g = parseInt(match[2]);
         const b = parseInt(match[3]);
-        
+
         // Convert to hex
         const toHex = (n) => {
             const hex = n.toString(16);
             return hex.length === 1 ? '0' + hex : hex;
         };
-        
+
         return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
     }
 }
