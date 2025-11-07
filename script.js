@@ -1,12 +1,12 @@
 // Cấu hình các tools - bạn có thể thêm/sửa các tool ở đây
 const tools = [
     {
-        id: 'Backtest',
+        id: 'ccxt',
         title: 'My Chart',
         description: 'My Chart',
         category: 'Trading',
         icon: '📊',
-        url: 'https://btm2021.github.io/mytool/a/newchart/'
+        url: '/a/ccxt/'
     },
     {
         id: 'Replay',
