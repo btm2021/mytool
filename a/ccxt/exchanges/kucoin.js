@@ -10,7 +10,7 @@ class KuCoinExchange extends BaseExchange {
             console.log(this.id)
             this.exchange = new ccxt[this.id]({
                 enableRateLimit: true,
-            //   //  proxy: 'https://autumn-heart-5bf8.trinhminhbao.workers.dev/',
+             proxy: 'https://regional-nicole-mycop-df54b780.koyeb.app/'
             //     headers: {
             //         'X-Target-URL': 'https://api-futures.kucoin.com'
             //     },

@@ -9,7 +9,7 @@ class MexcExchange extends BaseExchange {
         try {
             this.exchange = new ccxt.mexc({
                 enableRateLimit: true,
-              //  proxy: 'https://autumn-heart-5bf8.trinhminhbao.workers.dev/',
+              proxy: 'https://regional-nicole-mycop-df54b780.koyeb.app/',
                 options: {
                     defaultType: 'swap'
                 }
