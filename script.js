@@ -94,8 +94,6 @@ const quotes = [
 
 class Dashboard {
     constructor() {
-        this.modal = document.getElementById('toolModal');
-        this.toolIframe = document.getElementById('toolIframe');
         this.dashboard = document.getElementById('toolsGrid');
         this.searchInput = document.getElementById('searchInput');
         this.searchOverlay = document.getElementById('searchOverlay');
@@ -217,9 +215,8 @@ class Dashboard {
 
         // Global keydown để mở search overlay
         document.addEventListener('keydown', (e) => {
-            // Nếu đang trong modal hoặc input, không xử lý
-            if (this.modal.style.display === 'block' ||
-                this.searchOverlay.classList.contains('active') ||
+            // Nếu đang trong input, không xử lý
+            if (this.searchOverlay.classList.contains('active') ||
                 e.target.tagName === 'INPUT' ||
                 e.target.tagName === 'TEXTAREA') {
                 return;
@@ -258,20 +255,13 @@ class Dashboard {
             }
         });
 
-        // Click outside modal để đóng
-        this.modal.addEventListener('click', (e) => {
-            if (e.target === this.modal) {
-                this.closeModal();
-            }
-        });
 
-        // ESC để đóng modal hoặc search overlay
+
+        // ESC để đóng search overlay
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 if (this.searchOverlay.classList.contains('active')) {
                     this.closeSearchOverlay();
-                } else if (this.modal.style.display === 'block') {
-                    this.closeModal();
                 }
             }
         });
@@ -288,19 +278,9 @@ class Dashboard {
             // Mở link ngoài trong tab mới
             window.open(tool.url, '_blank');
         } else {
-            // Mở link nội bộ trong modal iframe
-            this.toolIframe.src = tool.url;
-            this.modal.style.display = 'block';
-            document.body.style.overflow = 'hidden'; // Disable body scroll
+            // Mở link nội bộ trong cùng tab
+            window.location.href = tool.url;
         }
-    }
-
-    closeModal() {
-        this.modal.style.display = 'none';
-        this.toolIframe.src = '';
-
-        // Enable body scroll
-        document.body.style.overflow = 'auto';
     }
 
     openSearchOverlay(initialChar = '') {
