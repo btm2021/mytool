@@ -1,19 +1,18 @@
-class KuCoinExchange extends BaseExchange {
+class XTExchange extends BaseExchange {
     constructor() {
-        super('kucoinfutures', {
-            name: 'KuCoin Futures'
+        super('xt', {
+            name: 'XT Perpetual'
         });
     }
 
     async initialize() {
         try {
-            console.log(this.id)
-            this.exchange = new ccxt[this.id]({
+            this.exchange = new ccxt.xt({
                 enableRateLimit: true,
-            //   //  proxy: 'https://autumn-heart-5bf8.trinhminhbao.workers.dev/',
-            //     headers: {
-            //         'X-Target-URL': 'https://api-futures.kucoin.com'
-            //     },
+                proxy: 'https://autumn-heart-5bf8.trinhminhbao.workers.dev/',
+                options: {
+                    defaultType: 'swap'
+                }
             });
 
             const cachedSymbols = await this.db.getMarkets(this.id);
@@ -23,7 +22,13 @@ class KuCoinExchange extends BaseExchange {
                 this.log(`Loaded ${this.symbols.length} symbols from cache`, 'info');
             } else {
                 await this.exchange.loadMarkets();
-                const allSymbols = Object.keys(this.exchange.markets);
+
+                const perpetualMarkets = Object.values(this.exchange.markets).filter(m =>
+                    m.contract === true &&
+                    m.swap === true
+                );
+
+                const allSymbols = perpetualMarkets.map(m => m.symbol);
                 this.symbols = allSymbols.filter(s => this.filterSymbol(s));
                 await this.db.saveMarkets(this.id, this.symbols);
                 this.log(`Fetched and cached ${this.symbols.length} symbols`, 'success');
@@ -49,6 +54,6 @@ class KuCoinExchange extends BaseExchange {
 
         if (/:\w*\d/.test(symbol) || /\d{4,}/.test(symbol)) return false;
 
-        return symbol.includes('/USDT:USDT');
+        return symbol.includes('/USDT');
     }
 }

@@ -15,6 +15,8 @@ class BaseExchange {
         this.rateLimiter = null;
         this.currentBatch = 0;
         this.processedSymbols = new Set();
+        this.cycleCount = 0;
+        this.cycleCompleted = false;
     }
 
     setLogger(logger) {
@@ -104,10 +106,20 @@ class BaseExchange {
         const batch = this.symbols.slice(startIdx, endIdx);
 
         if (batch.length === 0) {
-            // Reset to beginning
+            // Cycle completed
+            this.cycleCount++;
+            this.cycleCompleted = true;
+            this.log(`✓ Cycle #${this.cycleCount} completed! Waiting 30 seconds...`, 'success');
+            
+            // Reset for next cycle
             this.currentBatch = 0;
-            this.log(`Completed full cycle, restarting from beginning`, 'info');
-            setTimeout(() => this.processBatch(), 5000);
+            this.processedSymbols.clear();
+            
+            // Wait 30 seconds before starting next cycle
+            // Note: cycleCompleted stays true permanently to keep border animation
+            setTimeout(() => {
+                this.processBatch();
+            }, 30000);
             return;
         }
 
@@ -240,7 +252,9 @@ class BaseExchange {
             resultsCount: this.results.length,
             queueLength: this.rateLimiter ? this.rateLimiter.getQueueLength() : 0,
             requestCount: this.rateLimiter ? this.rateLimiter.getRequestCount() : 0,
-            lastUpdate: this.lastUpdate || 'Never'
+            lastUpdate: this.lastUpdate || 'Never',
+            cycleCount: this.cycleCount,
+            cycleCompleted: this.cycleCompleted
         };
     }
 

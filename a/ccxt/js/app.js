@@ -4,11 +4,13 @@ const exchangeManager = new ExchangeManager();
 exchangeManager.addExchange(new BinanceExchange());
 exchangeManager.addExchange(new BybitExchange());
 exchangeManager.addExchange(new OKXExchange());
-exchangeManager.addExchange(new BitgetExchange());
-
-// Exchanges requiring CORS proxy (disabled until proxy is deployed)
-// exchangeManager.addExchange(new GateExchange());
-// exchangeManager.addExchange(new KuCoinExchange());
+exchangeManager.addExchange(new BingXExchange());
+exchangeManager.addExchange(new AscendEXExchange());
+exchangeManager.addExchange(new BitmartExchange());
+exchangeManager.addExchange(new MexcExchange());
+exchangeManager.addExchange(new PhemexExchange());
+exchangeManager.addExchange(new XTExchange());
+exchangeManager.addExchange(new KuCoinExchange());
 
 const { createApp, ref, reactive, onMounted } = Vue;
 
@@ -25,6 +27,7 @@ createApp({
         const symbolFilter = ref('');
         const modalSymbolFilter = ref('');
         const showLogs = ref(false); // Default collapsed
+        const showExchanges = ref(false); // Default collapsed - auto collapse on load
         const sortBy = ref({});
         const sortOrder = ref({});
         const showSettingsModal = ref(false);
@@ -42,9 +45,14 @@ createApp({
             binanceusdm: true,
             bybit: true,
             okx: true,
-            bitget: true
-            // gate: true,
-            // kucoinfutures: true
+            bingx: true,
+            ascendex: true,
+            bitmart: true,
+            bitmex: true,
+            mexc: true,
+            phemex: true,
+            xt: true,
+            kucoinfutures: true
         });
         
         // Store results as arrays - Vue 3 reactive arrays
@@ -52,9 +60,14 @@ createApp({
             binanceusdm: [],
             bybit: [],
             okx: [],
-            bitget: []
-            // gate: [],
-            // kucoinfutures: []
+            bingx: [],
+            ascendex: [],
+            bitmart: [],
+            bitmex: [],
+            mexc: [],
+            phemex: [],
+            xt: [],
+            kucoinfutures: []
         });
 
         // Callback when exchange updates result
@@ -79,6 +92,11 @@ createApp({
                 arr.unshift(newData);
             }
             
+            // Trigger tab pulse animation if not on active tab
+            if (activeTab.value !== exchangeId) {
+                triggerTabPulse(exchangeId);
+            }
+            
             // Remove blink effect after animation
             setTimeout(() => {
                 const idx = arr.findIndex(r => r.symbol === data.symbol);
@@ -86,6 +104,27 @@ createApp({
                     arr[idx].updated = false;
                 }
             }, 1000);
+        };
+        
+        // Trigger button blink animation
+        const triggerTabPulse = (exchangeId) => {
+            // Find the exchange button in collapsed sidebar
+            const buttons = document.querySelectorAll('.exchange-btn-icon');
+            buttons.forEach(btn => {
+                const exchangeInfo = exchanges.value.find(ex => ex.id === exchangeId);
+                if (exchangeInfo) {
+                    const btnTitle = btn.getAttribute('title');
+                    if (btnTitle === exchangeInfo.name) {
+                        // Add blink class
+                        btn.classList.add('has-update');
+                        
+                        // Remove after animation completes
+                        setTimeout(() => {
+                            btn.classList.remove('has-update');
+                        }, 1500);
+                    }
+                }
+            });
         };
 
         // Set callback for all exchanges
@@ -96,7 +135,9 @@ createApp({
         }, 0);
 
         const updateData = () => {
-            exchanges.value = [...exchangeManager.getExchangesInfo()];
+            // Only show enabled exchanges
+            const allExchanges = exchangeManager.getExchangesInfo();
+            exchanges.value = allExchanges.filter(ex => enabledExchanges[ex.id] !== false);
             logs.value = [...exchangeManager.getLogs()];
         };
 
@@ -258,6 +299,10 @@ createApp({
         const toggleLogs = () => {
             showLogs.value = !showLogs.value;
         };
+        
+        const toggleExchanges = () => {
+            showExchanges.value = !showExchanges.value;
+        };
 
         const openSettings = () => {
             showSettingsModal.value = true;
@@ -298,7 +343,11 @@ createApp({
                 });
                 
                 closeSettings();
-                alert('Settings saved successfully!');
+                
+                // Reload page to apply exchange enable/disable changes
+                if (confirm('Settings saved! Reload page to apply exchange changes?')) {
+                    location.reload();
+                }
             } catch (error) {
                 console.error('Failed to save settings:', error);
                 alert('Failed to save settings. Please try again.');
@@ -323,14 +372,38 @@ createApp({
 
         const getExchangeName = (id) => {
             const names = {
-                binanceusdm: 'Binance Futures',
-                bybit: 'Bybit Perpetual',
-                okx: 'OKX Perpetual',
-                bitget: 'Bitget Perpetual',
-                gate: 'Gate.io Futures',
-                kucoinfutures: 'KuCoin Futures'
+                binanceusdm: 'Binance',
+                bybit: 'Bybit',
+                okx: 'OKX',
+                bingx: 'BingX',
+                ascendex: 'AscendEX',
+                bitmart: 'Bitmart',
+                bitmex: 'BitMEX',
+                mexc: 'MEXC',
+                phemex: 'Phemex',
+                xt: 'XT',
+                kucoinfutures: 'KuCoin'
             };
             return names[id] || id;
+        };
+        
+        const getExchangeInitial = (name) => {
+            // Extract initials for collapsed sidebar
+            const initials = {
+                'Binance': 'BN',
+                'Bybit': 'BY',
+                'OKX': 'OK',
+                'BingX': 'BX',
+                'AscendEX': 'AX',
+                'Bitmart': 'BM',
+                'BitMEX': 'MX',
+                'MEXC': 'MC',
+                'Phemex': 'PH',
+                'XT': 'XT',
+                'KuCoin': 'KC'
+            };
+            
+            return initials[name] || name.substring(0, 2).toUpperCase();
         };
 
         const startExchange = async (id) => {
@@ -350,15 +423,15 @@ createApp({
         };
 
         const startAll = async () => {
-            await exchangeManager.startAll();
+            await exchangeManager.startAll(enabledExchanges);
         };
 
         const pauseAll = () => {
-            exchangeManager.pauseAll();
+            exchangeManager.pauseAll(enabledExchanges);
         };
 
         const stopAll = () => {
-            exchangeManager.stopAll();
+            exchangeManager.stopAll(enabledExchanges);
         };
 
         const clearCache = async () => {
@@ -380,7 +453,9 @@ createApp({
                 loading.value = true;
                 loadingMessage.value = 'Loading markets from cache...';
                 
-                const allExchanges = exchangeManager.getAllExchanges();
+                // Only initialize enabled exchanges
+                const allExchanges = exchangeManager.getAllExchanges().filter(ex => enabledExchanges[ex.id] !== false);
+                
                 for (let i = 0; i < allExchanges.length; i++) {
                     const ex = allExchanges[i];
                     loadingMessage.value = `Initializing ${ex.name} (${i + 1}/${allExchanges.length})...`;
@@ -392,6 +467,11 @@ createApp({
                 await new Promise(resolve => setTimeout(resolve, 800));
                 
                 loading.value = false;
+                
+                // Set active tab to first enabled exchange
+                if (allExchanges.length > 0) {
+                    activeTab.value = allExchanges[0].id;
+                }
             } catch (error) {
                 loadingMessage.value = `Error: ${error.message}`;
                 console.error('Auto init error:', error);
@@ -415,6 +495,8 @@ createApp({
             autoStart();
         });
 
+
+
         return {
             exchanges,
             activeTab,
@@ -427,10 +509,12 @@ createApp({
             symbolFilter,
             modalSymbolFilter,
             showLogs,
+            showExchanges,
             sortBy,
             sortOrder,
             updateData,
             toggleLogs,
+            toggleExchanges,
             getFilteredModalSymbols,
             sortTable,
             getSortIcon,
@@ -442,6 +526,7 @@ createApp({
             saveSettings,
             loadSavedExchanges,
             getExchangeName,
+            getExchangeInitial,
             getExchangeResults,
             getFilteredResults,
             formatPrice,

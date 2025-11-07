@@ -67,21 +67,38 @@ class ExchangeManager {
         }
     }
 
-    async startAll() {
+    async startAll(enabledExchanges = null) {
         this.logger.info('Starting all exchanges...');
         for (const exchange of this.exchanges) {
+            // Skip if enabledExchanges is provided and this exchange is disabled
+            if (enabledExchanges && enabledExchanges[exchange.id] === false) {
+                this.logger.info(`Skipping disabled exchange: ${exchange.name}`);
+                continue;
+            }
             await exchange.start();
         }
     }
 
-    pauseAll() {
+    pauseAll(enabledExchanges = null) {
         this.logger.info('Pausing all exchanges...');
-        this.exchanges.forEach(ex => ex.pause());
+        this.exchanges.forEach(ex => {
+            // Skip if enabledExchanges is provided and this exchange is disabled
+            if (enabledExchanges && enabledExchanges[ex.id] === false) {
+                return;
+            }
+            ex.pause();
+        });
     }
 
-    stopAll() {
+    stopAll(enabledExchanges = null) {
         this.logger.info('Stopping all exchanges...');
-        this.exchanges.forEach(ex => ex.stop());
+        this.exchanges.forEach(ex => {
+            // Skip if enabledExchanges is provided and this exchange is disabled
+            if (enabledExchanges && enabledExchanges[ex.id] === false) {
+                return;
+            }
+            ex.stop();
+        });
     }
 
     getLogs() {

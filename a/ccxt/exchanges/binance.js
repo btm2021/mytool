@@ -7,7 +7,7 @@ class BinanceExchange extends BaseExchange {
 
     filterSymbol(symbol) {
         // Loại bỏ stablecoins không mong muốn
-        const excludeCoins = ['USDC', 'BUSD', 'DAI', 'TUSD', 'USDP'];
+        const excludeCoins = ['USDC', 'BUSD', 'DAI', 'TUSD', 'USDP','BTCST','BTCDOM'];
         for (const coin of excludeCoins) {
             if (symbol.includes(coin)) return false;
         }
@@ -15,6 +15,9 @@ class BinanceExchange extends BaseExchange {
         // Loại bỏ symbols có dấu gạch dưới
         if (symbol.includes('_')) return false;
 
+        if (symbol.includes('BTCST')) return false;
+
+        if (symbol.includes('BTCDOM')) return false;
         // Loại bỏ symbols có dấu gạch ngang (options/dated contracts)
         // Ví dụ: BTC/USDT:USDT-260327-60000-P
         const parts = symbol.split(':');
