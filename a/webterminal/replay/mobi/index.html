@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Binance Chart Mobile</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="../dist/rectfill/lwc-plugin-fill.umd.cjs"></script>
+    <script src="../dist/bandfill/lwc-plugin-bandfillcolor.umd.cjs"></script>
+</head>
+<body>
+    <!-- Header -->
+    <div class="mobile-header">
+        <div class="header-symbol">
+            <span id="symbolName">Select Symbol</span>
+        </div>
+        <div class="header-price">
+            <span id="currentPrice">--</span>
+            <span id="priceChange" class="price-change">--</span>
+        </div>
+    </div>
+
+    <!-- Chart Container -->
+    <div class="chart-container">
+        <div id="chart"></div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="bottom-controls">
+        <!-- Symbol Selector -->
+        <div class="control-section">
+            <button id="symbolBtn" class="control-btn">
+                <span class="btn-icon">📊</span>
+                <span class="btn-label">Symbol</span>
+            </button>
+        </div>
+
+        <!-- Timeframe Selector -->
+        <div class="control-section">
+            <button id="timeframeBtn" class="control-btn">
+                <span class="btn-icon">⏱️</span>
+                <span class="btn-label" id="currentTimeframe">15m</span>
+            </button>
+        </div>
+
+        <!-- Indicators -->
+        <div class="control-section">
+            <button id="indicatorsBtn" class="control-btn">
+                <span class="btn-icon">📈</span>
+                <span class="btn-label">Indicators</span>
+            </button>
+        </div>
+
+        <!-- Settings -->
+        <div class="control-section">
+            <button id="settingsBtn" class="control-btn">
+                <span class="btn-icon">⚙️</span>
+                <span class="btn-label">Settings</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Symbol Modal -->
+    <div id="symbolModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Select Symbol</h3>
+                <button class="close-btn" data-modal="symbolModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input autocomplete="off" type="text" id="symbolSearch" class="search-input" placeholder="Search symbols...">
+                <div class="symbol-list" id="symbolList">
+                    <div class="loading">Loading symbols...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeframe Modal -->
+    <div id="timeframeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Select Timeframe</h3>
+                <button class="close-btn" data-modal="timeframeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="timeframe-grid">
+                    <button class="timeframe-item" data-tf="1m">1m</button>
+                    <button class="timeframe-item" data-tf="5m">5m</button>
+                    <button class="timeframe-item" data-tf="15m">15m</button>
+                    <button class="timeframe-item" data-tf="30m">30m</button>
+                    <button class="timeframe-item" data-tf="1h">1h</button>
+                    <button class="timeframe-item" data-tf="4h">4h</button>
+                    <button class="timeframe-item" data-tf="1d">1d</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicators Modal -->
+    <div id="indicatorsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Indicators</h3>
+                <button class="close-btn" data-modal="indicatorsModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="indicator-list">
+                    <div class="indicator-item">
+                        <label>
+                            <input type="checkbox" id="botATR1Toggle" checked>
+                            <span>Bot ATR 1 (30/14/2)</span>
+                        </label>
+                    </div>
+                    <div class="indicator-item">
+                        <label>
+                            <input type="checkbox" id="botATR2Toggle" checked>
+                            <span>Bot ATR 2 (55/14/2)</span>
+                        </label>
+                    </div>
+                    <div class="indicator-item">
+                        <label>
+                            <input type="checkbox" id="vsr1Toggle">
+                            <span>VSR 1 (10/10) ⚠️ Heavy</span>
+                        </label>
+                    </div>
+                    <div class="indicator-item">
+                        <label>
+                            <input type="checkbox" id="vsr2Toggle">
+                            <span>VSR 2 (20/20) ⚠️ Heavy</span>
+                        </label>
+                    </div>
+                    <div class="indicator-item">
+                        <label>
+                            <input type="checkbox" id="volumeToggle" checked>
+                            <span>Volume</span>
+                        </label>
+                    </div>
+                    <div class="indicator-item">
+                        <label>
+                            <input type="checkbox" id="donchianToggle" checked>
+                            <span>Donchian Channel</span>
+                        </label>
+                    </div>
+                    <div class="indicator-item">
+                        <label>
+                            <input type="checkbox" id="tenkansenToggle">
+                            <span>Tenkansen</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Settings</h3>
+                <button class="close-btn" data-modal="settingsModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <label>Candle Count (Max 3000 for performance)</label>
+                        <input type="number" id="candleCount" value="2000" min="100" max="3000">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading...</div>
+    </div>
+
+    <script src="binance-api.js"></script>
+    <script src="../botatr.js"></script>
+    <script src="../vsr-indicator.js"></script>
+    <script src="../donchian.js"></script>
+    <script src="../tenkansen.js"></script>
+    <script src="chart-manager.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

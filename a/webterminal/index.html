@@ -172,7 +172,7 @@
                                     <tr v-for="symbol in filteredSymbols" :key="symbol.symbol"
                                         :class="{'row-updated': symbol.updated}">
                                         <td class="symbol-name">
-                                            <a :href="'chart/index.html?exchange=' + activeTab + '&symbol=' + symbol.symbol"
+                                            <a :href="'replay/?exchange=' + activeTab + '&symbol=' + symbol.symbol + '&timeframe=' + settings.timeframe + '&limit=1500&usecache=no'"
                                                 target="_blank" class="symbol-link">
                                                 <div class="symbol-icons">
                                                     <img :src="symbol.baseIcon" :alt="symbol.baseSymbol"
