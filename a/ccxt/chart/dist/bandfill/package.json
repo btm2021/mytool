@@ -1,0 +1,22 @@
+{
+    "name": "lwc-plugin-bandfillcolor",
+    "version": "1.0.0",
+    "keywords": [
+        "lwc-plugin",
+        "lightweight-charts"
+    ],
+    "type": "module",
+    "main": "./lwc-plugin-bandfillcolor.umd.cjs",
+    "module": "./lwc-plugin-bandfillcolor.js",
+    "types": "./lwc-plugin-bandfillcolor.d.ts",
+    "exports": {
+        "import": {
+            "types": "./lwc-plugin-bandfillcolor.d.ts",
+            "default": "./lwc-plugin-bandfillcolor.js"
+        },
+        "require": {
+            "types": "./lwc-plugin-bandfillcolor.d.cts",
+            "default": "./lwc-plugin-bandfillcolor.umd.cjs"
+        }
+    }
+}

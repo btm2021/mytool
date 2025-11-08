@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/ccxt/4.5.6/ccxt.browser.min.js" integrity="sha512-BZAq/1kHhlz0bCcxuSNGIb61CqVumOwz4HjdOoaM2EZNlwsUAhHVgUJZrTMRh5HaKVcb0dxnx1R5r0UbgUx05w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="./dist/rectfill/lwc-plugin-fill.umd.cjs"></script>
+    <script src="./dist/bandfill/lwc-plugin-bandfillcolor.umd.cjs"></script>
+    
+    <!-- URL Params and CCXT Integration -->
+    <script src="url-params.js"></script>
+    <script src="ccxt-loader.js"></script>
+</head>
+
+<body>
+    <div class="navbar">
+        <!-- Hamburger Menu Button (Mobile Only) -->
+        <button id="hamburgerBtn" class="hamburger-btn">
+            <span class="hamburger-icon"></span>
+        </button>
+
+        <!-- Navbar Content -->
+        <div class="navbar-content" id="navbarContent">
+            <!-- Data Controls -->
+            <div class="nav-group data-controls">
+                <label>Symbol:</label>
+                <button id="symbolSelector" class="symbol-selector-btn">
+                    <span id="selectedSymbol">Select Symbol</span>
+                    <span class="dropdown-arrow">▼</span>
+                </button>
+                <label>TF:</label>
+                <select id="timeframe">
+                    <option value="1m">1m</option>
+                    <option value="5m">5m</option>
+                    <option value="15m" selected>15m</option>
+                    <option value="1h">1h</option>
+                </select>
+                <label>Candles:</label>
+                <input type="number" id="candleCount" value="1500" min="100" placeholder="Count">
+                <button id="loadData">Load</button>
+            </div>
+
+            <!-- Tools -->
+            <div class="nav-group backtest-controls">
+                <button id="indicatorSettingsBtn">Settings</button>
+                <button id="measureToolBtn" class="tool-btn">📏</button>
+            </div>
+
+            <!-- Status -->
+            <div class="nav-group status-info">
+                <span id="status">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="main-layout">
+            <!-- Chart Section - Full width -->
+            <div class="chart-section" style="width: 100%;">
+                <div id="chart"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Symbol Selection Modal -->
+    <div id="symbolModal" class="modal" style="display: none;">
+        <div class="modal-content symbol-modal">
+            <div class="modal-header">
+                <span class="modal-title">Select Symbol</span>
+                <span class="modal-close symbol-modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="symbol-search-container">
+                    <input type="text" id="symbolSearch" placeholder="Search symbols..." class="symbol-search">
+                </div>
+                <div class="symbol-table-container">
+                    <table id="symbol-table">
+                        <thead>
+                            <tr>
+                                <th class="favorite-header">★</th>
+                                <th data-sort="symbol" class="sortable">Symbol <span class="sort-indicator"></span></th>
+                                <th data-sort="lastPrice" class="sortable">Last Price <span class="sort-indicator"></span></th>
+                                <th data-sort="quoteVolume" class="sortable">Volume (USDT) <span class="sort-indicator"></span></th>
+                                <th data-sort="priceChangePercent" class="sortable">Change % <span class="sort-indicator"></span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="symbol-table-body">
+                            <tr>
+                                <td colspan="5" class="loading-row">Loading symbols...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicator Settings Modal -->
+    <div id="indicatorSettingsModal" class="modal" style="display: none;">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <span class="modal-title">Indicator Settings</span>
+                <span class="modal-close settings-modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="settings-grid">
+                    <!-- Bot ATR 1 Settings -->
+                    <div class="settings-section" id="botATR1Section">
+                        <div class="settings-section-header">
+                            <h3>Bot ATR 1 (30/14/2)</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="botATR1Toggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="bot1-ema-length">EMA Length:</label>
+                                <input type="number" id="bot1-ema-length" value="30" min="1" max="200">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot1-atr-length">ATR Length:</label>
+                                <input type="number" id="bot1-atr-length" value="14" min="1" max="100">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot1-atr-multiplier">ATR Multiplier:</label>
+                                <input type="number" id="bot1-atr-multiplier" value="2.0" min="0.1" max="10" step="0.1">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot1-trail1-color">Trail1 Color:</label>
+                                <input type="color" id="bot1-trail1-color" value="#00ff00">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot1-trail1-width">Trail1 Width (0=hide):</label>
+                                <input type="number" id="bot1-trail1-width" value="1" min="0" max="5">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot1-trail2-color">Trail2 Color:</label>
+                                <input type="color" id="bot1-trail2-color" value="#ff0000">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot1-trail2-width">Trail2 Width (0=hide):</label>
+                                <input type="number" id="bot1-trail2-width" value="1" min="0" max="5">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot1-fill-color">Fill Color:</label>
+                                <input type="color" id="bot1-fill-color" value="#808000">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot1-fill-opacity">Fill Opacity:</label>
+                                <input type="number" id="bot1-fill-opacity" value="0.2" min="0" max="1" step="0.05">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bot ATR 2 Settings -->
+                    <div class="settings-section" id="botATR2Section">
+                        <div class="settings-section-header">
+                            <h3>Bot ATR 2 (55/14/2)</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="botATR2Toggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="bot2-ema-length">EMA Length:</label>
+                                <input type="number" id="bot2-ema-length" value="55" min="1" max="200">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-atr-length">ATR Length:</label>
+                                <input type="number" id="bot2-atr-length" value="14" min="1" max="100">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-atr-multiplier">ATR Multiplier:</label>
+                                <input type="number" id="bot2-atr-multiplier" value="2.0" min="0.1" max="10" step="0.1">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-trail1-color">Trail1 Color:</label>
+                                <input type="color" id="bot2-trail1-color" value="#0096ff">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-trail1-width">Trail1 Width (0=hide):</label>
+                                <input type="number" id="bot2-trail1-width" value="1" min="0" max="5">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-trail2-color">Trail2 Color:</label>
+                                <input type="color" id="bot2-trail2-color" value="#ff9600">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-trail2-width">Trail2 Width (0=hide):</label>
+                                <input type="number" id="bot2-trail2-width" value="1" min="0" max="5">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-fill-color">Fill Color:</label>
+                                <input type="color" id="bot2-fill-color" value="#80c8ff">
+                            </div>
+                            <div class="setting-group">
+                                <label for="bot2-fill-opacity">Fill Opacity:</label>
+                                <input type="number" id="bot2-fill-opacity" value="0.15" min="0" max="1" step="0.05">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VSR1 Settings -->
+                    <div class="settings-section" id="vsr1Section">
+                        <div class="settings-section-header">
+                            <h3>VSR 1 (10/10)</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="vsr1Toggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="vsr1-length">Length:</label>
+                                <input type="number" id="vsr1-length" value="10" min="1" max="100">
+                            </div>
+                            <div class="setting-group">
+                                <label for="vsr1-threshold">Threshold:</label>
+                                <input type="number" id="vsr1-threshold" value="10" min="1" max="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VSR2 Settings -->
+                    <div class="settings-section" id="vsr2Section">
+                        <div class="settings-section-header">
+                            <h3>VSR 2 (20/20)</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="vsr2Toggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="vsr2-length">Length:</label>
+                                <input type="number" id="vsr2-length" value="20" min="1" max="100">
+                            </div>
+                            <div class="setting-group">
+                                <label for="vsr2-threshold">Threshold:</label>
+                                <input type="number" id="vsr2-threshold" value="20" min="1" max="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Volume Settings -->
+                    <div class="settings-section" id="volumeSection">
+                        <div class="settings-section-header">
+                            <h3>Volume</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="volumeToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Donchian Channel Settings -->
+                    <div class="settings-section" id="donchianSection">
+                        <div class="settings-section-header">
+                            <h3>Donchian Channel</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="donchianToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="donchian-length">Length:</label>
+                                <input type="number" id="donchian-length" value="50" min="1" max="200">
+                            </div>
+                            <div class="setting-group">
+                                <label for="donchian-upper-color">Upper Color:</label>
+                                <input type="color" id="donchian-upper-color" value="#0000ff">
+                            </div>
+                            <div class="setting-group">
+                                <label for="donchian-lower-color">Lower Color:</label>
+                                <input type="color" id="donchian-lower-color" value="#0000ff">
+                            </div>
+                            <div class="setting-group">
+                                <label for="donchian-middle-color">Middle Color:</label>
+                                <input type="color" id="donchian-middle-color" value="#0000ff">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tenkansen Settings -->
+                    <div class="settings-section" id="tenkansenSection">
+                        <div class="settings-section-header">
+                            <h3>Tenkansen (Baseline)</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch active" id="tenkansenToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Enabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="tenkansen-length">Length:</label>
+                                <input type="number" id="tenkansen-length" value="50" min="1" max="200">
+                            </div>
+                            <div class="setting-group">
+                                <label for="tenkansen-color">Color:</label>
+                                <input type="color" id="tenkansen-color" value="#ffa500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SMC Settings -->
+                    <div class="settings-section" id="smcSection">
+                        <div class="settings-section-header">
+                            <h3>Smart Money Concept (SMC)</h3>
+                            <div class="indicator-toggle">
+                                <div class="toggle-switch" id="smcToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span class="toggle-label">Disabled</span>
+                            </div>
+                        </div>
+                        <div class="settings-fields">
+                            <div class="setting-group">
+                                <label for="smc-left-bars">Left Bars:</label>
+                                <input type="number" id="smc-left-bars" value="8" min="1" max="50">
+                            </div>
+                            <div class="setting-group">
+                                <label for="smc-right-bars">Right Bars:</label>
+                                <input type="number" id="smc-right-bars" value="8" min="1" max="50">
+                            </div>
+                            <div class="setting-group">
+                                <label for="smc-use-bos">Show BoS:</label>
+                                <input type="checkbox" id="smc-use-bos">
+                            </div>
+                            <div class="setting-group">
+                                <label for="smc-sweep-x">Show Liquidity Sweeps:</label>
+                                <input type="checkbox" id="smc-sweep-x">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-controls">
+                    <button id="resetSettingsBtn">Reset to Default</button>
+                    <button id="applySettingsBtn">Apply Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="dist/measuretool/lwc-plugin-ruletool.umd.cjs"></script>
+    <script src="settings-storage.js"></script>
+    <script src="binance-api.js"></script>
+    <script src="symbol-selector-simple.js"></script>
+    <script src="botatr.js"></script>
+    <script src="vsr-indicator.js"></script>
+    <script src="donchian.js"></script>
+    <script src="tenkansen.js"></script>
+    <script src="smc-indicator.js"></script>
+    <script src="chart-manager.js"></script>
+    <script src="app.js"></script>
+    
+    <!-- Auto-initialization with URL params -->
+    <script src="auto-init-simple.js"></script>
+</body>
+
+</html>
