@@ -82,6 +82,9 @@
             console.log(`   Timeframe: ${params.timeframe}`);
             console.log(`   Limit: ${params.limit} candles`);
 
+            // Set current exchange in app
+            window.app.setExchange(exchangeId);
+
             // Fetch data from CCXT
             console.log('📊 Fetching OHLCV data...');
             const data = await window.app.ccxtLoader.fetchOHLCV(
@@ -96,6 +99,10 @@
             // Store and display data
             window.app.currentData = data;
             window.app.displayData(data);
+
+            // Set watermark
+            const exchangeDisplayName = urlHandler.getExchangeDisplayName();
+            window.app.chartManager.setWatermark(exchangeDisplayName, params.symbol, params.timeframe);
 
             console.log('═══════════════════════════════════════');
             console.log('✅ Auto-Load Complete!');

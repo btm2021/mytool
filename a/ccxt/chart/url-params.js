@@ -34,13 +34,9 @@ class URLParamsHandler {
      * Get exchange name for CCXT
      */
     getExchangeName() {
-        const exchangeMap = {
-            'binanceusdm': 'binanceusdm',
-            'bybit': 'bybit',
-            'okx': 'okx',
-            'bitget': 'bitget'
-        };
-        return exchangeMap[this.params.exchangeId] || 'binanceusdm';
+        // Return the exchangeId directly from URL params
+        // If not provided, default to binanceusdm
+        return this.params.exchangeId || 'binanceusdm';
     }
 
     /**
@@ -49,11 +45,18 @@ class URLParamsHandler {
     getExchangeDisplayName() {
         const displayNames = {
             'binanceusdm': 'Binance Futures',
+            'binance': 'Binance',
             'bybit': 'Bybit',
             'okx': 'OKX',
-            'bitget': 'Bitget'
+            'bitget': 'Bitget',
+            'kucoin': 'KuCoin',
+            'huobi': 'Huobi',
+            'gateio': 'Gate.io',
+            'mexc': 'MEXC'
         };
-        return displayNames[this.params.exchangeId] || this.params.exchangeId;
+        // Return display name if exists, otherwise capitalize the exchangeId
+        return displayNames[this.params.exchangeId] || 
+               (this.params.exchangeId ? this.params.exchangeId.charAt(0).toUpperCase() + this.params.exchangeId.slice(1) : 'Unknown');
     }
 
     /**

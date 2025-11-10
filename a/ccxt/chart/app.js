@@ -12,6 +12,7 @@ class SimpleTradingApp {
             this.settingsStorage = new SettingsStorage();
             this.ccxtLoader = new CCXTLoader();
             this.currentData = [];
+            this.currentExchangeId = 'binanceusdm'; // Default exchange
 
             // Load indicator settings from localStorage
             this.indicatorSettings = this.settingsStorage.load();
@@ -85,6 +86,28 @@ class SimpleTradingApp {
         });
     }
 
+    // Set current exchange
+    setExchange(exchangeId) {
+        this.currentExchangeId = exchangeId || 'binanceusdm';
+    }
+
+    // Get exchange display name
+    getExchangeDisplayName(exchangeId) {
+        const displayNames = {
+            'binanceusdm': 'Binance Futures',
+            'binance': 'Binance',
+            'bybit': 'Bybit',
+            'okx': 'OKX',
+            'bitget': 'Bitget',
+            'kucoin': 'KuCoin',
+            'huobi': 'Huobi',
+            'gateio': 'Gate.io',
+            'mexc': 'MEXC'
+        };
+        return displayNames[exchangeId] || 
+               (exchangeId ? exchangeId.charAt(0).toUpperCase() + exchangeId.slice(1) : 'Unknown');
+    }
+
     // Load data using CCXT
     async loadData() {
         const symbol = this.symbolSelector.getSelectedSymbol();
@@ -110,15 +133,15 @@ class SimpleTradingApp {
         try {
             this.updateStatus(`Loading data...`, 'loading');
 
-            console.log(`📊 Fetching data for ${symbol} ${timeframe} (${candleCount} candles)`);
+            console.log(`📊 Fetching data for ${symbol} ${timeframe} (${candleCount} candles) from ${this.currentExchangeId}`);
 
             // Convert symbol format for CCXT (BTCUSDT -> BTC/USDT:USDT)
             const base = symbol.replace('USDT', '');
             const ccxtSymbol = `${base}/USDT:USDT`;
 
-            // Fetch data from CCXT
+            // Fetch data from CCXT using current exchange
             const data = await this.ccxtLoader.fetchOHLCV(
-                'binanceusdm',
+                this.currentExchangeId,
                 ccxtSymbol,
                 timeframe,
                 candleCount
@@ -135,6 +158,10 @@ class SimpleTradingApp {
             // Display data on chart
             this.displayData(data);
 
+            // Set watermark with dynamic exchange name
+            const exchangeDisplayName = this.getExchangeDisplayName(this.currentExchangeId);
+            this.chartManager.setWatermark(exchangeDisplayName, symbol, timeframe);
+
             this.updateStatus(`${symbol} ${timeframe} - ${data.length} candles`, 'success');
             this.updateUI();
 
@@ -150,6 +177,8 @@ class SimpleTradingApp {
 
     // Display data on chart with indicators
     displayData(data) {
+        console.log('📊 Displaying data with indicators...');
+        
         // Clear chart
         this.chartManager.clearChart();
 
@@ -158,12 +187,19 @@ class SimpleTradingApp {
 
         // Calculate and show ATR Bot 1 if enabled
         if (this.indicatorSettings.botATR1.enabled) {
+            console.log('🔵 ATR Bot 1 enabled, calculating...');
             const botATR1 = new BotATRIndicator(
                 this.indicatorSettings.botATR1.emaLength,
                 this.indicatorSettings.botATR1.atrLength,
                 this.indicatorSettings.botATR1.atrMultiplier
             );
             const atrData1 = botATR1.calculateArray(data);
+            console.log('🔵 ATR Bot 1 settings:', {
+                trail1Width: this.indicatorSettings.botATR1.trail1Width,
+                trail2Width: this.indicatorSettings.botATR1.trail2Width,
+                trail1Color: this.indicatorSettings.botATR1.trail1Color,
+                trail2Color: this.indicatorSettings.botATR1.trail2Color
+            });
             this.chartManager.setATRBot1Data(
                 atrData1.ema,
                 atrData1.trail,
@@ -176,16 +212,25 @@ class SimpleTradingApp {
                     fillOpacity: this.indicatorSettings.botATR1.fillOpacity
                 }
             );
+        } else {
+            console.log('⚪ ATR Bot 1 disabled');
         }
 
         // Calculate and show ATR Bot 2 if enabled
         if (this.indicatorSettings.botATR2.enabled) {
+            console.log('🟢 ATR Bot 2 enabled, calculating...');
             const botATR2 = new BotATRIndicator(
                 this.indicatorSettings.botATR2.emaLength,
                 this.indicatorSettings.botATR2.atrLength,
                 this.indicatorSettings.botATR2.atrMultiplier
             );
             const atrData2 = botATR2.calculateArray(data);
+            console.log('🟢 ATR Bot 2 settings:', {
+                trail1Width: this.indicatorSettings.botATR2.trail1Width,
+                trail2Width: this.indicatorSettings.botATR2.trail2Width,
+                trail1Color: this.indicatorSettings.botATR2.trail1Color,
+                trail2Color: this.indicatorSettings.botATR2.trail2Color
+            });
             this.chartManager.setATRBot2Data(
                 atrData2.ema,
                 atrData2.trail,
@@ -198,6 +243,8 @@ class SimpleTradingApp {
                     fillOpacity: this.indicatorSettings.botATR2.fillOpacity
                 }
             );
+        } else {
+            console.log('⚪ ATR Bot 2 disabled');
         }
 
         // Calculate and show VSR1 if enabled
@@ -488,6 +535,8 @@ class SimpleTradingApp {
 
     // Apply settings
     applySettings() {
+        console.log('🔧 Applying settings...');
+        
         // Read all settings from modal
         this.indicatorSettings = {
             botATR1: {
@@ -567,16 +616,24 @@ class SimpleTradingApp {
             }
         };
 
+        console.log('📝 New settings:', this.indicatorSettings);
+        
         // Save to localStorage
         this.settingsStorage.save(this.indicatorSettings);
+        console.log('💾 Settings saved to localStorage');
 
         // Reload data with new settings
         if (this.currentData && this.currentData.length > 0) {
+            console.log('🔄 Reloading chart with new settings...');
             this.displayData(this.currentData);
+            console.log('✅ Chart reloaded');
+        } else {
+            console.log('⚠️ No data to reload');
         }
 
         this.closeSettingsModal();
         this.updateStatus('Settings applied', 'success');
+        console.log('✅ Settings applied successfully');
     }
 
     // Reset settings to default

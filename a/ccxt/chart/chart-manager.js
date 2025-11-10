@@ -393,28 +393,39 @@ class ChartManager {
             fillColor = '#808000',
             fillOpacity = 0.2
         } = options;
+        
+        console.log('📈 setATRBot1Data called with:', {
+            trail1Width,
+            trail2Width,
+            trail1Color,
+            trail2Color,
+            fillColor,
+            fillOpacity
+        });
 
         // Update trail1 series
-        if (this.trail1_1Series && trail1Data) {
+        if (this.trail1_1Series) {
             this.trail1_1Series.applyOptions({
                 color: trail1Color,
-                lineWidth: trail1Width,
+                lineWidth: Math.max(trail1Width, 0),
                 visible: trail1Width > 0
             });
-            this.trail1_1Series.setData(trail1Data);
+            // If width is 0, set empty data to hide the line
+            this.trail1_1Series.setData(trail1Width > 0 ? trail1Data : []);
         }
 
         // Update trail2 series
-        if (this.trail2_1Series && trail2Data) {
+        if (this.trail2_1Series) {
             this.trail2_1Series.applyOptions({
                 color: trail2Color,
-                lineWidth: trail2Width,
+                lineWidth: Math.max(trail2Width, 0),
                 visible: trail2Width > 0
             });
-            this.trail2_1Series.setData(trail2Data);
+            // If width is 0, set empty data to hide the line
+            this.trail2_1Series.setData(trail2Width > 0 ? trail2Data : []);
         }
 
-        // Update band fill
+        // Update band fill (always use full data for band calculation)
         this._trail1_1Data = trail1Data;
         this._trail2_1Data = trail2Data;
         this._updateATRBandFill1WithColor(fillColor, fillOpacity);
@@ -430,28 +441,39 @@ class ChartManager {
             fillColor = '#80c8ff',
             fillOpacity = 0.15
         } = options;
+        
+        console.log('📈 setATRBot2Data called with:', {
+            trail1Width,
+            trail2Width,
+            trail1Color,
+            trail2Color,
+            fillColor,
+            fillOpacity
+        });
 
         // Update trail1 series
-        if (this.trail1_2Series && trail1Data) {
+        if (this.trail1_2Series) {
             this.trail1_2Series.applyOptions({
                 color: trail1Color,
-                lineWidth: trail1Width,
+                lineWidth: Math.max(trail1Width, 0),
                 visible: trail1Width > 0
             });
-            this.trail1_2Series.setData(trail1Data);
+            // If width is 0, set empty data to hide the line
+            this.trail1_2Series.setData(trail1Width > 0 ? trail1Data : []);
         }
 
         // Update trail2 series
-        if (this.trail2_2Series && trail2Data) {
+        if (this.trail2_2Series) {
             this.trail2_2Series.applyOptions({
                 color: trail2Color,
-                lineWidth: trail2Width,
+                lineWidth: Math.max(trail2Width, 0),
                 visible: trail2Width > 0
             });
-            this.trail2_2Series.setData(trail2Data);
+            // If width is 0, set empty data to hide the line
+            this.trail2_2Series.setData(trail2Width > 0 ? trail2Data : []);
         }
 
-        // Update band fill
+        // Update band fill (always use full data for band calculation)
         this._trail1_2Data = trail1Data;
         this._trail2_2Data = trail2Data;
         this._updateATRBandFill2WithColor(fillColor, fillOpacity);
@@ -1615,6 +1637,35 @@ class ChartManager {
 
     setMeasureCompleteCallback(callback) {
         this.onMeasureComplete = callback;
+    }
+
+    // Set watermark with exchange, symbol, and timeframe
+    setWatermark(exchangeName, symbol, timeframe) {
+        if (!this.chart) return;
+
+        const watermarkText = `${exchangeName} - ${symbol} - ${timeframe}`;
+        
+        this.chart.applyOptions({
+            watermark: {
+                visible: true,
+                fontSize: 64,
+                horzAlign: 'center',
+                vertAlign: 'center',
+                color: 'rgba(238, 16, 16, 0.3)',
+                text: watermarkText,
+            },
+        });
+    }
+
+    // Clear watermark
+    clearWatermark() {
+        if (!this.chart) return;
+
+        this.chart.applyOptions({
+            watermark: {
+                visible: false,
+            },
+        });
     }
 
     // Destroy chart
