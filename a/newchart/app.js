@@ -333,7 +333,7 @@ class MultiExchangeDatafeed {
         return logos;
     }
 
-    getBars(symbolInfo, resolution, periodParams, onHistoryCallback, onErrorCallback) {
+    async getBars(symbolInfo, resolution, periodParams, onHistoryCallback, onErrorCallback) {
         const { from, to } = periodParams;
         const symbol = symbolInfo.name;
 
@@ -343,34 +343,84 @@ class MultiExchangeDatafeed {
         };
         const interval = intervalMap[resolution] || '15m';
 
-        const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&startTime=${from * 1000}&endTime=${to * 1000}&limit=1000`;
-
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                let bars = [];
-
-                if (Array.isArray(data)) {
-                    bars = data.map(bar => ({
-                        time: bar[0],
-                        open: parseFloat(bar[1]),
-                        high: parseFloat(bar[2]),
-                        low: parseFloat(bar[3]),
-                        close: parseFloat(bar[4]),
-                        volume: parseFloat(bar[5])
-                    }));
+        try {
+            const allBars = [];
+            const maxBarsPerRequest = 1500; // Binance limit
+            const targetBars = 10000;
+            
+            // Tính khoảng thời gian cho mỗi nến (milliseconds)
+            const intervalMs = this.getIntervalInMs(interval);
+            
+            // Bắt đầu từ endTime và fetch về quá khứ
+            let currentEndTime = to * 1000;
+            
+            // Fetch multiple batches để lấy đủ 10000 nến
+            while (allBars.length < targetBars) {
+                // Tính startTime cho batch này (lấy 1500 nến về trước)
+                const batchStartTime = currentEndTime - (maxBarsPerRequest * intervalMs);
+                
+                const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&startTime=${batchStartTime}&endTime=${currentEndTime}&limit=${maxBarsPerRequest}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (!Array.isArray(data) || data.length === 0) {
+                    break;
                 }
-
-                if (bars.length === 0) {
-                    onHistoryCallback([], { noData: true });
-                } else {
-                    onHistoryCallback(bars, { noData: false });
+                
+                const bars = data.map(bar => ({
+                    time: bar[0],
+                    open: parseFloat(bar[1]),
+                    high: parseFloat(bar[2]),
+                    low: parseFloat(bar[3]),
+                    close: parseFloat(bar[4]),
+                    volume: parseFloat(bar[5])
+                }));
+                
+                // Thêm vào đầu mảng (vì fetch từ mới về cũ)
+                allBars.unshift(...bars);
+                
+                // Nếu nhận được ít hơn limit, nghĩa là đã hết data
+                if (bars.length < maxBarsPerRequest) {
+                    break;
                 }
-            })
-            .catch(error => {
-                console.error('Error fetching bars:', error);
-                onErrorCallback(error);
-            });
+                
+                // Cập nhật endTime cho request tiếp theo (lấy nến trước nến đầu tiên)
+                currentEndTime = bars[0].time - intervalMs;
+                
+                // Delay nhỏ để tránh rate limit
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            // Giới hạn ở 10000 nến (lấy 10000 nến gần nhất)
+            const finalBars = allBars.slice(-targetBars);
+            
+            if (finalBars.length === 0) {
+                onHistoryCallback([], { noData: true });
+            } else {
+                console.log(`Loaded ${finalBars.length} bars for ${symbol} (${interval})`);
+                onHistoryCallback(finalBars, { noData: false });
+            }
+        } catch (error) {
+            console.error('Error fetching bars:', error);
+            onErrorCallback(error);
+        }
+    }
+
+    // Helper function để tính interval trong milliseconds
+    getIntervalInMs(interval) {
+        const map = {
+            '1m': 60 * 1000,
+            '5m': 5 * 60 * 1000,
+            '15m': 15 * 60 * 1000,
+            '30m': 30 * 60 * 1000,
+            '1h': 60 * 60 * 1000,
+            '4h': 4 * 60 * 60 * 1000,
+            '1d': 24 * 60 * 60 * 1000,
+            '1w': 7 * 24 * 60 * 60 * 1000,
+            '1M': 30 * 24 * 60 * 60 * 1000
+        };
+        return map[interval] || 15 * 60 * 1000;
     }
 
     subscribeBars(symbolInfo, resolution, onRealtimeCallback, subscriberUID) {
@@ -556,8 +606,7 @@ let autoSaveTimer = null;
 let currentChartId = null;
 
 // Cấu hình
-const SUPABASE_URL = 'https://vpxjfemszjwsivavgcgq.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZweGpmZW1zemp3c2l2YXZnY2dxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTcxMTIxNiwiZXhwIjoyMDc1Mjg3MjE2fQ.Es1a8TL2uJAcYm4wy21Y3AdKftMbyFtyWyY8RaWGVhM';
+const CHART_SERVER_URL = 'https://regional-nicole-mycop-df54b780.koyeb.app';
 const AUTO_SAVE_LAYOUT_NAME = '__autosave__';
 const AUTO_SAVE_DELAY = 2000; // 2 giây sau khi có thay đổi
 
@@ -616,8 +665,8 @@ function getNewsConfigFromURL() {
 
 // Initialize TradingView
 function initTradingView() {
-    // Khởi tạo Supabase adapter
-    saveLoadAdapter = new SupabaseSaveLoadAdapter(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Khởi tạo Node.js backend adapter
+    saveLoadAdapter = new NodeBackendSaveLoadAdapter(CHART_SERVER_URL);
 
     // Lấy config từ URL parameters
     const binanceConfig = getBinanceConfigFromURL();
@@ -694,9 +743,9 @@ function initTradingView() {
                 createMarketTrendCandles(PineJS)
             ]);
         },
-        // Sử dụng Supabase adapter
+        // Sử dụng Node.js backend adapter
         save_load_adapter: saveLoadAdapter,
-        charts_storage_url: 'supabase',
+        charts_storage_url: CHART_SERVER_URL,
         client_id: 'tradingview_app',
         user_id: 'public_user',
         // News provider
@@ -713,7 +762,7 @@ function initTradingView() {
             news: false
         },
         favorites: {
-            intervals: ['5m', '15m', '60', '240','D'], // 5m, 15m, 1h, 4h
+            intervals: ['5m', '15m', '60', '240', 'D'], // 5m, 15m, 1h, 4h
             chartTypes: ['candles', 'lines'], // tùy chọn thêm nếu muốn
         },
     };
@@ -726,15 +775,23 @@ function initTradingView() {
 `;
     document.head.appendChild(style);
     tvWidget.onChartReady(() => {
+        const chart = tvWidget.activeChart();
+
+        // const indicators = [
+        //     { name: "Relative Strength Index", params: { length: 14 } },
+        //     { name: "Moving Average", params: { length: 50 } },
+        //     { name: "MACD" },
+        // ];
+
+        // for (const ind of indicators) {
+        //     chart.createStudy(ind.name, false, false, ind.params || {});
+        // }
+
+
         hideLoading();
 
-        // Auto-load layout gần nhất khi chart ready
-        setTimeout(() => {
-            autoLoadLatestLayout();
-        }, 1000);
-
         // Setup auto-save listeners
-        setupAutoSave();
+        // setupAutoSave(); // Disabled autosave
     });
 }
 

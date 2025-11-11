@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Save/Load Adapter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e222d;
+            color: #d1d4dc;
+        }
+        .test-section {
+            background: #2a2e39;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #2962ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1e53e5;
+        }
+        .success {
+            color: #4caf50;
+        }
+        .error {
+            color: #f44336;
+        }
+        pre {
+            background: #131722;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        input {
+            background: #131722;
+            color: #d1d4dc;
+            border: 1px solid #434651;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Save/Load Adapter Test Suite</h1>
+    
+    <div class="test-section">
+        <h2>Configuration</h2>
+        <label>Server URL:</label>
+        <input type="text" id="serverUrl" value="http://localhost:3000" style="width: 300px;">
+        <button onclick="initAdapter()">Initialize Adapter</button>
+        <div id="initStatus"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>1. Chart Layouts</h2>
+        <button onclick="testSaveChart()">Save Test Chart</button>
+        <button onclick="testGetAllCharts()">Get All Charts</button>
+        <button onclick="testGetChartContent()">Get Chart Content</button>
+        <button onclick="testRemoveChart()">Remove Chart</button>
+        <div id="chartResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Chart Templates</h2>
+        <button onclick="testSaveChartTemplate()">Save Template</button>
+        <button onclick="testGetAllChartTemplates()">Get All Templates</button>
+        <button onclick="testGetChartTemplate()">Get Template Content</button>
+        <button onclick="testRemoveChartTemplate()">Remove Template</button>
+        <div id="chartTemplateResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Study Templates</h2>
+        <button onclick="testSaveStudyTemplate()">Save Study Template</button>
+        <button onclick="testGetAllStudyTemplates()">Get All Study Templates</button>
+        <button onclick="testGetStudyTemplate()">Get Study Template</button>
+        <button onclick="testRemoveStudyTemplate()">Remove Study Template</button>
+        <div id="studyTemplateResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Drawing Templates</h2>
+        <button onclick="testSaveDrawingTemplate()">Save Drawing Template</button>
+        <button onclick="testGetDrawingTemplates()">Get Drawing Templates</button>
+        <button onclick="testLoadDrawingTemplate()">Load Drawing Template</button>
+        <button onclick="testRemoveDrawingTemplate()">Remove Drawing Template</button>
+        <div id="drawingTemplateResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results Summary</h2>
+        <div id="summary"></div>
+    </div>
+
+    <script src="node-backend-adapter.js"></script>
+    <script>
+        let adapter = null;
+        let testChartId = null;
+        const results = {
+            passed: 0,
+            failed: 0,
+            tests: []
+        };
+
+        function initAdapter() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            adapter = new NodeBackendSaveLoadAdapter(serverUrl, 'test_user');
+            document.getElementById('initStatus').innerHTML = '<span class="success">✓ Adapter initialized</span>';
+        }
+
+        function logResult(section, message, isSuccess = true) {
+            const element = document.getElementById(section);
+            const className = isSuccess ? 'success' : 'error';
+            const icon = isSuccess ? '✓' : '✗';
+            element.innerHTML += `<div class="${className}">${icon} ${message}</div>`;
+            
+            results.tests.push({ section, message, isSuccess });
+            if (isSuccess) results.passed++;
+            else results.failed++;
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const total = results.passed + results.failed;
+            const percentage = total > 0 ? Math.round((results.passed / total) * 100) : 0;
+            document.getElementById('summary').innerHTML = `
+                <h3>Total: ${total} tests</h3>
+                <p class="success">Passed: ${results.passed}</p>
+                <p class="error">Failed: ${results.failed}</p>
+                <p>Success Rate: ${percentage}%</p>
+            `;
+        }
+
+        // Chart Layout Tests
+        async function testSaveChart() {
+            try {
+                const chartData = {
+                    name: 'Test Chart ' + Date.now(),
+                    content: JSON.stringify({ test: 'data', timestamp: Date.now() }),
+                    symbol: 'BTCUSDT',
+                    resolution: '15'
+                };
+                testChartId = await adapter.saveChart(chartData);
+                logResult('chartResult', `Chart saved with ID: ${testChartId}`);
+            } catch (error) {
+                logResult('chartResult', `Failed to save chart: ${error.message}`, false);
+            }
+        }
+
+        async function testGetAllCharts() {
+            try {
+                const charts = await adapter.getAllCharts();
+                logResult('chartResult', `Retrieved ${charts.length} charts: ${JSON.stringify(charts, null, 2)}`);
+            } catch (error) {
+                logResult('chartResult', `Failed to get charts: ${error.message}`, false);
+            }
+        }
+
+        async function testGetChartContent() {
+            if (!testChartId) {
+                logResult('chartResult', 'No chart ID available. Save a chart first.', false);
+                return;
+            }
+            try {
+                const content = await adapter.getChartContent(testChartId);
+                logResult('chartResult', `Chart content: ${JSON.stringify(content, null, 2)}`);
+            } catch (error) {
+                logResult('chartResult', `Failed to get chart content: ${error.message}`, false);
+            }
+        }
+
+        async function testRemoveChart() {
+            if (!testChartId) {
+                logResult('chartResult', 'No chart ID available. Save a chart first.', false);
+                return;
+            }
+            try {
+                await adapter.removeChart(testChartId);
+                logResult('chartResult', `Chart ${testChartId} removed successfully`);
+                testChartId = null;
+            } catch (error) {
+                logResult('chartResult', `Failed to remove chart: ${error.message}`, false);
+            }
+        }
+
+        // Chart Template Tests
+        async function testSaveChartTemplate() {
+            try {
+                await adapter.saveChartTemplate('test_template', { colors: ['#ff0000', '#00ff00'] });
+                logResult('chartTemplateResult', 'Chart template saved');
+            } catch (error) {
+                logResult('chartTemplateResult', `Failed to save template: ${error.message}`, false);
+            }
+        }
+
+        async function testGetAllChartTemplates() {
+            try {
+                const templates = await adapter.getAllChartTemplates();
+                logResult('chartTemplateResult', `Found ${templates.length} templates: ${templates.join(', ')}`);
+            } catch (error) {
+                logResult('chartTemplateResult', `Failed to get templates: ${error.message}`, false);
+            }
+        }
+
+        async function testGetChartTemplate() {
+            try {
+                const content = await adapter.getChartTemplateContent('test_template');
+                logResult('chartTemplateResult', `Template content: ${JSON.stringify(content)}`);
+            } catch (error) {
+                logResult('chartTemplateResult', `Failed to get template: ${error.message}`, false);
+            }
+        }
+
+        async function testRemoveChartTemplate() {
+            try {
+                await adapter.removeChartTemplate('test_template');
+                logResult('chartTemplateResult', 'Template removed');
+            } catch (error) {
+                logResult('chartTemplateResult', `Failed to remove template: ${error.message}`, false);
+            }
+        }
+
+        // Study Template Tests
+        async function testSaveStudyTemplate() {
+            try {
+                await adapter.saveStudyTemplate({ name: 'test_study', content: '{"indicator":"RSI"}' });
+                logResult('studyTemplateResult', 'Study template saved');
+            } catch (error) {
+                logResult('studyTemplateResult', `Failed to save study template: ${error.message}`, false);
+            }
+        }
+
+        async function testGetAllStudyTemplates() {
+            try {
+                const templates = await adapter.getAllStudyTemplates();
+                logResult('studyTemplateResult', `Found ${templates.length} study templates`);
+            } catch (error) {
+                logResult('studyTemplateResult', `Failed to get study templates: ${error.message}`, false);
+            }
+        }
+
+        async function testGetStudyTemplate() {
+            try {
+                const content = await adapter.getStudyTemplateContent({ name: 'test_study' });
+                logResult('studyTemplateResult', `Study template content: ${content}`);
+            } catch (error) {
+                logResult('studyTemplateResult', `Failed to get study template: ${error.message}`, false);
+            }
+        }
+
+        async function testRemoveStudyTemplate() {
+            try {
+                await adapter.removeStudyTemplate({ name: 'test_study' });
+                logResult('studyTemplateResult', 'Study template removed');
+            } catch (error) {
+                logResult('studyTemplateResult', `Failed to remove study template: ${error.message}`, false);
+            }
+        }
+
+        // Drawing Template Tests
+        async function testSaveDrawingTemplate() {
+            try {
+                await adapter.saveDrawingTemplate('LineToolTrendLine', 'test_drawing', '{"color":"#ff0000"}');
+                logResult('drawingTemplateResult', 'Drawing template saved');
+            } catch (error) {
+                logResult('drawingTemplateResult', `Failed to save drawing template: ${error.message}`, false);
+            }
+        }
+
+        async function testGetDrawingTemplates() {
+            try {
+                const templates = await adapter.getDrawingTemplates('LineToolTrendLine');
+                logResult('drawingTemplateResult', `Found ${templates.length} drawing templates: ${templates.join(', ')}`);
+            } catch (error) {
+                logResult('drawingTemplateResult', `Failed to get drawing templates: ${error.message}`, false);
+            }
+        }
+
+        async function testLoadDrawingTemplate() {
+            try {
+                const content = await adapter.loadDrawingTemplate('LineToolTrendLine', 'test_drawing');
+                logResult('drawingTemplateResult', `Drawing template content: ${content}`);
+            } catch (error) {
+                logResult('drawingTemplateResult', `Failed to load drawing template: ${error.message}`, false);
+            }
+        }
+
+        async function testRemoveDrawingTemplate() {
+            try {
+                await adapter.removeDrawingTemplate('LineToolTrendLine', 'test_drawing');
+                logResult('drawingTemplateResult', 'Drawing template removed');
+            } catch (error) {
+                logResult('drawingTemplateResult', `Failed to remove drawing template: ${error.message}`, false);
+            }
+        }
+
+        // Auto-initialize on load
+        window.onload = () => {
+            initAdapter();
+        };
+    </script>
+</body>
+</html>

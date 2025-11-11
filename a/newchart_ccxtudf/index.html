@@ -142,40 +142,39 @@
     <!-- Overlay -->
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading symbols...</div>
+            <div class="loading-progress">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <div id="loading-status" class="loading-status">Initializing...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Chart Container -->
     <div id="tv_chart_container" class="chart-container"></div>
-
+   
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <!-- CCXT Library -->
     <script src="ccxt.browser.js"></script>
+
+
     <script src="charting_library/charting_library.js"></script>
-    <script src="logo-maps.js"></script>
+    <script src="LocalStorageSaveLoad.js"></script>
     <script src="custom_studies/atr-bot.js"></script>
     <script src="custom_studies/vsr.js"></script>
     <script src="custom_studies/vsr_htf.js"></script>
     <script src="custom_studies/lwma.js"></script>
     <script src="custom_studies/market-trend-candles.js"></script>
-    <script src="news-provider.js"></script>
-    <script src="broker-binance.js"></script>
-    
-    <!-- Datasource Module -->
-    <script src="datasource/base/BaseExchange.js"></script>
-    <!-- Binance -->
-    <script src="datasource/exchanges/BinanceFuturesExchange.js"></script>
-    <script src="datasource/exchanges/BinanceSpotExchange.js"></script>
-    <!-- OKX -->
-    <script src="datasource/exchanges/OKXFuturesExchange.js"></script>
-    <script src="datasource/exchanges/OKXSpotExchange.js"></script>
-    <!-- Bybit -->
-    <script src="datasource/exchanges/BybitFuturesExchange.js"></script>
-    <script src="datasource/exchanges/BybitSpotExchange.js"></script>
-    <!-- Core -->
-    <script src="datasource/MultiExchange.js"></script>
-    <script src="datasource/MultiExchangeDatafeed.js"></script>
-    <script src="datasource/index.js"></script>
-    
-    <script src="app.js"></script>
+
+    <!-- Datafeed Module - New Architecture -->
+    <script type="module" src="app.js"></script>
 
     <script src="menu.js"></script>
 
