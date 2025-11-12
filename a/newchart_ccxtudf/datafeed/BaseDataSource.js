@@ -96,6 +96,40 @@ class BaseDataSource {
             symbol: symbolName
         };
     }
+
+    /**
+     * Tính pricescale và minmov từ tickSize
+     * @param {number} tickSize - Tick size của symbol
+     * @returns {Object} {pricescale, minmov}
+     */
+    calculatePriceScale(tickSize) {
+        let pricescale = 100;
+        let minmov = 1;
+        
+        if (!tickSize || tickSize <= 0) {
+            return { pricescale, minmov };
+        }
+        
+        // Chuyển tickSize thành string (giữ nguyên format gốc)
+        let tickSizeStr = tickSize.toString();
+        
+        // Xử lý scientific notation (1e-8 -> 0.00000001)
+        if (tickSizeStr.includes('e')) {
+            tickSizeStr = tickSize.toFixed(20).replace(/\.?0+$/, '');
+        }
+        
+        if (tickSizeStr.includes('.')) {
+            // Đếm số chữ số thập phân
+            const parts = tickSizeStr.split('.');
+            const decimals = parts[1] ? parts[1].length : 0;
+            pricescale = Math.pow(10, decimals);
+        } else if (tickSize < 1) {
+            // Fallback: tính từ 1/tickSize
+            pricescale = Math.round(1 / tickSize);
+        }
+        
+        return { pricescale, minmov };
+    }
 }
 
 export default BaseDataSource;

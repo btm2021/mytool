@@ -46,18 +46,10 @@ class BybitFuturesDataSource extends BaseDataSource {
             const symbolData = data.result.list[0];
             const tickSize = parseFloat(symbolData.priceFilter?.tickSize || '0.01');
             
-            // Tính pricescale từ tickSize
-            const tickSizeStr = tickSize.toString();
-            let pricescale = 100;
+            // Tính pricescale và minmov
+            const { pricescale, minmov } = this.calculatePriceScale(tickSize);
             
-            if (tickSizeStr.includes('.')) {
-                const decimals = tickSizeStr.split('.')[1].length;
-                pricescale = Math.pow(10, decimals);
-            } else if (tickSize < 1) {
-                pricescale = Math.round(1 / tickSize);
-            }
-            
-            const minmov = 1;
+            console.log(`[BybitFutures] ${symbolData.symbol}: tickSize=${tickSize}, pricescale=${pricescale}, minmov=${minmov}`);
 
             const symbolInfo = {
                 name: symbolName,

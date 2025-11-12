@@ -6,8 +6,6 @@ import BybitFuturesDataSource from './sources/BybitDataSource.js';
 import OKXSpotDataSource from './sources/OKXSpotDataSource.js';
 import OKXFuturesDataSource from './sources/OKXDataSource.js';
 import OandaDataSource from './sources/OandaDataSource.js';
-import IGDataSource from './sources/IGDataSource.js';
-import { CONFIG } from '../config.js';
 
 /**
  * Khởi tạo và cấu hình DataFeed Manager
@@ -45,13 +43,6 @@ export function createDataFeed(config = {}) {
     if (config.oanda && config.oanda.apiKey && config.oanda.accountId) {
         const oanda = new OandaDataSource(config.oanda);
         manager.registerDataSource('oanda', oanda, ['OANDA:*']);
-    }
-
-    // IG Markets Forex - use config from config.js
-    const igConfig = config.ig || CONFIG.ig;
-    if (igConfig && igConfig.apiKey && igConfig.username && igConfig.password) {
-        const ig = new IGDataSource(igConfig);
-        manager.registerDataSource('ig', ig, ['IG:*']);
     }
 
     return manager;

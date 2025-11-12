@@ -69,13 +69,6 @@ class DataFeedManager {
             if (oandaDataSource) {
                 return oandaDataSource;
             }
-
-            // Thử với IG
-            const igSymbol = `IG:${symbolName}`;
-            const igDataSource = this.findDataSourceWithPrefix(igSymbol);
-            if (igDataSource) {
-                return igDataSource;
-            }
         }
 
         return this.findDataSourceWithPrefix(symbolName);
@@ -251,26 +244,6 @@ class DataFeedManager {
                 }
             })();
             loadTasks.push(task7);
-        }
-
-        // IG Markets
-        const ig = this.dataSources.get('ig');
-        if (ig) {
-            const task8 = (async () => {
-                try {
-                    const symbols = await ig.getAllMarkets();
-                    completed++;
-                    if (onProgress) onProgress(completed, loadTasks.length, 'Loaded IG Markets');
-                    console.log(`[DataFeedManager] Loaded ${symbols.length} IG symbols`);
-                    return symbols;
-                } catch (error) {
-                    console.error('[DataFeedManager] Error loading IG:', error);
-                    completed++;
-                    if (onProgress) onProgress(completed, loadTasks.length, 'Error: IG');
-                    return [];
-                }
-            })();
-            loadTasks.push(task8);
         }
 
         // Load tất cả song song với Promise.all

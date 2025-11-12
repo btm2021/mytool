@@ -2,6 +2,7 @@ import BaseDataSource from '../BaseDataSource.js';
 
 /**
  * OANDA DataSource - Forex trading
+ * Simple version without cache
  */
 class OandaDataSource extends BaseDataSource {
     constructor(config = {}) {
@@ -71,11 +72,10 @@ class OandaDataSource extends BaseDataSource {
             }
 
             this.instrumentsCache = data.instruments.map(inst => {
-                // Chuyển EUR_USD thành EURUSD để dễ search
                 const normalizedSymbol = inst.name.replace('_', '');
                 return {
                     symbol: normalizedSymbol,
-                    originalSymbol: inst.name, // Giữ lại format gốc để gọi API
+                    originalSymbol: inst.name,
                     baseAsset: inst.name.split('_')[0],
                     quoteAsset: inst.name.split('_')[1],
                     displayName: inst.displayName,
@@ -96,10 +96,8 @@ class OandaDataSource extends BaseDataSource {
      * Chuyển symbol từ EURUSD sang EUR_USD
      */
     normalizeSymbol(symbol) {
-        // Nếu đã có _ thì return luôn
         if (symbol.includes('_')) return symbol;
         
-        // Tìm trong cache
         if (this.instrumentsCache) {
             const found = this.instrumentsCache.find(inst => 
                 inst.symbol === symbol || inst.originalSymbol === symbol
@@ -107,7 +105,6 @@ class OandaDataSource extends BaseDataSource {
             if (found) return found.originalSymbol;
         }
         
-        // Fallback: thêm _ ở giữa (giả sử 3 ký tự đầu là base)
         if (symbol.length === 6) {
             return `${symbol.slice(0, 3)}_${symbol.slice(3)}`;
         }
@@ -157,6 +154,7 @@ class OandaDataSource extends BaseDataSource {
                 data_status: 'streaming',
             };
 
+            console.log(`[OandaDataSource] ${normalizedSymbol}: pricescale=${pricescale}`);
             onResolve(symbolInfo);
         } catch (error) {
             console.error('[OandaDataSource] Resolve error:', error);
@@ -179,72 +177,173 @@ class OandaDataSource extends BaseDataSource {
         return map[resolution] || 'H1';
     }
 
-    async getBars(symbolInfo, resolution, periodParams, onResult, onError) {
+    resolutionToMs(resolution) {
+        const map = {
+            '1': 60 * 1000,
+            '5': 5 * 60 * 1000,
+            '15': 15 * 60 * 1000,
+            '30': 30 * 60 * 1000,
+            '60': 60 * 60 * 1000,
+            '240': 4 * 60 * 60 * 1000,
+            'D': 24 * 60 * 60 * 1000,
+            'W': 7 * 24 * 60 * 60 * 1000,
+            'M': 30 * 24 * 60 * 60 * 1000
+        };
+        return map[resolution] || 60 * 60 * 1000;
+    }
+
+    /**
+     * Tính số bars cần fetch dựa trên khoảng thời gian
+     */
+    calculateBarsCount(fromTime, toTime, resolution) {
+        const resolutionMs = this.resolutionToMs(resolution);
+        const timeDiff = toTime - fromTime;
+        const barsCount = Math.ceil(timeDiff / resolutionMs);
+        
+        // Thêm 20% buffer để đảm bảo có đủ data (do weekend/holiday)
+        const bufferedCount = Math.ceil(barsCount * 1.2);
+        
+        // OANDA max = 5000
+        return Math.min(bufferedCount, 5000);
+    }
+
+    async getBars(symbolInfo, resolution, periodParams, onResult) {
+        const { symbol } = this.parseSymbol(symbolInfo.name);
+        const normalizedSymbol = this.normalizeSymbol(symbol);
+        
+        const fromTime = periodParams.from * 1000;
+        const toTime = periodParams.to * 1000;
+        const now = Date.now();
+        const actualTo = Math.min(toTime, now);
+        const actualFrom = fromTime;
+        
+        console.log(`[OandaDataSource] getBars: ${normalizedSymbol} ${resolution}`);
+        console.log(`  Range: ${new Date(actualFrom).toISOString()} -> ${new Date(actualTo).toISOString()}`);
+        
+        if (actualFrom >= actualTo) {
+            console.warn('[OandaDataSource] Invalid time range');
+            onResult([], { noData: true });
+            return;
+        }
+        
         try {
-            const { symbol } = this.parseSymbol(symbolInfo.name);
-            const normalizedSymbol = this.normalizeSymbol(symbol);
             const granularity = this.resolutionToGranularity(resolution);
+            let barsCount = this.calculateBarsCount(actualFrom, actualTo, resolution);
             
-            // Đảm bảo 'to' không vượt quá thời gian hiện tại
-            const now = Date.now();
-            const toTime = Math.min(periodParams.to * 1000, now);
-            const fromTime = periodParams.from * 1000;
+            // Tăng count để đảm bảo có đủ data (bù weekend/holiday)
+            barsCount = Math.max(barsCount, 500);
+            barsCount = Math.min(barsCount, 5000); // OANDA max
             
-            // Nếu fromTime > toTime thì swap
-            const actualFrom = Math.min(fromTime, toTime);
-            const actualTo = Math.max(fromTime, toTime);
-            
+            // Sử dụng count + to để fetch về phía trước
+            // OANDA sẽ tự động bỏ qua weekend/holiday
             const params = new URLSearchParams({
                 granularity: granularity,
-                from: new Date(actualFrom).toISOString(),
+                count: barsCount.toString(),
                 to: new Date(actualTo).toISOString(),
-                price: 'M' // Mid prices
+                price: 'M'
             });
 
             const url = `${this.apiUrl}/v3/instruments/${normalizedSymbol}/candles?${params}`;
             
+            console.log(`[OandaDataSource] Fetching ${barsCount} bars to ${new Date(actualTo).toISOString()}`);
+            
             const response = await fetch(url, {
                 headers: this.getHeaders()
             });
+            
+            if (!response.ok) {
+                console.error('[OandaDataSource] HTTP Error:', response.status);
+                onResult([], { noData: false });
+                return;
+            }
+            
             const data = await response.json();
 
             if (data.errorMessage) {
                 console.error('[OandaDataSource] API Error:', data.errorMessage);
-                onResult([], { noData: true });
+                onResult([], { noData: false });
                 return;
             }
 
             if (!data.candles || data.candles.length === 0) {
-                onResult([], { noData: true });
+                console.log('[OandaDataSource] No candles returned - will retry with earlier time');
+                // Trả về noData: false để TradingView tiếp tục fetch với range khác
+                onResult([], { noData: false });
                 return;
             }
 
+            // Parse candles
             const bars = data.candles
-                .filter(candle => candle.complete)
-                .map(candle => ({
-                    time: new Date(candle.time).getTime(),
-                    open: parseFloat(candle.mid.o),
-                    high: parseFloat(candle.mid.h),
-                    low: parseFloat(candle.mid.l),
-                    close: parseFloat(candle.mid.c),
-                    volume: parseFloat(candle.volume || 0)
-                }));
+                .map(candle => {
+                    if (!candle.mid) return null;
+                    return {
+                        time: new Date(candle.time).getTime(),
+                        open: parseFloat(candle.mid.o),
+                        high: parseFloat(candle.mid.h),
+                        low: parseFloat(candle.mid.l),
+                        close: parseFloat(candle.mid.c),
+                        volume: parseFloat(candle.volume || 0)
+                    };
+                })
+                .filter(bar => bar !== null)
+                .sort((a, b) => a.time - b.time);
 
-            onResult(bars, { noData: false });
+            // Filter bars trong range
+            let filteredBars = bars.filter(bar => bar.time >= actualFrom && bar.time <= actualTo);
+
+            // Nếu không có bars trong range (weekend/holiday)
+            if (filteredBars.length === 0) {
+                console.log('[OandaDataSource] No bars in requested range');
+                console.log(`  Fetched ${bars.length} bars total`);
+                
+                if (bars.length > 0) {
+                    const firstBar = bars[0];
+                    const lastBar = bars[bars.length - 1];
+                    console.log(`  Fetched range: ${new Date(firstBar.time).toISOString()} -> ${new Date(lastBar.time).toISOString()}`);
+                    
+                    // Kiểm tra xem bars có nằm trước hay sau range yêu cầu
+                    if (lastBar.time < actualFrom) {
+                        // Tất cả bars đều cũ hơn range yêu cầu
+                        // Trả về để TradingView biết đã hết data lịch sử
+                        console.log('[OandaDataSource] All bars are older than requested range - end of history');
+                        onResult(bars, { noData: false });
+                        return;
+                    } else if (firstBar.time > actualTo) {
+                        // Tất cả bars đều mới hơn range yêu cầu
+                        // Trả về để TradingView tiếp tục fetch
+                        console.log('[OandaDataSource] All bars are newer than requested range - continue fetching');
+                        onResult([], { noData: false });
+                        return;
+                    } else {
+                        // Bars overlap nhưng không có trong exact range (weekend/holiday gap)
+                        // Trả về tất cả bars để TradingView tự xử lý
+                        console.log('[OandaDataSource] Weekend/holiday gap - returning all fetched bars');
+                        onResult(bars, { noData: false });
+                        return;
+                    }
+                }
+                
+                // Không có bars nào
+                console.log('[OandaDataSource] No bars fetched - continue trying');
+                onResult([], { noData: false });
+                return;
+            }
+
+            console.log(`[OandaDataSource] ✓ Returning ${filteredBars.length} bars (fetched ${bars.length})`);
+            onResult(filteredBars, { noData: false });
+            
         } catch (error) {
-            console.error('[OandaDataSource] GetBars error:', error);
-            onError(error.message);
+            console.error('[OandaDataSource] Error:', error);
+            onResult([], { noData: false });
         }
     }
 
-    async subscribeBars(symbolInfo, resolution, onTick, listenerGuid, onResetCacheNeededCallback) {
+    async subscribeBars(symbolInfo, resolution, onTick, listenerGuid) {
         const { symbol } = this.parseSymbol(symbolInfo.name);
         const normalizedSymbol = this.normalizeSymbol(symbol);
 
-        // Sử dụng pricing stream API của OANDA
         const streamUrl = `${this.streamUrl}/v3/accounts/${this.accountId}/pricing/stream?instruments=${normalizedSymbol}`;
         
-        let lastBar = null;
         let currentBar = null;
         const resolutionMs = this.resolutionToMs(resolution);
 
@@ -279,9 +378,7 @@ class OandaDataSource extends BaseDataSource {
                                     const barTime = Math.floor(time / resolutionMs) * resolutionMs;
 
                                     if (!currentBar || currentBar.time !== barTime) {
-                                        // New bar
                                         if (currentBar) {
-                                            lastBar = currentBar;
                                             onTick(currentBar);
                                         }
                                         currentBar = {
@@ -293,7 +390,6 @@ class OandaDataSource extends BaseDataSource {
                                             volume: 0
                                         };
                                     } else {
-                                        // Update current bar
                                         currentBar.high = Math.max(currentBar.high, price);
                                         currentBar.low = Math.min(currentBar.low, price);
                                         currentBar.close = price;
@@ -324,28 +420,13 @@ class OandaDataSource extends BaseDataSource {
         this.subscribers.set(listenerGuid, { symbolInfo, resolution, onTick });
     }
 
-    resolutionToMs(resolution) {
-        const map = {
-            '1': 60 * 1000,
-            '5': 5 * 60 * 1000,
-            '15': 15 * 60 * 1000,
-            '30': 30 * 60 * 1000,
-            '60': 60 * 60 * 1000,
-            '240': 4 * 60 * 60 * 1000,
-            'D': 24 * 60 * 60 * 1000,
-            'W': 7 * 24 * 60 * 60 * 1000,
-            'M': 30 * 24 * 60 * 60 * 1000
-        };
-        return map[resolution] || 60 * 60 * 1000;
-    }
-
     async unsubscribeBars(listenerGuid) {
         const controller = this.intervals.get(listenerGuid);
         if (controller) {
             if (controller.abort) {
-                controller.abort(); // AbortController
+                controller.abort();
             } else {
-                clearInterval(controller); // Fallback for old polling
+                clearInterval(controller);
             }
             this.intervals.delete(listenerGuid);
         }

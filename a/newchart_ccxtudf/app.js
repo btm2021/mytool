@@ -1,6 +1,7 @@
 import createTradingViewDatafeed from './datafeed/index.js';
 
 let tvWidget = null;
+let datafeed = null;
 
 
 
@@ -20,13 +21,8 @@ async function initTradingView() {
     const OANDA_API_KEY = '3913aaef1f74de9e87b329ba62b12c7d-88afda77afc903099c1e33bcca74246c';  // Thay bằng API key của bạn
     const OANDA_ACCOUNT_ID = '101-004-27015242-001';  // Thay bằng Account ID của bạn
 
-    // IG Markets Configuration
-    const IG_API_KEY = 'ab7a7c7ff613f0c6117951c290b1ece65b4de45e';
-    const IG_USERNAME = 'trinhminhbao@gmail.com';
-    const IG_PASSWORD = 'anhBAO@1991';
-
     // Khởi tạo Datafeed với kiến trúc mới
-    const datafeed = createTradingViewDatafeed({
+    datafeed = createTradingViewDatafeed({
         binanceSpot: {},
         binanceUSDM: {},
         okxSpot: {},
@@ -37,12 +33,6 @@ async function initTradingView() {
             apiKey: OANDA_API_KEY,
             accountId: OANDA_ACCOUNT_ID,
             practice: true
-        },
-        ig: {
-            apiKey: IG_API_KEY,
-            username: IG_USERNAME,
-            password: IG_PASSWORD,
-            demo: true
         }
     });
 
@@ -104,6 +94,12 @@ async function initTradingView() {
         fullscreen: false,
         autosize: true,
         theme: 'Dark',
+        
+        // Watermark
+        overrides: {
+            "paneProperties.backgroundType": "solid",
+            "paneProperties.background": "#131722",
+        },
 
         // Save/Load configuration với LocalStorage
         save_load_adapter: saveLoadAdapter,
@@ -137,6 +133,10 @@ async function initTradingView() {
     };
 
     tvWidget = new TradingView.widget(widgetOptions);
+    
+    // Expose to global scope for dialogs
+    window.tvWidget = tvWidget;
+    window.datafeed = datafeed;
 
 
     // tvWidget.onChartReady(() => {
@@ -302,6 +302,59 @@ async function initTradingView() {
     tvWidget.onChartReady(() => {
         const chart = tvWidget.activeChart();
         const realChart = tvWidget.chart();
+
+        // 🏷️ Update watermark khi symbol thay đổi
+        const watermarkElement = document.getElementById('chart-watermark');
+        
+        const getExchangeDisplayName = (exchange) => {
+            const names = {
+                'BINANCE': 'Binance Spot',
+                'BINANCEUSDM': 'Binance Futures',
+                'BINANCEFUTURES': 'Binance Futures',
+                'OKXSPOT': 'OKX Spot',
+                'OKXFUTURES': 'OKX Futures',
+                'OKX': 'OKX Futures',
+                'BYBITSPOT': 'Bybit Spot',
+                'BYBITFUTURES': 'Bybit Futures',
+                'BYBIT': 'Bybit Futures',
+                'OANDA': 'OANDA Forex'
+            };
+            return names[exchange] || exchange;
+        };
+        
+        const updateWatermark = () => {
+            const symbolInfo = chart.symbolExt();
+            if (symbolInfo && watermarkElement) {
+                const exchange = symbolInfo.exchange || '';
+                const symbol = symbolInfo.ticker || symbolInfo.name || '';
+                // Remove .P suffix for display
+                const cleanSymbol = symbol.replace('.P', '').split(':').pop();
+                const exchangeName = getExchangeDisplayName(exchange);
+                const watermarkText = `${exchangeName} - ${cleanSymbol}`;
+                
+                watermarkElement.textContent = watermarkText;
+                console.log('Watermark updated:', watermarkText);
+            }
+        };
+
+        // Update watermark on symbol change
+        chart.onSymbolChanged().subscribe(null, updateWatermark);
+        
+        // Initial watermark
+        setTimeout(updateWatermark, 500);
+
+        // 📊 Symbols Viewer Button
+        const symbolsButton = tvWidget.createButton({ align: 'left' });
+        symbolsButton.textContent = '📊 Symbols';
+        symbolsButton.title = 'View All Symbols';
+        symbolsButton.style.fontWeight = 'bold';
+        symbolsButton.style.cursor = 'pointer';
+        symbolsButton.style.color = '#2962ff';
+        symbolsButton.style.padding = '4px 10px';
+        symbolsButton.addEventListener('click', () => {
+            symbolsViewerDialog.setDatafeed(datafeed);
+            symbolsViewerDialog.show();
+        });
 
         let isReplay = false;
         let lineId = null;

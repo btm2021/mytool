@@ -77,18 +77,10 @@ class BinanceSpotDataSource extends BaseDataSource {
             const priceFilter = symbolData.filters?.find(f => f.filterType === 'PRICE_FILTER');
             const tickSize = priceFilter ? parseFloat(priceFilter.tickSize) : 0.01;
             
-            // Tính pricescale từ tickSize
-            const tickSizeStr = tickSize.toString();
-            let pricescale = 100;
+            // Tính pricescale và minmov
+            const { pricescale, minmov } = this.calculatePriceScale(tickSize);
             
-            if (tickSizeStr.includes('.')) {
-                const decimals = tickSizeStr.split('.')[1].length;
-                pricescale = Math.pow(10, decimals);
-            } else if (tickSize < 1) {
-                pricescale = Math.round(1 / tickSize);
-            }
-            
-            const minmov = 1;
+            console.log(`[BinanceSpot] ${symbolData.symbol}: tickSize=${tickSize}, pricescale=${pricescale}, minmov=${minmov}`);
 
             const symbolInfo = {
                 name: symbolName,

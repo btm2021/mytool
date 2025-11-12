@@ -69,18 +69,10 @@ class OKXFuturesDataSource extends BaseDataSource {
             const symbolData = data.data[0];
             const tickSize = parseFloat(symbolData.tickSz) || 0.01;
             
-            // Tính pricescale từ tickSize
-            const tickSizeStr = tickSize.toString();
-            let pricescale = 100;
+            // Tính pricescale và minmov
+            const { pricescale, minmov } = this.calculatePriceScale(tickSize);
             
-            if (tickSizeStr.includes('.')) {
-                const decimals = tickSizeStr.split('.')[1].length;
-                pricescale = Math.pow(10, decimals);
-            } else if (tickSize < 1) {
-                pricescale = Math.round(1 / tickSize);
-            }
-            
-            const minmov = 1;
+            console.log(`[OKXFutures] ${symbolData.instId}: tickSize=${tickSize}, pricescale=${pricescale}, minmov=${minmov}`);
 
             const symbolInfo = {
                 name: symbolName,
