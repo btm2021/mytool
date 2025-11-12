@@ -20,6 +20,11 @@ async function initTradingView() {
     const OANDA_API_KEY = '3913aaef1f74de9e87b329ba62b12c7d-88afda77afc903099c1e33bcca74246c';  // Thay bằng API key của bạn
     const OANDA_ACCOUNT_ID = '101-004-27015242-001';  // Thay bằng Account ID của bạn
 
+    // IG Markets Configuration
+    const IG_API_KEY = 'ab7a7c7ff613f0c6117951c290b1ece65b4de45e';
+    const IG_USERNAME = 'trinhminhbao@gmail.com';
+    const IG_PASSWORD = 'anhBAO@1991';
+
     // Khởi tạo Datafeed với kiến trúc mới
     const datafeed = createTradingViewDatafeed({
         binanceSpot: {},
@@ -32,6 +37,12 @@ async function initTradingView() {
             apiKey: OANDA_API_KEY,
             accountId: OANDA_ACCOUNT_ID,
             practice: true
+        },
+        ig: {
+            apiKey: IG_API_KEY,
+            username: IG_USERNAME,
+            password: IG_PASSWORD,
+            demo: true
         }
     });
 

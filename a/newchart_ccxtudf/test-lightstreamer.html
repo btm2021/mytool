@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IG Lightstreamer Test - XAUUSD</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4ec9b0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #2d2d30;
+        }
+        .status.success {
+            border-left: 4px solid #4ec9b0;
+        }
+        .status.error {
+            border-left: 4px solid #f48771;
+        }
+        .status.info {
+            border-left: 4px solid #569cd6;
+        }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        button:disabled {
+            background: #3e3e42;
+            cursor: not-allowed;
+        }
+        .price-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .price-card {
+            background: #2d2d30;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #569cd6;
+        }
+        .price-card h3 {
+            margin: 0 0 10px 0;
+            color: #4ec9b0;
+            font-size: 14px;
+        }
+        .price-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dcdcaa;
+        }
+        .price-label {
+            font-size: 12px;
+            color: #858585;
+            margin-top: 5px;
+        }
+        #log {
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #3e3e42;
+            padding-left: 10px;
+        }
+        .log-entry.info { border-left-color: #569cd6; }
+        .log-entry.success { border-left-color: #4ec9b0; }
+        .log-entry.error { border-left-color: #f48771; }
+        .log-entry .time {
+            color: #858585;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 IG Lightstreamer Test - XAUUSD (Gold)</h1>
+        
+        <div class="status info" id="status">
+            Status: Ready to connect
+        </div>
+
+        <div>
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="price-display">
+            <div class="price-card">
+                <h3>BID</h3>
+                <div class="price-value" id="bid">--</div>
+                <div class="price-label">Sell Price</div>
+            </div>
+            <div class="price-card">
+                <h3>ASK</h3>
+                <div class="price-value" id="ask">--</div>
+                <div class="price-label">Buy Price</div>
+            </div>
+            <div class="price-card">
+                <h3>MID</h3>
+                <div class="price-value" id="mid">--</div>
+                <div class="price-label">Average Price</div>
+            </div>
+            <div class="price-card">
+                <h3>SPREAD</h3>
+                <div class="price-value" id="spread">--</div>
+                <div class="price-label">Difference</div>
+            </div>
+        </div>
+
+        <h3>Live Updates Log</h3>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        // IG Configuration
+        const IG_CONFIG = {
+            apiKey: 'ce5bf388c563a2de5592c20a318752219d158e74',
+            username: 'trinhminhbao',
+            password: 'anhBAO@1991',
+            demo: true
+        };
+
+        const apiUrl = IG_CONFIG.demo 
+            ? 'https://demo-api.ig.com/gateway/deal'
+            : 'https://api.ig.com/gateway/deal';
+
+        const streamUrl = IG_CONFIG.demo
+            ? 'https://demo-apd.marketdatasys.com'
+            : 'https://apd.marketdatasys.com';
+
+        let cst = null;
+        let securityToken = null;
+        let accountId = null;
+        let client = null;
+        let subscription = null;
+
+        // Logging
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `<span class="time">[${time}]</span> ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = `Status: ${message}`;
+        }
+
+        function updatePrice(field, value) {
+            const element = document.getElementById(field);
+            if (element) {
+                element.textContent = value;
+            }
+        }
+
+        // Authenticate with IG
+        async function authenticate() {
+            log('🔐 Authenticating with IG API...', 'info');
+            updateStatus('Authenticating...', 'info');
+
+            try {
+                const response = await fetch(`${apiUrl}/session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json; charset=UTF-8',
+                        'VERSION': '2',
+                        'X-IG-API-KEY': IG_CONFIG.apiKey
+                    },
+                    body: JSON.stringify({
+                        identifier: IG_CONFIG.username,
+                        password: IG_CONFIG.password
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Authentication failed: ${response.status} - ${errorText}`);
+                }
+
+                cst = response.headers.get('CST');
+                securityToken = response.headers.get('X-SECURITY-TOKEN');
+                
+                const data = await response.json();
+                accountId = data.currentAccountId;
+
+                log(`✅ Authentication successful - Account: ${accountId}`, 'success');
+                log(`CST: ${cst.substring(0, 20)}...`, 'info');
+                log(`Security Token: ${securityToken.substring(0, 20)}...`, 'info');
+                
+                return true;
+            } catch (error) {
+                log(`❌ Authentication error: ${error.message}`, 'error');
+                updateStatus('Authentication failed', 'error');
+                return false;
+            }
+        }
+
+        // Connect to Lightstreamer
+        async function connect() {
+            // Disable connect button
+            document.getElementById('connectBtn').disabled = true;
+
+            // Authenticate first
+            const authenticated = await authenticate();
+            if (!authenticated) {
+                document.getElementById('connectBtn').disabled = false;
+                return;
+            }
+
+            log('🚀 Connecting to Lightstreamer...', 'info');
+            updateStatus('Connecting to Lightstreamer...', 'info');
+
+            try {
+                // Create Lightstreamer client
+                client = new Lightstreamer.LightstreamerClient(streamUrl, 'DEFAULT');
+                
+                // Set connection details
+                client.connectionDetails.setUser(accountId);
+                client.connectionDetails.setPassword(`CST-${cst}|XST-${securityToken}`);
+
+                // Add status listener
+                client.addListener({
+                    onStatusChange: function(status) {
+                        log(`📡 Connection status: ${status}`, 'info');
+                        updateStatus(`Lightstreamer: ${status}`, 'info');
+                    },
+                    onServerError: function(errorCode, errorMessage) {
+                        log(`❌ Server error: ${errorCode} - ${errorMessage}`, 'error');
+                        updateStatus('Server error', 'error');
+                    }
+                });
+
+                // Connect
+                client.connect();
+
+                // Subscribe to XAUUSD (Gold)
+                const epic = 'CS.D.CFPGOLD.CFP.IP'; // Gold epic
+                
+                subscription = new Lightstreamer.Subscription(
+                    'MERGE',
+                    `MARKET:${epic}`,
+                    ['BID', 'OFFER', 'UPDATE_TIME', 'MARKET_STATE']
+                );
+
+                subscription.setDataAdapter('DEFAULT');
+                subscription.setRequestedSnapshot('yes');
+
+                // Add subscription listener
+                subscription.addListener({
+                    onSubscription: function() {
+                        log(`✅ Subscribed to XAUUSD (${epic})`, 'success');
+                        updateStatus('Connected - Receiving live data', 'success');
+                        document.getElementById('disconnectBtn').disabled = false;
+                    },
+                    onUnsubscription: function() {
+                        log('📴 Unsubscribed from XAUUSD', 'info');
+                    },
+                    onItemUpdate: function(update) {
+                        const bid = parseFloat(update.getValue('BID'));
+                        const offer = parseFloat(update.getValue('OFFER'));
+                        const updateTime = update.getValue('UPDATE_TIME');
+                        const marketState = update.getValue('MARKET_STATE');
+
+                        if (!isNaN(bid) && !isNaN(offer)) {
+                            const mid = (bid + offer) / 2;
+                            const spread = offer - bid;
+
+                            // Update display
+                            updatePrice('bid', bid.toFixed(2));
+                            updatePrice('ask', offer.toFixed(2));
+                            updatePrice('mid', mid.toFixed(2));
+                            updatePrice('spread', spread.toFixed(2));
+
+                            // Log update
+                            log(`💰 XAUUSD: BID=${bid.toFixed(2)} ASK=${offer.toFixed(2)} MID=${mid.toFixed(2)} SPREAD=${spread.toFixed(2)}`, 'success');
+                            
+                            if (updateTime) {
+                                log(`⏰ Update time: ${updateTime}`, 'info');
+                            }
+                            if (marketState) {
+                                log(`📊 Market state: ${marketState}`, 'info');
+                            }
+                        }
+                    },
+                    onSubscriptionError: function(code, message) {
+                        log(`❌ Subscription error: ${code} - ${message}`, 'error');
+                        updateStatus('Subscription error', 'error');
+                    }
+                });
+
+                // Subscribe
+                client.subscribe(subscription);
+
+                log('⏳ Waiting for data...', 'info');
+
+            } catch (error) {
+                log(`❌ Connection error: ${error.message}`, 'error');
+                updateStatus('Connection failed', 'error');
+                document.getElementById('connectBtn').disabled = false;
+            }
+        }
+
+        // Disconnect
+        function disconnect() {
+            if (subscription) {
+                client.unsubscribe(subscription);
+                subscription = null;
+            }
+            
+            if (client) {
+                client.disconnect();
+                client = null;
+            }
+
+            log('📴 Disconnected', 'info');
+            updateStatus('Disconnected', 'info');
+            
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('disconnectBtn').disabled = true;
+
+            // Reset prices
+            updatePrice('bid', '--');
+            updatePrice('ask', '--');
+            updatePrice('mid', '--');
+            updatePrice('spread', '--');
+        }
+
+        // Wait for page load
+        window.addEventListener('DOMContentLoaded', function() {
+            // Initial log
+            log('🎯 IG Lightstreamer Test initialized', 'info');
+            log('📍 Epic: CS.D.CFPGOLD.CFP.IP (XAUUSD - Gold)', 'info');
+            log('🌐 Stream URL: ' + streamUrl, 'info');
+            
+            // Check if Lightstreamer is loaded
+            if (typeof Lightstreamer === 'undefined') {
+                log('⏳ Loading Lightstreamer library...', 'info');
+                updateStatus('Loading Lightstreamer...', 'info');
+                document.getElementById('connectBtn').disabled = true;
+                
+                // Load Lightstreamer dynamically
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/lightstreamer-client-web@9.2.3/lightstreamer.min.js';
+                script.onload = function() {
+                    log('✅ Lightstreamer library loaded', 'success');
+                    log('Click "Connect" to start streaming live prices', 'info');
+                    updateStatus('Ready to connect', 'success');
+                    document.getElementById('connectBtn').disabled = false;
+                };
+                script.onerror = function() {
+                    log('❌ Failed to load Lightstreamer library', 'error');
+                    updateStatus('Failed to load library', 'error');
+                };
+                document.head.appendChild(script);
+            } else {
+                log('✅ Lightstreamer library ready', 'success');
+                log('Click "Connect" to start streaming live prices', 'info');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IG API Test</title>
+</head>
+<body>
+    <h1>IG API Test - EURUSD 15m</h1>
+    <button id="testBtn">Test IG API</button>
+    <pre id="output"></pre>
+
+    <script>
+        const IG_CONFIG = {
+            apiKey: 'ce5bf388c563a2de5592c20a318752219d158e74',
+            username: 'trinhminhbao',
+            password: 'anhBAO@1991',
+            demo: true
+        };
+
+        const apiUrl = IG_CONFIG.demo 
+            ? 'https://demo-api.ig.com/gateway/deal'
+            : 'https://api.ig.com/gateway/deal';
+
+        let cst = null;
+        let securityToken = null;
+        let accountId = null;
+
+        const log = (msg) => {
+            const output = document.getElementById('output');
+            output.textContent += msg + '\n';
+            console.log(msg);
+        };
+
+        // Authenticate
+        async function authenticate() {
+            log('=== Authenticating ===');
+            
+            try {
+                const response = await fetch(`${apiUrl}/session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json; charset=UTF-8',
+                        'VERSION': '2',
+                        'X-IG-API-KEY': IG_CONFIG.apiKey
+                    },
+                    body: JSON.stringify({
+                        identifier: IG_CONFIG.username,
+                        password: IG_CONFIG.password
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Auth failed: ${response.status} ${response.statusText}`);
+                    log(`Error: ${errorText}`);
+                    return false;
+                }
+
+                cst = response.headers.get('CST');
+                securityToken = response.headers.get('X-SECURITY-TOKEN');
+                
+                const data = await response.json();
+                accountId = data.currentAccountId;
+
+                log(`✅ Authentication successful`);
+                log(`Account ID: ${accountId}`);
+                log(`CST: ${cst ? 'OK' : 'Missing'}`);
+                log(`Security Token: ${securityToken ? 'OK' : 'Missing'}`);
+                
+                return true;
+            } catch (error) {
+                log(`❌ Auth error: ${error.message}`);
+                return false;
+            }
+        }
+
+        // Get authenticated headers
+        function getHeaders(version = '1') {
+            return {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json; charset=UTF-8',
+                'VERSION': version,
+                'X-IG-API-KEY': IG_CONFIG.apiKey,
+                'CST': cst,
+                'X-SECURITY-TOKEN': securityToken
+            };
+        }
+
+        // Find EURUSD epic
+        async function findEURUSD() {
+            log('\n=== Finding EURUSD ===');
+            
+            try {
+                // Method 1: Direct search
+                log('Method 1: Direct search...');
+                const searchResponse = await fetch(`${apiUrl}/markets?searchTerm=EURUSD`, {
+                    headers: getHeaders('1')
+                });
+
+                if (searchResponse.ok) {
+                    const searchData = await searchResponse.json();
+                    log(`Search found ${searchData.markets?.length || 0} results`);
+                    
+                    if (searchData.markets && searchData.markets.length > 0) {
+                        const eurusd = searchData.markets[0];
+                        log(`✅ EURUSD found via search: ${eurusd.epic}`);
+                        log(`   Name: ${eurusd.instrumentName}`);
+                        return eurusd.epic;
+                    }
+                }
+
+                // Method 2: Navigate through forex tree
+                log('\nMethod 2: Navigate forex tree...');
+                const navResponse = await fetch(`${apiUrl}/marketnavigation`, {
+                    headers: getHeaders('1')
+                });
+
+                if (!navResponse.ok) {
+                    log(`❌ Navigation failed: ${navResponse.status}`);
+                    return null;
+                }
+
+                const navData = await navResponse.json();
+                log(`Found ${navData.nodes?.length || 0} navigation nodes`);
+
+                // Find forex node
+                const forexNode = navData.nodes?.find(node => 
+                    node.name && node.name.toLowerCase().includes('forex')
+                );
+
+                if (!forexNode) {
+                    log('❌ Forex node not found');
+                    return null;
+                }
+
+                log(`✅ Forex node found: ${forexNode.name} (ID: ${forexNode.id})`);
+
+                // Get forex sub-nodes
+                const forexResponse = await fetch(`${apiUrl}/marketnavigation/${forexNode.id}`, {
+                    headers: getHeaders('1')
+                });
+
+                if (!forexResponse.ok) {
+                    log(`❌ Forex fetch failed: ${forexResponse.status}`);
+                    return null;
+                }
+
+                const forexData = await forexResponse.json();
+                log(`Forex has ${forexData.nodes?.length || 0} sub-nodes and ${forexData.markets?.length || 0} markets`);
+
+                // Check direct markets first
+                if (forexData.markets && forexData.markets.length > 0) {
+                    const eurusd = forexData.markets.find(m => 
+                        m.epic && m.epic.includes('EURUSD')
+                    );
+                    if (eurusd) {
+                        log(`✅ EURUSD found in forex markets: ${eurusd.epic}`);
+                        return eurusd.epic;
+                    }
+                }
+
+                // Check sub-nodes
+                if (forexData.nodes && forexData.nodes.length > 0) {
+                    log(`Checking ${forexData.nodes.length} sub-nodes...`);
+                    
+                    for (const subNode of forexData.nodes) {
+                        log(`  Checking: ${subNode.name} (ID: ${subNode.id})`);
+                        
+                        const subResponse = await fetch(`${apiUrl}/marketnavigation/${subNode.id}`, {
+                            headers: getHeaders('1')
+                        });
+
+                        if (subResponse.ok) {
+                            const subData = await subResponse.json();
+                            
+                            if (subData.markets && subData.markets.length > 0) {
+                                log(`    Found ${subData.markets.length} markets`);
+                                
+                                const eurusd = subData.markets.find(m => 
+                                    m.epic && m.epic.includes('EURUSD')
+                                );
+                                
+                                if (eurusd) {
+                                    log(`✅ EURUSD found in ${subNode.name}: ${eurusd.epic}`);
+                                    log(`   Name: ${eurusd.instrumentName || eurusd.name}`);
+                                    return eurusd.epic;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                log('❌ EURUSD not found in any node');
+                return null;
+            } catch (error) {
+                log(`❌ Find error: ${error.message}`);
+                return null;
+            }
+        }
+
+        // Get EURUSD 15m candles
+        async function getEURUSD15m(epic) {
+            log('\n=== Getting EURUSD 15m Candles ===');
+            
+            try {
+                // Calculate date range for ~1500 candles
+                // 15m = 4 candles per hour = 96 per day
+                // 1500 candles = ~15.6 days
+                const toDate = new Date();
+                const fromDate = new Date(toDate.getTime() - (20 * 24 * 60 * 60 * 1000)); // 20 days
+
+                const params = new URLSearchParams({
+                    resolution: 'MINUTE_15',
+                    from: fromDate.toISOString(),
+                    to: toDate.toISOString(),
+                    max: '1500'
+                });
+
+                const url = `${apiUrl}/prices/${epic}?${params}`;
+                log(`Fetching: ${url}`);
+
+                const response = await fetch(url, {
+                    headers: getHeaders('3')
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Prices fetch failed: ${response.status}`);
+                    log(`Error: ${errorText}`);
+                    return null;
+                }
+
+                const data = await response.json();
+                
+                if (!data.prices || data.prices.length === 0) {
+                    log('❌ No price data returned');
+                    return null;
+                }
+
+                log(`✅ Got ${data.prices.length} candles`);
+                
+                // Convert to OHLCV format
+                const candles = data.prices.map(price => {
+                    const timeStr = price.snapshotTime || price.snapshotTimeUTC;
+                    const time = new Date(timeStr).getTime();
+                    
+                    const open = (price.openPrice.bid + price.openPrice.ask) / 2;
+                    const high = (price.highPrice.bid + price.highPrice.ask) / 2;
+                    const low = (price.lowPrice.bid + price.lowPrice.ask) / 2;
+                    const close = (price.closePrice.bid + price.closePrice.ask) / 2;
+                    const volume = price.lastTradedVolume || 0;
+
+                    return {
+                        time: time,
+                        date: new Date(time).toISOString(),
+                        open: open,
+                        high: high,
+                        low: low,
+                        close: close,
+                        volume: volume
+                    };
+                });
+
+                // Sort by time
+                candles.sort((a, b) => a.time - b.time);
+
+                log('\n=== First 5 Candles ===');
+                candles.slice(0, 5).forEach((c, i) => {
+                    log(`${i + 1}. ${c.date} | O:${c.open.toFixed(5)} H:${c.high.toFixed(5)} L:${c.low.toFixed(5)} C:${c.close.toFixed(5)} V:${c.volume}`);
+                });
+
+                log('\n=== Last 5 Candles ===');
+                candles.slice(-5).forEach((c, i) => {
+                    log(`${candles.length - 4 + i}. ${c.date} | O:${c.open.toFixed(5)} H:${c.high.toFixed(5)} L:${c.low.toFixed(5)} C:${c.close.toFixed(5)} V:${c.volume}`);
+                });
+
+                log(`\n✅ Total candles: ${candles.length}`);
+                log(`Date range: ${candles[0].date} to ${candles[candles.length - 1].date}`);
+
+                return candles;
+            } catch (error) {
+                log(`❌ Get candles error: ${error.message}`);
+                return null;
+            }
+        }
+
+        // Main test function
+        async function testIG() {
+            const output = document.getElementById('output');
+            output.textContent = '';
+            
+            log('Starting IG API Test...\n');
+
+            // Step 1: Authenticate
+            const authSuccess = await authenticate();
+            if (!authSuccess) {
+                log('\n❌ Test failed: Authentication error');
+                return;
+            }
+
+            // Step 2: Find EURUSD
+            const epic = await findEURUSD();
+            if (!epic) {
+                log('\n❌ Test failed: Could not find EURUSD');
+                return;
+            }
+
+            // Step 3: Get candles
+            const candles = await getEURUSD15m(epic);
+            if (!candles) {
+                log('\n❌ Test failed: Could not get candles');
+                return;
+            }
+
+            log('\n✅✅✅ Test completed successfully! ✅✅✅');
+        }
+
+        // Attach to button
+        document.getElementById('testBtn').addEventListener('click', testIG);
+    </script>
+</body>
+</html>
