@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PriceScale System</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        h1 {
+            color: #00ff00;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+        }
+        .test-case {
+            margin: 10px 0;
+            padding: 10px;
+            background: #1a1a1a;
+            border-left: 3px solid #00ff00;
+        }
+        .symbol {
+            color: #ffff00;
+            font-weight: bold;
+        }
+        .price {
+            color: #00ffff;
+        }
+        .result {
+            color: #ff00ff;
+        }
+        .pass {
+            color: #00ff00;
+        }
+        .fail {
+            color: #ff0000;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #00ff00;
+        }
+        th {
+            background: #2a2a2a;
+            color: #ffff00;
+        }
+        td {
+            background: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test PriceScale & MinMove System</h1>
+    
+    <div class="test-section">
+        <h2>Test Cases</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Live Symbol Tests</h2>
+        <div id="live-tests"></div>
+    </div>
+
+    <script type="module">
+        // Import BaseDataSource để test
+        import BaseDataSource from './datafeed/BaseDataSource.js';
+
+        const base = new BaseDataSource();
+
+        // Test cases với các loại giá khác nhau
+        const testCases = [
+            // BTC - giá cao
+            { symbol: 'BTCUSDT', tickSize: 0.01, expectedPrice: 100000, description: 'BTC - High price' },
+            { symbol: 'BTCUSDT', tickSize: 0.1, expectedPrice: 100000, description: 'BTC - High price (0.1 tick)' },
+            
+            // ETH - giá trung bình
+            { symbol: 'ETHUSDT', tickSize: 0.01, expectedPrice: 4000, description: 'ETH - Medium price' },
+            
+            // Altcoins - giá thấp
+            { symbol: 'ADAUSDT', tickSize: 0.0001, expectedPrice: 0.5, description: 'ADA - Low price' },
+            { symbol: 'DOGEUSDT', tickSize: 0.00001, expectedPrice: 0.08, description: 'DOGE - Very low price' },
+            
+            // Shitcoins - giá cực thấp
+            { symbol: 'SHIBUSDT', tickSize: 0.00000001, expectedPrice: 0.00001, description: 'SHIB - Ultra low price' },
+            { symbol: 'PEPEUSDT', tickSize: 0.00000001, expectedPrice: 0.000001, description: 'PEPE - Ultra low price' },
+            
+            // Edge cases
+            { symbol: 'TEST1', tickSize: 1, expectedPrice: 50000, description: 'Integer tick size' },
+            { symbol: 'TEST2', tickSize: 0.5, expectedPrice: 1000, description: 'Half tick size' },
+            { symbol: 'TEST3', tickSize: 0.00000001, expectedPrice: 0.0000001, description: 'Scientific notation' },
+        ];
+
+        function formatNumber(num) {
+            if (num >= 1) return num.toFixed(2);
+            if (num >= 0.01) return num.toFixed(4);
+            if (num >= 0.0001) return num.toFixed(6);
+            return num.toFixed(8);
+        }
+
+        function testPriceScale(tickSize, expectedPrice, symbol, description) {
+            const result = base.calculatePriceScale(tickSize);
+            
+            // Tính giá hiển thị để verify
+            const displayPrice = Math.round(expectedPrice * result.pricescale) / result.pricescale;
+            const error = Math.abs(displayPrice - expectedPrice);
+            const isAccurate = error < tickSize;
+            
+            return {
+                symbol,
+                description,
+                tickSize,
+                expectedPrice,
+                pricescale: result.pricescale,
+                minmov: result.minmov,
+                displayPrice,
+                error,
+                isAccurate,
+                status: isAccurate ? 'PASS' : 'FAIL'
+            };
+        }
+
+        // Run tests
+        const results = testCases.map(tc => 
+            testPriceScale(tc.tickSize, tc.expectedPrice, tc.symbol, tc.description)
+        );
+
+        // Display results
+        const resultsDiv = document.getElementById('test-results');
+        let html = '<table><thead><tr>';
+        html += '<th>Symbol</th>';
+        html += '<th>Description</th>';
+        html += '<th>Tick Size</th>';
+        html += '<th>Price</th>';
+        html += '<th>PriceScale</th>';
+        html += '<th>MinMov</th>';
+        html += '<th>Display Price</th>';
+        html += '<th>Error</th>';
+        html += '<th>Status</th>';
+        html += '</tr></thead><tbody>';
+
+        results.forEach(r => {
+            const statusClass = r.status === 'PASS' ? 'pass' : 'fail';
+            html += '<tr>';
+            html += `<td class="symbol">${r.symbol}</td>`;
+            html += `<td>${r.description}</td>`;
+            html += `<td class="price">${r.tickSize}</td>`;
+            html += `<td class="price">${formatNumber(r.expectedPrice)}</td>`;
+            html += `<td class="result">${r.pricescale}</td>`;
+            html += `<td class="result">${r.minmov}</td>`;
+            html += `<td class="price">${formatNumber(r.displayPrice)}</td>`;
+            html += `<td>${r.error.toExponential(2)}</td>`;
+            html += `<td class="${statusClass}">${r.status}</td>`;
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        
+        const passCount = results.filter(r => r.status === 'PASS').length;
+        html += `<p><strong>Results: ${passCount}/${results.length} tests passed</strong></p>`;
+        
+        resultsDiv.innerHTML = html;
+
+        // Live tests với real API
+        async function testLiveSymbol(exchange, symbol, apiUrl) {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                
+                let tickSize, currentPrice;
+                
+                if (exchange === 'BINANCE') {
+                    const symbolData = data.symbols?.[0];
+                    if (!symbolData) return null;
+                    
+                    const priceFilter = symbolData.filters?.find(f => f.filterType === 'PRICE_FILTER');
+                    tickSize = priceFilter ? parseFloat(priceFilter.tickSize) : 0.01;
+                    
+                    // Get current price
+                    const priceRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+                    const priceData = await priceRes.json();
+                    currentPrice = parseFloat(priceData.price);
+                }
+                
+                const result = base.calculatePriceScale(tickSize);
+                
+                return {
+                    exchange,
+                    symbol,
+                    tickSize,
+                    currentPrice,
+                    pricescale: result.pricescale,
+                    minmov: result.minmov
+                };
+            } catch (error) {
+                console.error(`Error testing ${symbol}:`, error);
+                return null;
+            }
+        }
+
+        // Test live symbols
+        const liveSymbols = [
+            { exchange: 'BINANCE', symbol: 'BTCUSDT', apiUrl: 'https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT' },
+            { exchange: 'BINANCE', symbol: 'ETHUSDT', apiUrl: 'https://api.binance.com/api/v3/exchangeInfo?symbol=ETHUSDT' },
+            { exchange: 'BINANCE', symbol: 'SHIBUSDT', apiUrl: 'https://api.binance.com/api/v3/exchangeInfo?symbol=SHIBUSDT' },
+            { exchange: 'BINANCE', symbol: 'PEPEUSDT', apiUrl: 'https://api.binance.com/api/v3/exchangeInfo?symbol=PEPEUSDT' },
+        ];
+
+        const liveDiv = document.getElementById('live-tests');
+        liveDiv.innerHTML = '<p>Loading live data...</p>';
+
+        Promise.all(liveSymbols.map(s => testLiveSymbol(s.exchange, s.symbol, s.apiUrl)))
+            .then(results => {
+                const validResults = results.filter(r => r !== null);
+                
+                let html = '<table><thead><tr>';
+                html += '<th>Exchange</th>';
+                html += '<th>Symbol</th>';
+                html += '<th>Current Price</th>';
+                html += '<th>Tick Size</th>';
+                html += '<th>PriceScale</th>';
+                html += '<th>MinMov</th>';
+                html += '</tr></thead><tbody>';
+
+                validResults.forEach(r => {
+                    html += '<tr>';
+                    html += `<td>${r.exchange}</td>`;
+                    html += `<td class="symbol">${r.symbol}</td>`;
+                    html += `<td class="price">${formatNumber(r.currentPrice)}</td>`;
+                    html += `<td class="price">${r.tickSize}</td>`;
+                    html += `<td class="result">${r.pricescale}</td>`;
+                    html += `<td class="result">${r.minmov}</td>`;
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                liveDiv.innerHTML = html;
+            })
+            .catch(error => {
+                liveDiv.innerHTML = `<p class="fail">Error loading live data: ${error.message}</p>`;
+            });
+    </script>
+</body>
+</html>

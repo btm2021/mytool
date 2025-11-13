@@ -1,11 +1,7 @@
-import createTradingViewDatafeed from './datafeed/index.js';
+import createDatafeed from './newdatafeed/index.js';
 
 let tvWidget = null;
 let datafeed = null;
-
-
-
-
 
 // Initialize TradingView
 async function initTradingView() {
@@ -14,51 +10,26 @@ async function initTradingView() {
     const progressFill = document.getElementById('progress-fill');
     const loadingStatus = document.getElementById('loading-status');
 
-    // ============ API KEYS ============
+    // Khởi tạo Datafeed - Binance USD-M Futures
+    datafeed = createDatafeed();
 
-    // OANDA API Configuration
-    // Lấy API key và Account ID từ: https://www.oanda.com/account/tpa/personal_token
-    const OANDA_API_KEY = '3913aaef1f74de9e87b329ba62b12c7d-88afda77afc903099c1e33bcca74246c';  // Thay bằng API key của bạn
-    const OANDA_ACCOUNT_ID = '101-004-27015242-001';  // Thay bằng Account ID của bạn
-
-    // Khởi tạo Datafeed với kiến trúc mới
-    datafeed = createTradingViewDatafeed({
-        binanceSpot: {},
-        binanceUSDM: {},
-        okxSpot: {},
-        okxFutures: {},
-        bybitSpot: {},
-        bybitFutures: {},
-        oanda: {
-            apiKey: OANDA_API_KEY,
-            accountId: OANDA_ACCOUNT_ID,
-            practice: true
-        }
-    });
-
-    // Load all symbols với progress tracking
+    // Load symbols
     try {
-        loadingStatus.textContent = 'Initializing...';
+        loadingStatus.textContent = 'Loading Binance USD-M symbols...';
+        progressFill.style.width = '50%';
 
-        // Access internal manager để load symbols
-        const manager = datafeed._manager || datafeed;
-
-        await manager.loadAllSymbols((completed, total, message) => {
-            const progress = (completed / total) * 100;
-            progressFill.style.width = `${progress}%`;
-            loadingStatus.textContent = message;
-        });
+        await datafeed.loadSymbols();
 
         loadingStatus.textContent = 'Loading complete!';
         progressFill.style.width = '100%';
 
-        // Hide loading overlay sau 500ms
+        // Hide loading overlay
         setTimeout(() => {
             loadingOverlay.classList.add('hidden');
         }, 500);
     } catch (error) {
         console.error('Error loading symbols:', error);
-        loadingStatus.textContent = 'Error loading symbols. Retrying...';
+        loadingStatus.textContent = 'Error loading symbols';
     }
 
     // Khởi tạo LocalStorage Save/Load Adapter
@@ -66,7 +37,7 @@ async function initTradingView() {
 
     const widgetOptions = {
         symbol_search_request_delay: 0,
-        symbol: 'BINANCE:BTCUSDT',
+        symbol: 'BTCUSDT',
         datafeed: datafeed,
         interval: '15',
         container: 'tv_chart_container',
@@ -97,7 +68,6 @@ async function initTradingView() {
             'saveload_separate_drawings_storage',
             'show_exchange_logos',
             'show_symbol_logos',
-            'chart_style_hilo',
             'hide_image_invalid_symbol'
         ],
         fullscreen: false,
@@ -107,13 +77,13 @@ async function initTradingView() {
         // Watermark
         overrides: {
             "paneProperties.backgroundType": "solid",
-            "paneProperties.background": "#131722",
+            "paneProperties.background": "#2659e4ff",
         },
 
         // Save/Load configuration với LocalStorage
         save_load_adapter: saveLoadAdapter,
         auto_save_delay: 5,
-        load_last_chart: false,  // Tắt để test
+        load_last_chart: true,  // Tắt để test
 
         // Custom indicators
         custom_indicators_getter: function (PineJS) {
@@ -308,213 +278,197 @@ async function initTradingView() {
     //   });
     // });
 
-    tvWidget.onChartReady(() => {
-        const chart = tvWidget.activeChart();
-        const realChart = tvWidget.chart();
+    // tvWidget.onChartReady(() => {
+    //     const chart = tvWidget.activeChart();
+    //     const realChart = tvWidget.chart();
 
-        // 🏷️ Update watermark khi symbol thay đổi
-        const watermarkElement = document.getElementById('chart-watermark');
+    //     // 🏷️ Update watermark khi symbol thay đổi
+    //     const watermarkElement = document.getElementById('chart-watermark');
         
-        const getExchangeDisplayName = (exchange) => {
-            const names = {
-                'BINANCE': 'Binance Spot',
-                'BINANCEUSDM': 'Binance Futures',
-                'BINANCEFUTURES': 'Binance Futures',
-                'OKXSPOT': 'OKX Spot',
-                'OKXFUTURES': 'OKX Futures',
-                'OKX': 'OKX Futures',
-                'BYBITSPOT': 'Bybit Spot',
-                'BYBITFUTURES': 'Bybit Futures',
-                'BYBIT': 'Bybit Futures',
-                'OANDA': 'OANDA Forex'
-            };
-            return names[exchange] || exchange;
-        };
-        
-        const updateWatermark = () => {
-            const symbolInfo = chart.symbolExt();
-            if (symbolInfo && watermarkElement) {
-                const exchange = symbolInfo.exchange || '';
-                const symbol = symbolInfo.ticker || symbolInfo.name || '';
-                // Remove .P suffix for display
-                const cleanSymbol = symbol.replace('.P', '').split(':').pop();
-                const exchangeName = getExchangeDisplayName(exchange);
-                const watermarkText = `${exchangeName} - ${cleanSymbol}`;
+    //     const getExchangeDisplayName = (exchange) => {
+    //         const names = {
+    //     // const updateWatermark = () => {
+    //     //     const symbolInfo = chart.symbolExt();
+    //     //     if (symbolInfo && watermarkElement) {
+    //     //         const symbol = symbolInfo.ticker || symbolInfo.name || '';
+    //     //         const watermarkText = `Binance USD-M Futures - ${symbol}`;
                 
-                watermarkElement.textContent = watermarkText;
-                console.log('Watermark updated:', watermarkText);
-            }
-        };
+    //     //         watermarkElement.textContent = watermarkText;
+    //     //         console.log('Watermark updated:', watermarkText);
+    //     //     }
+    //     // };
 
-        // Update watermark on symbol change
-        chart.onSymbolChanged().subscribe(null, updateWatermark);
+    //     // // Update watermark on symbol change
+    //     // chart.onSymbolChanged().subscribe(null, updateWatermark);
         
-        // Initial watermark
-        setTimeout(updateWatermark, 500);
+    //     // // Initial watermark
+    //     // setTimeout(updateWatermark, 500);
 
-        // 📊 Symbols Viewer Button
-        const symbolsButton = tvWidget.createButton({ align: 'left' });
-        symbolsButton.textContent = '📊 Symbols';
-        symbolsButton.title = 'View All Symbols';
-        symbolsButton.style.fontWeight = 'bold';
-        symbolsButton.style.cursor = 'pointer';
-        symbolsButton.style.color = '#2962ff';
-        symbolsButton.style.padding = '4px 10px';
-        symbolsButton.addEventListener('click', () => {
-            symbolsViewerDialog.setDatafeed(datafeed);
-            symbolsViewerDialog.show();
-        });
+    //     // 📊 Symbols Viewer Button (nếu có)
+    //     if (typeof symbolsViewerDialog !== 'undefined') {
+    //         const symbolsButton = tvWidget.createButton({ align: 'left' });
+    //         symbolsButton.textContent = '📊 Symbols';
+    //         symbolsButton.title = 'View All Symbols';
+    //         symbolsButton.style.fontWeight = 'bold';
+    //         symbolsButton.style.cursor = 'pointer';
+    //         symbolsButton.style.color = '#2962ff';
+    //         symbolsButton.style.padding = '4px 10px';
+    //         symbolsButton.addEventListener('click', () => {
+    //             symbolsViewerDialog.setDatafeed(datafeed);
+    //             symbolsViewerDialog.show();
+    //         });
+    //     }
 
-        let isReplay = false;
-        let lineId = null;
-        let lineApi = null;
-        let zoneId = null;
-        let zoneApi = null;
-        let crosshairHandler = null;
-        let clickHandler = null;
+    //     let isReplay = false;
+    //     let lineId = null;
+    //     let lineApi = null;
+    //     let zoneId = null;
+    //     let zoneApi = null;
+    //     let crosshairHandler = null;
+    //     let clickHandler = null;
 
-        // 🟩 1️⃣ Nút Replay trong toolbar
-        const replayButton = tvWidget.createButton({ align: 'left' });
-        replayButton.textContent = '🎬 Replay';
-        replayButton.title = 'Toggle Replay Mode';
-        replayButton.style.fontWeight = 'bold';
-        replayButton.style.cursor = 'pointer';
-        replayButton.style.color = '#00FF00';
-        replayButton.style.padding = '4px 10px';
+    //     // 🟩 1️⃣ Nút Replay trong toolbar
+    //     const replayButton = tvWidget.createButton({ align: 'left' });
+    //     replayButton.textContent = '🎬 Replay';
+    //     replayButton.title = 'Toggle Replay Mode';
+    //     replayButton.style.fontWeight = 'bold';
+    //     replayButton.style.cursor = 'pointer';
+    //     replayButton.style.color = '#00FF00';
+    //     replayButton.style.padding = '4px 10px';
 
-        const reflect = () => {
-            replayButton.style.color = isReplay ? '#FF4444' : '#00FF00';
-        };
+    //     const reflect = () => {
+    //         replayButton.style.color = isReplay ? '#FF4444' : '#00FF00';
+    //     };
 
-        // 🟩 2️⃣ Hàm bật Replay
-        const enableReplay = () => {
-            if (isReplay) return;
-            isReplay = true;
-            reflect();
+    //     // 🟩 2️⃣ Hàm bật Replay
+    //     const enableReplay = () => {
+    //         if (isReplay) return;
+    //         isReplay = true;
+    //         reflect();
 
-            console.log('▶️ Replay mode ON');
+    //         console.log('▶️ Replay mode ON');
 
-            // --- Crosshair moved ---
-            crosshairHandler = async (param) => {
-                if (!param?.time) return;
+    //         // --- Crosshair moved ---
+    //         crosshairHandler = async (param) => {
+    //             if (!param?.time) return;
 
-                const time = param.time;
-                const visibleRange = chart.getVisibleRange();
-                if (!visibleRange?.to) return;
-                const lastTime = visibleRange.to;
+    //             const time = param.time;
+    //             const visibleRange = chart.getVisibleRange();
+    //             if (!visibleRange?.to) return;
+    //             const lastTime = visibleRange.to;
 
-                // Lấy khoảng giá hiện tại để mở rộng rectangle
-                const priceRange = chart.getVisiblePriceRange();
-                if (!priceRange) return;
+    //             // Lấy khoảng giá hiện tại để mở rộng rectangle
+    //             const priceRange = chart.getVisiblePriceRange();
+    //             if (!priceRange) return;
 
-                const span = priceRange.to - priceRange.from;
-                const bottom = priceRange.from - span * 3;
-                const top = priceRange.to + span * 3;
+    //             const span = priceRange.to - priceRange.from;
+    //             const bottom = priceRange.from - span * 3;
+    //             const top = priceRange.to + span * 3;
 
-                // 1️⃣ Vertical line
-                if (!lineId) {
-                    lineId = await chart.createShape(
-                        { time },
-                        {
-                            shape: 'vertical_line',
-                            disableSelection: true,
-                            disableSave: true,
-                            lock: true,
-                            overrides: {
-                                color: '#00FF00',
-                                linewidth: 1,
-                            },
-                        }
-                    );
-                    lineApi = chart.getShapeById(lineId);
-                }
+    //             // 1️⃣ Vertical line
+    //             if (!lineId) {
+    //                 lineId = await chart.createShape(
+    //                     { time },
+    //                     {
+    //                         shape: 'vertical_line',
+    //                         disableSelection: true,
+    //                         disableSave: true,
+    //                         lock: true,
+    //                         overrides: {
+    //                             color: '#00FF00',
+    //                             linewidth: 1,
+    //                         },
+    //                     }
+    //                 );
+    //                 lineApi = chart.getShapeById(lineId);
+    //             }
 
-                // 2️⃣ Rectangle zone (vùng xanh bên phải)
-                if (!zoneId) {
-                    zoneId = await chart.createMultipointShape(
-                        [
-                            { time: time, price: bottom },
-                            { time: lastTime, price: top },
-                        ],
-                        {
-                            shape: 'rectangle',
-                            disableSelection: true,
-                            disableSave: true,
-                            lock: true,
-                            overrides: {
-                                color: '#00FF00',
-                                backgroundColor: 'rgba(0,255,0,0.15)',
-                                transparency: 70,
-                                linewidth: 1,
-                                zOrder: 'bottom',
-                            },
-                        }
-                    );
-                    zoneApi = chart.getShapeById(zoneId);
-                }
+    //             // 2️⃣ Rectangle zone (vùng xanh bên phải)
+    //             if (!zoneId) {
+    //                 zoneId = await chart.createMultipointShape(
+    //                     [
+    //                         { time: time, price: bottom },
+    //                         { time: lastTime, price: top },
+    //                     ],
+    //                     {
+    //                         shape: 'rectangle',
+    //                         disableSelection: true,
+    //                         disableSave: true,
+    //                         lock: true,
+    //                         overrides: {
+    //                             color: '#00FF00',
+    //                             backgroundColor: 'rgba(0,255,0,0.15)',
+    //                             transparency: 70,
+    //                             linewidth: 1,
+    //                             zOrder: 'bottom',
+    //                         },
+    //                     }
+    //                 );
+    //                 zoneApi = chart.getShapeById(zoneId);
+    //             }
 
-                // 3️⃣ Cập nhật vị trí khi crosshair di chuyển
-                if (lineApi) lineApi.setPoints([{ time }]);
-                if (zoneApi)
-                    zoneApi.setPoints([
-                        { time: time, price: bottom },
-                        { time: lastTime, price: top },
-                    ]);
-            };
+    //             // 3️⃣ Cập nhật vị trí khi crosshair di chuyển
+    //             if (lineApi) lineApi.setPoints([{ time }]);
+    //             if (zoneApi)
+    //                 zoneApi.setPoints([
+    //                     { time: time, price: bottom },
+    //                     { time: lastTime, price: top },
+    //                 ]);
+    //         };
 
-            // Gắn listener crosshair
-            realChart._crosshairMoved.subscribe(null, crosshairHandler);
+    //         // Gắn listener crosshair
+    //         realChart._crosshairMoved.subscribe(null, crosshairHandler);
 
-            // --- Click detection (internal delegate) ---
-            if (realChart._clicked) {
-                clickHandler = (param) => {
-                    console.log(param)
-                    if (!param?.time || !param?.price) return;
-                    console.log('🖱️ Clicked:', {
-                        time: param.time,
-                        price: param.price,
-                        x: param.point?.x,
-                        y: param.point?.y,
-                    });
-                };
-                realChart._clicked.subscribe(null, clickHandler);
-            } else {
-                console.warn('⚠️ realChart._clicked not available in this build');
-            }
-        };
+    //         // --- Click detection (internal delegate) ---
+    //         if (realChart._clicked) {
+    //             clickHandler = (param) => {
+    //                 console.log(param)
+    //                 if (!param?.time || !param?.price) return;
+    //                 console.log('🖱️ Clicked:', {
+    //                     time: param.time,
+    //                     price: param.price,
+    //                     x: param.point?.x,
+    //                     y: param.point?.y,
+    //                 });
+    //             };
+    //             realChart._clicked.subscribe(null, clickHandler);
+    //         } else {
+    //             console.warn('⚠️ realChart._clicked not available in this build');
+    //         }
+    //     };
 
-        // 🟥 3️⃣ Hàm tắt Replay
-        const disableReplay = () => {
-            if (!isReplay) return;
-            isReplay = false;
-            reflect();
+    //     // 🟥 3️⃣ Hàm tắt Replay
+    //     const disableReplay = () => {
+    //         if (!isReplay) return;
+    //         isReplay = false;
+    //         reflect();
 
-            console.log('⏹️ Replay mode OFF');
+    //         console.log('⏹️ Replay mode OFF');
 
-            if (crosshairHandler) {
-                try {
-                    realChart._crosshairMoved.unsubscribe(crosshairHandler);
-                } catch { }
-                crosshairHandler = null;
-            }
+    //         if (crosshairHandler) {
+    //             try {
+    //                 realChart._crosshairMoved.unsubscribe(crosshairHandler);
+    //             } catch { }
+    //             crosshairHandler = null;
+    //         }
 
-            if (clickHandler && realChart._clicked) {
-                try {
-                    realChart._clicked.unsubscribe(clickHandler);
-                } catch { }
-                clickHandler = null;
-            }
+    //         if (clickHandler && realChart._clicked) {
+    //             try {
+    //                 realChart._clicked.unsubscribe(clickHandler);
+    //             } catch { }
+    //             clickHandler = null;
+    //         }
 
-            lineId = zoneId = null;
-            lineApi = zoneApi = null;
-        };
+    //         lineId = zoneId = null;
+    //         lineApi = zoneApi = null;
+    //     };
 
-        // 🟦 Toggle button
-        replayButton.addEventListener('click', () => {
-            if (isReplay) disableReplay();
-            else enableReplay();
-        });
-    });
+    //     // 🟦 Toggle button
+    //     replayButton.addEventListener('click', () => {
+    //         if (isReplay) disableReplay();
+    //         else enableReplay();
+    //     });
+    // });
 
 
 }

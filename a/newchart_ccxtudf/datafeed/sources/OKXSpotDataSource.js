@@ -57,6 +57,7 @@ class OKXSpotDataSource extends BaseDataSource {
         try {
             const { exchange, symbol } = this.parseSymbol(symbolName);
             const instId = this.normalizeSymbol(symbol);
+            
             const response = await fetch(`${this.apiUrl}/api/v5/public/instruments?instType=SPOT&instId=${instId}`);
             const data = await response.json();
 
@@ -66,12 +67,6 @@ class OKXSpotDataSource extends BaseDataSource {
             }
 
             const symbolData = data.data[0];
-            const tickSize = parseFloat(symbolData.tickSz) || 0.01;
-            
-            // Tính pricescale và minmov
-            const { pricescale, minmov } = this.calculatePriceScale(tickSize);
-            
-            console.log(`[OKXSpot] ${symbolData.instId}: tickSize=${tickSize}, pricescale=${pricescale}, minmov=${minmov}`);
 
             const symbolInfo = {
                 name: symbolName,
@@ -81,8 +76,6 @@ class OKXSpotDataSource extends BaseDataSource {
                 session: '24x7',
                 timezone: 'Etc/UTC',
                 exchange: exchange,
-                minmov: minmov,
-                pricescale: pricescale,
                 has_intraday: true,
                 has_daily: true,
                 has_weekly_and_monthly: true,
@@ -128,14 +121,27 @@ class OKXSpotDataSource extends BaseDataSource {
                 return;
             }
 
-            const bars = data.data.reverse().map(bar => ({
-                time: parseInt(bar[0]),
-                open: parseFloat(bar[1]),
-                high: parseFloat(bar[2]),
-                low: parseFloat(bar[3]),
-                close: parseFloat(bar[4]),
-                volume: parseFloat(bar[5])
-            }));
+            const bars = data.data.reverse().map(bar => {
+                const open = parseFloat(bar[1]);
+                const high = parseFloat(bar[2]);
+                const low = parseFloat(bar[3]);
+                const close = parseFloat(bar[4]);
+                const volume = parseFloat(bar[5]);
+                
+                // Validate all values
+                if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close) || isNaN(volume)) {
+                    return null;
+                }
+                
+                return {
+                    time: parseInt(bar[0]),
+                    open: open,
+                    high: high,
+                    low: low,
+                    close: close,
+                    volume: volume
+                };
+            }).filter(bar => bar !== null);
 
             onResult(bars, { noData: false });
         } catch (error) {

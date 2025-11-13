@@ -22,7 +22,7 @@ class DataFeedManager {
             return this.placeholderIcon;
         }
         //https://huobicfg.s3.amazonaws.com/currency_icon/ltc.png
-          return `https://huobicfg.s3.amazonaws.com/currency_icon/${baseAsset.toLowerCase()}.png`;
+          return `https://huobicfg.s3.amazonaws.com/currency_icon/${baseAsset.replace(/^1000/, '').toLowerCase()}.png`;
     
        // return `https://icon.gateimg.com/images/coin_icon/64/${baseAsset.toLowerCase()}.png`;
     }

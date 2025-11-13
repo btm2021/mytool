@@ -79,15 +79,6 @@ class BinanceFuturesDataSource extends BaseDataSource {
             if (symbolData.symbol !== symbol) {
                 console.warn(`[BinanceFutures] API returned wrong symbol: expected ${symbol}, got ${symbolData.symbol}`);
             }
-            
-            // Tìm filter PRICE_FILTER để lấy tickSize chính xác
-            const priceFilter = symbolData.filters?.find(f => f.filterType === 'PRICE_FILTER');
-            const tickSize = priceFilter ? parseFloat(priceFilter.tickSize) : 0.01;
-            
-            // Tính pricescale và minmov
-            const { pricescale, minmov } = this.calculatePriceScale(tickSize);
-            
-            console.log(`[BinanceFutures] ${symbolData.symbol}: tickSize=${tickSize}, pricescale=${pricescale}, minmov=${minmov}`);
 
             const symbolInfo = {
                 name: symbolName,
@@ -97,8 +88,6 @@ class BinanceFuturesDataSource extends BaseDataSource {
                 session: '24x7',
                 timezone: 'Etc/UTC',
                 exchange: exchange,
-                minmov: minmov,
-                pricescale: pricescale,
                 has_intraday: true,
                 has_daily: true,
                 has_weekly_and_monthly: true,
@@ -143,14 +132,27 @@ class BinanceFuturesDataSource extends BaseDataSource {
                 return;
             }
 
-            const bars = data.map(bar => ({
-                time: bar[0],
-                open: parseFloat(bar[1]),
-                high: parseFloat(bar[2]),
-                low: parseFloat(bar[3]),
-                close: parseFloat(bar[4]),
-                volume: parseFloat(bar[5])
-            }));
+            const bars = data.map(bar => {
+                const open = parseFloat(bar[1]);
+                const high = parseFloat(bar[2]);
+                const low = parseFloat(bar[3]);
+                const close = parseFloat(bar[4]);
+                const volume = parseFloat(bar[5]);
+                
+                // Validate all values
+                if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close) || isNaN(volume)) {
+                    return null;
+                }
+                
+                return {
+                    time: bar[0],
+                    open: open,
+                    high: high,
+                    low: low,
+                    close: close,
+                    volume: volume
+                };
+            }).filter(bar => bar !== null);
 
             onResult(bars, { noData: false });
         } catch (error) {
