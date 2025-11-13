@@ -33,10 +33,10 @@ function initTradingView() {
 
         custom_indicators_getter: function (PineJS) {
             return Promise.resolve([
-                // createATRBot(PineJS),
-                // createVSR(PineJS),
+                createATRBot(PineJS),
+                createVSR(PineJS),
 
-                // createLWMA(PineJS),
+                //  createLWMA(PineJS),
                 // createMarketTrendCandles(PineJS)
             ]);
         },
@@ -107,18 +107,18 @@ if (document.readyState === 'loading') {
 }
 
 // Debug API - Check cache status
-window.checkCache = function() {
+window.checkCache = function () {
     if (window.BINANCE && window.BINANCE.exchangeInfo) {
         const symbolCount = window.BINANCE.exchangeInfo.symbols ? window.BINANCE.exchangeInfo.symbols.length : 0;
         const lastFetch = window.BINANCE.lastFetch ? new Date(window.BINANCE.lastFetch).toLocaleString() : 'Never';
         const age = window.BINANCE.lastFetch ? Math.round((Date.now() - window.BINANCE.lastFetch) / 1000) : 0;
-        
+
         console.log('=== BINANCE Cache Status ===');
         console.log('Symbols cached:', symbolCount);
         console.log('Last fetch:', lastFetch);
         console.log('Cache age:', age, 'seconds');
         console.log('Cache valid:', age < 300 ? 'Yes' : 'No (expired)');
-        
+
         return {
             symbolCount,
             lastFetch,
@@ -132,7 +132,7 @@ window.checkCache = function() {
 };
 
 // Debug API - Clear cache
-window.clearCache = function() {
+window.clearCache = function () {
     if (window.BINANCE) {
         window.BINANCE.exchangeInfo = null;
         window.BINANCE.lastFetch = null;
