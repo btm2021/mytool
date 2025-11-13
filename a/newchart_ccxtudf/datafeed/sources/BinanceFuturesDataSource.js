@@ -63,7 +63,10 @@ class BinanceFuturesDataSource extends BaseDataSource {
     async resolveSymbol(symbolName, onResolve, onError) {
         try {
             const { exchange, symbol } = this.parseSymbol(symbolName);
-            const response = await fetch(`${this.apiUrl}/fapi/v1/exchangeInfo?symbol=${symbol}`);
+            console.log(`[BinanceFutures] Resolving: ${symbolName} -> ${symbol}`);
+            
+            const url = `${this.apiUrl}/fapi/v1/exchangeInfo?symbol=${symbol}`;
+            const response = await fetch(url, { cache: 'no-cache' });
             const data = await response.json();
 
             if (!data.symbols || data.symbols.length === 0) {
@@ -72,6 +75,10 @@ class BinanceFuturesDataSource extends BaseDataSource {
             }
 
             const symbolData = data.symbols[0];
+            
+            if (symbolData.symbol !== symbol) {
+                console.warn(`[BinanceFutures] API returned wrong symbol: expected ${symbol}, got ${symbolData.symbol}`);
+            }
             
             // Tìm filter PRICE_FILTER để lấy tickSize chính xác
             const priceFilter = symbolData.filters?.find(f => f.filterType === 'PRICE_FILTER');

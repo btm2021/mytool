@@ -8,6 +8,23 @@ class DataFeedManager {
         this.symbolRouting = new Map(); // Map<symbolPattern, dataSourceName>
         this.symbolCache = []; // Cache tất cả symbols
         this.cacheLoaded = false;
+        
+        this.logoKitApiKey = 'pk_fr3913faea87c0324fc626';
+        this.placeholderIcon = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMWExYTFhIi8+PGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMjAiIGZpbGw9IiMzMzMiIHN0cm9rZT0iIzU1NSIgc3Ryb2tlLXdpZHRoPSIyIi8+PHRleHQgeD0iMzIiIHk9IjM4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPj88L3RleHQ+PC9zdmc+';
+    }
+
+    getSymbolIcon(baseAsset, type) {
+        if (type === 'forex') {
+            return this.placeholderIcon;
+        }
+        
+        if (!baseAsset) {
+            return this.placeholderIcon;
+        }
+        //https://huobicfg.s3.amazonaws.com/currency_icon/ltc.png
+          return `https://huobicfg.s3.amazonaws.com/currency_icon/${baseAsset.toLowerCase()}.png`;
+    
+       // return `https://icon.gateimg.com/images/coin_icon/64/${baseAsset.toLowerCase()}.png`;
     }
 
     /**
@@ -154,7 +171,7 @@ class DataFeedManager {
             const data = await res.json();
             return data.symbols.filter(s => s.status === 'TRADING').map(s => ({
                 symbol: s.symbol, baseAsset: s.baseAsset, quoteAsset: s.quoteAsset,
-                exchange: 'BINANCE', type: 'spot', searchKey: s.symbol.toLowerCase()
+                exchange: 'BINANCE', type: 'crypto', searchKey: s.symbol.toLowerCase()
             }));
         });
         if (task1) loadTasks.push(task1);
@@ -177,7 +194,7 @@ class DataFeedManager {
             if (data.code === '0' && data.data) {
                 return data.data.filter(s => s.state === 'live').map(s => ({
                     symbol: s.instId.replace('-', ''), baseAsset: s.baseCcy, quoteAsset: s.quoteCcy,
-                    exchange: 'OKXSPOT', type: 'spot', searchKey: s.instId.replace('-', '').toLowerCase()
+                    exchange: 'OKXSPOT', type: 'crypto', searchKey: s.instId.replace('-', '').toLowerCase()
                 }));
             }
             return [];
@@ -205,7 +222,7 @@ class DataFeedManager {
             if (data.retCode === 0 && data.result.list) {
                 return data.result.list.filter(s => s.status === 'Trading').map(s => ({
                     symbol: s.symbol, baseAsset: s.baseCoin, quoteAsset: s.quoteCoin,
-                    exchange: 'BYBITSPOT', type: 'spot', searchKey: s.symbol.toLowerCase()
+                    exchange: 'BYBITSPOT', type: 'crypto', searchKey: s.symbol.toLowerCase()
                 }));
             }
             return [];
@@ -227,24 +244,12 @@ class DataFeedManager {
         if (task6) loadTasks.push(task6);
 
         // OANDA
-        const oanda = this.dataSources.get('oanda');
-        if (oanda) {
-            const task7 = (async () => {
-                try {
-                    const symbols = await oanda.getAllInstruments();
-                    completed++;
-                    if (onProgress) onProgress(completed, loadTasks.length, 'Loaded OANDA Forex');
-                    console.log(`[DataFeedManager] Loaded ${symbols.length} OANDA symbols`);
-                    return symbols;
-                } catch (error) {
-                    console.error('[DataFeedManager] Error loading OANDA:', error);
-                    completed++;
-                    if (onProgress) onProgress(completed, loadTasks.length, 'Error: OANDA');
-                    return [];
-                }
-            })();
-            loadTasks.push(task7);
-        }
+        const task7 = createLoadTask('oanda', 'OANDA Forex', async () => {
+            const oanda = this.dataSources.get('oanda');
+            if (!oanda) return [];
+            return await oanda.getAllInstruments();
+        });
+        if (task7) loadTasks.push(task7);
 
         // Load tất cả song song với Promise.all
         const results = await Promise.all(loadTasks);
@@ -258,78 +263,101 @@ class DataFeedManager {
     // ============ TradingView Datafeed API Methods ============
 
     async onReady(callback) {
-        // Không load symbols ở đây nữa, sẽ load trong app.js
-        // this.loadAllSymbols().catch(err => {
-        //     console.error('[DataFeedManager] Error loading symbols:', err);
-        // });
-
-        // Merge config từ tất cả datasources
-        const configs = await Promise.all(
-            Array.from(this.dataSources.values()).map(ds => ds.onReady())
-        );
-
         const mergedConfig = {
             supported_resolutions: ['1', '5', '15', '30', '60', '240', 'D', 'W', 'M'],
             supports_marks: false,
             supports_timescale_marks: false,
             supports_time: true,
-            // Không trả về exchanges để TradingView không hiển thị filter
-            // exchanges: []
+            symbols_types: [
+                { name: 'All types', value: '' },
+                { name: 'Crypto', value: 'crypto' },
+                { name: 'Futures', value: 'futures' },
+                { name: 'Forex', value: 'forex' }
+            ],
+            exchanges: [
+                { value: '', name: 'All Exchanges', desc: '' },
+                { value: 'BINANCE', name: 'Binance Spot', desc: 'Binance Spot', logo: '/iconexchange/binance.svg' },
+                { value: 'BINANCEUSDM', name: 'Binance Futures', desc: 'Binance USDⓈ-M Futures', logo: '/iconexchange/binance.svg' },
+                { value: 'OKXSPOT', name: 'OKX Spot', desc: 'OKX Spot', logo: '/iconexchange/okx.svg' },
+                { value: 'OKXFUTURES', name: 'OKX Futures', desc: 'OKX Perpetual Futures', logo: '/iconexchange/okx.svg' },
+                { value: 'BYBITSPOT', name: 'Bybit Spot', desc: 'Bybit Spot', logo: '/iconexchange/bybit.svg' },
+                { value: 'BYBITFUTURES', name: 'Bybit Futures', desc: 'Bybit Linear Futures', logo: '/iconexchange/bybit.svg' },
+                { value: 'OANDA', name: 'OANDA', desc: 'OANDA Forex', logo: '/iconexchange/oanda.svg' }
+            ]
         };
 
         callback(mergedConfig);
     }
 
     async searchSymbols(userInput, exchange, symbolType, onResult) {
-        // Load cache nếu chưa load
         if (!this.cacheLoaded) {
             await this.loadAllSymbols();
         }
 
         const searchTerm = (userInput || '').toLowerCase().trim();
         
-        // Nếu search trống, hiển thị top symbols
         if (searchTerm === '') {
             const topSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT'];
-            const filtered = this.symbolCache.filter(s => 
-                topSymbols.includes(s.symbol) && s.type === 'spot'
-            ).slice(0, 10);
+            let filtered = this.symbolCache.filter(s => topSymbols.includes(s.symbol));
             
+            if (exchange) {
+                filtered = filtered.filter(s => s.exchange === exchange);
+            }
+            if (symbolType) {
+                filtered = filtered.filter(s => s.type === symbolType);
+            }
+            
+            filtered = filtered.slice(0, 10);
+            
+            const logoMap = {
+                'BINANCE': '/iconexchange/binance.svg',
+                'BINANCEUSDM': '/iconexchange/binance.svg',
+                'OKXSPOT': '/iconexchange/okx.svg',
+                'OKXFUTURES': '/iconexchange/okx.svg',
+                'BYBITSPOT': '/iconexchange/bybit.svg',
+                'BYBITFUTURES': '/iconexchange/bybit.svg',
+                'OANDA': '/iconexchange/oanda.svg'
+            };
+
             const results = filtered.map(s => ({
                 symbol: s.symbol,
                 full_name: `${s.exchange}:${s.symbol}`,
                 description: s.baseAsset && s.quoteAsset ? `${s.baseAsset}/${s.quoteAsset}` : s.symbol,
                 exchange: s.exchange,
-                type: s.type === 'forex' ? 'forex' : 'crypto',
-                ticker: `${s.exchange}:${s.symbol}`
+                type: s.type,
+                ticker: `${s.exchange}:${s.symbol}`,
+                logo_urls: [this.getSymbolIcon(s.baseAsset, s.type)],
+                exchange_logo: logoMap[s.exchange] || ''
             }));
             
             onResult(results);
             return;
         }
 
-        // Xử lý .P suffix
         const isPerpetual = searchTerm.endsWith('.p');
         const hasPartialP = searchTerm.endsWith('.') && !isPerpetual;
         const cleanSearchTerm = isPerpetual ? searchTerm.slice(0, -2) : (hasPartialP ? searchTerm.slice(0, -1) : searchTerm);
 
-        // BỎ QUA exchange filter từ TradingView, search trên tất cả exchanges
         let filtered = this.symbolCache.filter(s => {
-            // Filter theo search term
             if (!s.searchKey.includes(cleanSearchTerm)) {
                 return false;
             }
 
-            // Nếu có .P hoặc . thì chỉ lấy futures
             if (isPerpetual || hasPartialP) {
-                return s.type === 'futures';
+                if (s.type !== 'futures') return false;
             }
 
-            // Không filter theo exchange - hiển thị tất cả
+            if (exchange && s.exchange !== exchange) {
+                return false;
+            }
+
+            if (symbolType && s.type !== symbolType) {
+                return false;
+            }
+
             return true;
         });
 
-        // Sort: exact match trước, sau đó theo alphabet
         filtered.sort((a, b) => {
             const aExact = a.searchKey === cleanSearchTerm;
             const bExact = b.searchKey === cleanSearchTerm;
@@ -338,10 +366,18 @@ class DataFeedManager {
             return a.searchKey.localeCompare(b.searchKey);
         });
 
-        // Limit 50 results
         filtered = filtered.slice(0, 50);
 
-        // Format results
+        const logoMap = {
+            'BINANCE': '/iconexchange/binance.svg',
+            'BINANCEUSDM': '/iconexchange/binance.svg',
+            'OKXSPOT': '/iconexchange/okx.svg',
+            'OKXFUTURES': '/iconexchange/okx.svg',
+            'BYBITSPOT': '/iconexchange/bybit.svg',
+            'BYBITFUTURES': '/iconexchange/bybit.svg',
+            'OANDA': '/iconexchange/oanda.svg'
+        };
+
         const results = filtered.map(s => {
             const displaySymbol = s.type === 'futures' ? `${s.symbol}.P` : s.symbol;
             return {
@@ -349,8 +385,10 @@ class DataFeedManager {
                 full_name: `${s.exchange}:${s.symbol}`,
                 description: s.baseAsset && s.quoteAsset ? `${s.baseAsset}/${s.quoteAsset}` : s.symbol,
                 exchange: s.exchange,
-                type: s.type === 'forex' ? 'forex' : 'crypto',
-                ticker: `${s.exchange}:${s.symbol}`
+                type: s.type,
+                ticker: `${s.exchange}:${s.symbol}`,
+                logo_urls: [this.getSymbolIcon(s.baseAsset, s.type)],
+                exchange_logo: logoMap[s.exchange] || ''
             };
         });
 

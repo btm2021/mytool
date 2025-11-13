@@ -82,6 +82,11 @@ async function initTradingView() {
             'open_account_manager',
             'trading_account_manager',
             'trading_notifications',
+            'header_compare','adaptive_logo',
+            'chart_drag_export',
+            'buy_sell_buttons',
+            'broker_button',
+            'order_panel'
         ],
         enabled_features: [
             'studies_extend_time_scale',
@@ -90,6 +95,10 @@ async function initTradingView() {
             'trading_account_manager',
             'chart_hide_close_order_button',
             'saveload_separate_drawings_storage',
+            'show_exchange_logos',
+            'show_symbol_logos',
+            'chart_style_hilo',
+            'hide_image_invalid_symbol'
         ],
         fullscreen: false,
         autosize: true,
