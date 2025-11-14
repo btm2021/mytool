@@ -151,7 +151,7 @@ class OANDADatasource extends BaseDatasource {
                 ticker: symbol,
                 exchange: OANDA_CONFIG.exchange,
                 minmov: 1,
-                pricescale: 10000, // 4 decimal places for forex
+                pricescale: 10, // 4 decimal places for forex
                 has_intraday: true,
                 has_daily: true,
                 has_weekly_and_monthly: true,
