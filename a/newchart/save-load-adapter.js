@@ -121,6 +121,7 @@ class SaveLoadAdapter {
 
             // Save chart
             saveChart: (chartData) => {
+                console.log('SaveLoadAdapter.saveChart called:', chartData);
                 const chartId = chartData.id || this.generateChartId();
                 const dataToSave = {
                     id: chartId,
@@ -131,6 +132,7 @@ class SaveLoadAdapter {
                     timestamp: Date.now()
                 };
                 this.saveChart(dataToSave);
+                console.log('Chart saved to localStorage with ID:', chartId);
                 return Promise.resolve(chartId);
             },
 

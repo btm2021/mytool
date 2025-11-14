@@ -280,3 +280,74 @@
     color: #787B86;
     line-height: 1.5;
 }
+
+/* Symbol List Styles */
+.symbol-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #131722;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    border: 1px solid transparent;
+}
+
+.symbol-list-item:hover {
+    background: #2A2E39;
+    border-color: #2962FF;
+}
+
+.symbol-list-item.current {
+    background: #2A2E39;
+    border-color: #2962FF;
+}
+
+.symbol-list-item-content {
+    flex: 1;
+}
+
+.symbol-list-item-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.symbol-list-item-symbol {
+    font-size: 14px;
+    font-weight: 600;
+    color: #D1D4DC;
+}
+
+.symbol-list-item-badge {
+    padding: 2px 8px;
+    background: #2962FF;
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 3px;
+}
+
+.symbol-list-item-exchange {
+    font-size: 12px;
+    color: #787B86;
+}
+
+.symbol-list-item-arrow {
+    color: #787B86;
+    transition: color 0.2s;
+}
+
+.symbol-list-item:hover .symbol-list-item-arrow {
+    color: #D1D4DC;
+}
+
+.tv-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #787B86;
+    font-size: 14px;
+}

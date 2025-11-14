@@ -237,6 +237,22 @@ toolManager.registerTool({
     }
 });
 
+// Register Symbol List
+toolManager.registerTool({
+    name: 'Symbol List',
+    description: 'View and switch between loaded symbols',
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" fill="none"/>
+        <circle cx="7" cy="6" r="1.5" fill="currentColor"/>
+        <circle cx="7" cy="12" r="1.5" fill="currentColor"/>
+        <circle cx="7" cy="18" r="1.5" fill="currentColor"/>
+    </svg>`,
+    action: () => {
+        const dialog = new SymbolListDialog();
+        dialog.show();
+    }
+});
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => toolManager.init());

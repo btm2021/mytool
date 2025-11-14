@@ -101,20 +101,21 @@ async function initTradingView() {
         fullscreen: false,
         autosize: true,
         theme: 'Dark',
-        load_last_chart:true,
+        load_last_chart: true,
         // Save/Load Adapter for localStorage
         save_load_adapter: saveLoadAdapter.getAdapter(),
-        
-        // Auto-save interval (5 seconds)
-        auto_save_delay: 0.1,
+
+        // Auto-save interval (1 second)
+        auto_save_delay: 0.5,
+
+        // Auto-save callback
+        auto_save_chart_enabled: true,
 
         custom_indicators_getter: function (PineJS) {
             return Promise.resolve([
                 createATRBot(PineJS),
                 createVSR(PineJS),
 
-                //  createLWMA(PineJS),
-                // createMarketTrendCandles(PineJS)
             ]);
         },
         widgetbar: {
@@ -128,191 +129,24 @@ async function initTradingView() {
         },
         favorites: {
             intervals: ['5', '15', '60', '240', 'D'],
-            chartTypes: ['Candles', 'Line', 'Heiken Ashi']
-        }
+            chartTypes: ['Candles', 'Line', 'Heiken Ashi'],
+
+        },
+        custom_css_url: '/charting_library/custom.css'
     };
 
     tvWidget = new TradingView.widget(widgetOptions);
 
     tvWidget.onChartReady(() => {
-        const chart = tvWidget.activeChart();
-
-        // Setup watermark
-        setupWatermark(tvWidget, chart);
-
-        // Setup auto-save on drawing completion
-        setupAutoSaveOnDrawing(tvWidget, chart);
 
         hideLoading();
     });
+    tvWidget.subscribe('onAutoSaveNeeded', () => {
+        console.log('Auto-save');
+        tvWidget.saveChartToServer()
+    });
 }
 
-function setupAutoSaveOnDrawing(widget, chart) {
-    let saveTimeout = null;
-    let isDrawing = false;
-    let lastShapeCount = 0;
-
-    const triggerSave = (reason) => {
-        // Debounce save
-        if (saveTimeout) {
-            clearTimeout(saveTimeout);
-        }
-
-        saveTimeout = setTimeout(() => {
-            try {
-                widget.save((state) => {
-                    console.log(`[Auto-Save] Chart saved - Reason: ${reason}`);
-                });
-            } catch (error) {
-                console.error('[Auto-Save] Error saving chart:', error);
-            }
-        }, 50); // 500ms debounce
-    };
-
-    try {
-        // Monitor drawing tool selection
-        chart.onSelectedLineToolChanged().subscribe(null, (toolName) => {
-            if (toolName && toolName !== '') {
-                isDrawing = true;
-                console.log(`[Auto-Save] Drawing tool selected: ${toolName}`);
-            } else {
-                // Tool deselected - drawing might be complete
-                if (isDrawing) {
-                    isDrawing = false;
-                    console.log('[Auto-Save] Drawing tool deselected');
-                    triggerSave('Drawing tool deselected');
-                }
-            }
-        });
-
-        // Listen for shape/drawing added (vẽ xong)
-        chart.onShapeAdded().subscribe(null, (shapeId) => {
-            console.log(`[Auto-Save] Shape added: ${shapeId}`);
-            triggerSave('Shape added');
-        });
-
-        // Listen for shape/drawing removed
-        chart.onShapeRemoved().subscribe(null, (shapeId) => {
-            console.log(`[Auto-Save] Shape removed: ${shapeId}`);
-            triggerSave('Shape removed');
-        });
-
-        // Listen for shape/drawing changed (di chuyển, resize)
-        chart.onShapeChanged().subscribe(null, (shapeId) => {
-            console.log(`[Auto-Save] Shape changed: ${shapeId}`);
-            triggerSave('Shape changed');
-        });
-
-        // Listen for study (indicator) added
-        chart.onStudyAdded().subscribe(null, (studyId) => {
-            console.log(`[Auto-Save] Study added: ${studyId}`);
-            triggerSave('Study added');
-        });
-
-        // Listen for study removed
-        chart.onStudyRemoved().subscribe(null, (studyId) => {
-            console.log(`[Auto-Save] Study removed: ${studyId}`);
-            triggerSave('Study removed');
-        });
-
-        // Listen for interval changes
-        chart.onIntervalChanged().subscribe(null, (interval) => {
-            console.log(`[Auto-Save] Interval changed to: ${interval}`);
-            triggerSave('Interval changed');
-        });
-
-        // Listen for symbol changes
-        chart.onSymbolChanged().subscribe(null, () => {
-            console.log('[Auto-Save] Symbol changed');
-            triggerSave('Symbol changed');
-        });
-
-        // Detect drawing completion via mouseup on chart
-        const chartContainer = document.getElementById('tv_chart_container');
-        if (chartContainer) {
-            chartContainer.addEventListener('mouseup', () => {
-                if (isDrawing) {
-                    // Check if shape count increased
-                    const currentShapes = chart.getAllShapes();
-                    if (currentShapes.length > lastShapeCount) {
-                        console.log('[Auto-Save] Drawing completed (mouseup)');
-                        triggerSave('Drawing completed');
-                        lastShapeCount = currentShapes.length;
-                    }
-                }
-            });
-
-            // Update shape count periodically
-            setInterval(() => {
-                try {
-                    lastShapeCount = chart.getAllShapes().length;
-                } catch (e) {
-                    // Ignore errors
-                }
-            }, 1000);
-        }
-
-        console.log('[Auto-Save] Auto-save listeners initialized successfully');
-    } catch (error) {
-        console.error('[Auto-Save] Error setting up auto-save:', error);
-    }
-}
-
-function setupWatermark(widget, chart) {
-    try {
-        // Get watermark API
-        const watermark = widget.watermark();
-
-        // Configure watermark color (màu trắng mờ)
-        watermark.color().setValue('rgba(255, 255, 255, 0.08)');
-
-        // Set custom content provider - trả về array of WatermarkLine
-        const updateWatermarkContent = () => {
-            watermark.setContentProvider(() => {
-                try {
-                    const symbolInfo = chart.symbolExt();
-                    const interval = chart.resolution();
-                    
-                    // Return array of WatermarkLine objects
-                    return [
-                        {
-                            text: `${symbolInfo.exchange} - ${symbolInfo.name}`,
-                            fontSize: 48,
-                            lineHeight: 56,
-                            verticalOffset: 0
-                        },
-                        {
-                            text: `Timeframe: ${interval}`,
-                            fontSize: 32,
-                            lineHeight: 40,
-                            verticalOffset: 60
-                        }
-                    ];
-                } catch (error) {
-                    console.error('Error in watermark content provider:', error);
-                    return [
-                        {
-                            text: '',
-                            fontSize: 48,
-                            lineHeight: 56,
-                            verticalOffset: 0
-                        }
-                    ];
-                }
-            });
-        };
-
-        // Initial setup
-        updateWatermarkContent();
-
-        // Update watermark when symbol or interval changes
-        chart.onSymbolChanged().subscribe(null, updateWatermarkContent);
-        chart.onIntervalChanged().subscribe(null, updateWatermarkContent);
-
-    } catch (error) {
-        console.error('Error setting up watermark:', error);
-    }
-}
 
 
 function hideLoading() {
@@ -347,18 +181,4 @@ window.getDatafeedInfo = function () {
     }
     console.log('Datafeed manager not available');
     return null;
-};
-
-// Debug API - Test search
-window.testSearch = function (query) {
-    if (tvWidget && tvWidget._options && tvWidget._options.datafeed) {
-        const manager = tvWidget._options.datafeed;
-        console.log(`\n=== Testing search: "${query}" ===`);
-        manager.searchSymbols(query, '', 'crypto', (results) => {
-            console.log(`Found ${results.length} results:`);
-            results.slice(0, 10).forEach((r, i) => {
-                console.log(`${i + 1}. ${r.full_name} - ${r.description}`);
-            });
-        });
-    }
 };
