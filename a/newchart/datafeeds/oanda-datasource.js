@@ -407,17 +407,8 @@ class OANDADatasource extends BaseDatasource {
         const symbol = symbolInfo.name;
         const oandaSymbol = symbol.replace(/([A-Z]{3})([A-Z]{3})/, '$1_$2');
 
-        // OANDA streaming API - sử dụng https thay vì wss
-        const streamUrl = `https://stream-fxpractice.oanda.com/v3/accounts/${this.accountId}/pricing/stream?instruments=${oandaSymbol}`;
+        console.log(`${OANDA_CONFIG.logPrefix} Subscribing to ${oandaSymbol} (${resolution})`);
 
-        const headers = {
-            'Accept': 'application/json'
-        };
-        if (this.apiKey) {
-            headers['Authorization'] = `Bearer ${this.apiKey}`;
-        }
-
-        let lastBar = null;
         const intervalMap = {
             '1': 60000,
             '5': 300000,
@@ -431,95 +422,124 @@ class OANDADatasource extends BaseDatasource {
         };
         const interval = intervalMap[resolution] || 3600000;
 
-        // Sử dụng fetch với streaming
+        let lastBar = null;
         let abortController = new AbortController();
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
 
-        fetch(streamUrl, {
-            headers: headers,
-            signal: abortController.signal
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+        const connectStream = () => {
+            const streamUrl = `${this.streamUrl}/accounts/${this.accountId}/pricing/stream?instruments=${oandaSymbol}`;
+            const headers = { 'Accept': 'application/json' };
+            if (this.apiKey) {
+                headers['Authorization'] = `Bearer ${this.apiKey}`;
+            }
 
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
+            fetch(streamUrl, {
+                headers: headers,
+                signal: abortController.signal
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
 
-                const processStream = () => {
-                    reader.read().then(({ done, value }) => {
-                        if (done) {
-                            console.log(`${OANDA_CONFIG.logPrefix} Stream ended`);
-                            return;
-                        }
+                    reconnectAttempts = 0;
+                    console.log(`${OANDA_CONFIG.logPrefix} Stream connected for ${oandaSymbol}`);
 
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || ''; // Giữ lại dòng chưa hoàn chỉnh
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
 
-                        for (const line of lines) {
-                            if (line.trim() === '') continue;
+                    const processStream = () => {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                console.log(`${OANDA_CONFIG.logPrefix} Stream ended for ${oandaSymbol}`);
+                                if (reconnectAttempts < maxReconnectAttempts) {
+                                    reconnectAttempts++;
+                                    console.log(`${OANDA_CONFIG.logPrefix} Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`);
+                                    setTimeout(connectStream, 2000 * reconnectAttempts);
+                                }
+                                return;
+                            }
 
-                            try {
-                                const data = JSON.parse(line);
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
 
-                                if (data.type === 'PRICE') {
-                                    // Sử dụng mid price (trung bình bid/ask)
-                                    const bidPrice = parseFloat(data.bids?.[0]?.price || data.closeoutBid);
-                                    const askPrice = parseFloat(data.asks?.[0]?.price || data.closeoutAsk);
-                                    const price = (bidPrice + askPrice) / 2;
+                            for (const line of lines) {
+                                if (line.trim() === '') continue;
 
-                                    const timestamp = new Date(data.time).getTime();
-                                    const barTime = Math.floor(timestamp / interval) * interval;
+                                try {
+                                    const data = JSON.parse(line);
 
-                                    if (!lastBar || lastBar.time !== barTime) {
-                                        // New bar
-                                        if (lastBar) {
+                                    if (data.type === 'PRICE') {
+                                        const bidPrice = parseFloat(data.bids?.[0]?.price || data.closeoutBid);
+                                        const askPrice = parseFloat(data.asks?.[0]?.price || data.closeoutAsk);
+                                        
+                                        if (!bidPrice || !askPrice) continue;
+
+                                        const price = (bidPrice + askPrice) / 2;
+                                        const timestamp = new Date(data.time).getTime();
+                                        const barTime = Math.floor(timestamp / interval) * interval;
+
+                                        if (!lastBar || lastBar.time !== barTime) {
+                                            if (lastBar) {
+                                                console.log(`${OANDA_CONFIG.logPrefix} New bar: ${new Date(barTime).toISOString()} O:${lastBar.open} H:${lastBar.high} L:${lastBar.low} C:${lastBar.close}`);
+                                                onRealtimeCallback(lastBar);
+                                            }
+                                            lastBar = {
+                                                time: barTime,
+                                                open: price,
+                                                high: price,
+                                                low: price,
+                                                close: price,
+                                                volume: 0
+                                            };
+                                        } else {
+                                            lastBar.high = Math.max(lastBar.high, price);
+                                            lastBar.low = Math.min(lastBar.low, price);
+                                            lastBar.close = price;
                                             onRealtimeCallback(lastBar);
                                         }
-                                        lastBar = {
-                                            time: barTime,
-                                            open: price,
-                                            high: price,
-                                            low: price,
-                                            close: price,
-                                            volume: 0
-                                        };
-                                    } else {
-                                        // Update current bar
-                                        lastBar.high = Math.max(lastBar.high, price);
-                                        lastBar.low = Math.min(lastBar.low, price);
-                                        lastBar.close = price;
-                                        onRealtimeCallback(lastBar);
+                                    } else if (data.type === 'HEARTBEAT') {
+                                        console.log(`${OANDA_CONFIG.logPrefix} Heartbeat received`);
                                     }
+                                } catch (error) {
+                                    console.error(`${OANDA_CONFIG.logPrefix} Parse error:`, error.message);
                                 }
-                            } catch (error) {
-                                console.error(`${OANDA_CONFIG.logPrefix} Error parsing stream line:`, error, line);
                             }
+
+                            processStream();
+                        }).catch(error => {
+                            if (error.name !== 'AbortError') {
+                                console.error(`${OANDA_CONFIG.logPrefix} Read error:`, error);
+                                if (reconnectAttempts < maxReconnectAttempts) {
+                                    reconnectAttempts++;
+                                    setTimeout(connectStream, 2000 * reconnectAttempts);
+                                }
+                            }
+                        });
+                    };
+
+                    processStream();
+                })
+                .catch(error => {
+                    if (error.name !== 'AbortError') {
+                        console.error(`${OANDA_CONFIG.logPrefix} Connection error:`, error);
+                        if (reconnectAttempts < maxReconnectAttempts) {
+                            reconnectAttempts++;
+                            setTimeout(connectStream, 2000 * reconnectAttempts);
                         }
+                    }
+                });
+        };
 
-                        processStream();
-                    }).catch(error => {
-                        if (error.name !== 'AbortError') {
-                            console.error(`${OANDA_CONFIG.logPrefix} Stream read error:`, error);
-                        }
-                    });
-                };
+        connectStream();
 
-                processStream();
-            })
-            .catch(error => {
-                if (error.name !== 'AbortError') {
-                    console.error(`${OANDA_CONFIG.logPrefix} Stream connection error:`, error);
-                }
-            });
-
-        // Store for cleanup
         this.subscribers[subscriberUID] = {
             close: () => {
                 abortController.abort();
-                console.log(`${OANDA_CONFIG.logPrefix} Stream closed for ${subscriberUID}`);
+                console.log(`${OANDA_CONFIG.logPrefix} Unsubscribed ${subscriberUID}`);
             }
         };
     }
