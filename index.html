@@ -3,55 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="0; url=/a/newchart">
-    <title>Dashboard Tools</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>TradingView Terminal</title>
+    <meta name="description" content="Advanced TradingView Chart Terminal with Multi-Exchange Support">
+    <meta name="theme-color" content="#131722">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/image/icons/icon-192x192.png">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #131722;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .loading {
+            text-align: center;
+            color: #787B86;
+        }
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #2A2E39;
+            border-top-color: #2962FF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
-    <div id="particles-js"></div>
-    <div class="app-layout">
-        <header class="header">
-            <div class="container">
-                <div class="header-content">
-                    <div class="header-left">
-                        <h1>Tools</h1>
-                    </div>
-                    <div class="header-center">
-                        <span id="quote" class="quote"></span>
-                    </div>
-                    <div class="header-right">
-                        <span id="currentDate"></span>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <main class="main-content">
-            <div class="dashboard" id="toolsGrid">
-                <!-- Category sections sẽ được render bằng JavaScript -->
-            </div>
-        </main>
-
-        <footer class="footer">
-            <div class="container">
-                Dashboard Tools © 2024
-            </div>
-        </footer>
+    <div class="loading">
+        <div class="loading-spinner"></div>
+        <div>Detecting device...</div>
     </div>
 
-    <!-- Search Overlay -->
-    <div class="search-overlay" id="searchOverlay">
-        <div class="search-box">
-            <input type="text" class="search-box-input" id="searchBoxInput" placeholder="Tìm kiếm tool...">
-            <div class="search-results" id="searchResults">
-                <div class="search-hint">Gõ để tìm kiếm tools...</div>
-            </div>
-        </div>
-    </div>
-
-
-
-    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
-    <script src="script.js"></script>
+    <script src="pwa-init.js"></script>
+    <script>
+        (function() {
+            // Device detection function
+            function detectDevice() {
+                const ua = navigator.userAgent.toLowerCase();
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                
+                // Check if mobile or tablet
+                const isMobile = /android|webos|iphone|ipod|blackberry|iemobile|opera mini/i.test(ua);
+                const isTablet = /ipad|android(?!.*mobile)|tablet/i.test(ua);
+                const isSmallScreen = width <= 1024;
+                
+                // Touch device detection
+                const isTouchDevice = ('ontouchstart' in window) || 
+                                     (navigator.maxTouchPoints > 0) || 
+                                     (navigator.msMaxTouchPoints > 0);
+                
+                return {
+                    isMobile: isMobile,
+                    isTablet: isTablet,
+                    isSmallScreen: isSmallScreen,
+                    isTouchDevice: isTouchDevice,
+                    width: width,
+                    height: height
+                };
+            }
+            
+            // Redirect logic
+            function redirect() {
+                const device = detectDevice();
+                
+                console.log('Device Info:', device);
+                
+                // Mobile or Tablet -> mobi.html
+                if (device.isMobile || device.isTablet || (device.isSmallScreen && device.isTouchDevice)) {
+                    console.log('Redirecting to mobile version...');
+                    window.location.href = 'mobi.html';
+                } 
+                // Desktop -> desktop.html
+                else {
+                    console.log('Redirecting to desktop version...');
+                    window.location.href = 'desktop.html';
+                }
+            }
+            
+            // Execute redirect
+            redirect();
+        })();
+    </script>
 </body>
 </html>
