@@ -11,8 +11,17 @@
 
   async function registerServiceWorker() {
     try {
+      // Unregister old service workers first (helps with iOS issues)
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (let registration of registrations) {
+        if (registration.scope !== location.origin + '/') {
+          await registration.unregister();
+        }
+      }
+
       const registration = await navigator.serviceWorker.register('/service-worker.js', {
-        scope: '/'
+        scope: '/',
+        updateViaCache: 'none' // Important for iOS - always fetch fresh service worker
       });
 
       console.log('✅ Service Worker registered:', registration.scope);
