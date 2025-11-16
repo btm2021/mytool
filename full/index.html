@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Husky</title>
+    <link rel="icon" type="image/x-icon" href="../favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #tv_chart_container {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="tv_chart_container"></div>
+    <script src="../custom_studies/atr-bot.js"></script>
+    <script src="../custom_studies/vsr.js"></script>
+    <script src="../custom_studies/lwma.js"></script>
+    <script src="../custom_studies/market-trend-candles.js"></script>
+    <script src="../charting_library/charting_library.js"></script>
+    <script src="../save-load-adapter.js"></script>
+    <script src="../datafeeds/base-datasource.js"></script>
+    <script src="../datafeeds/oanda-datasource.js"></script>
+    <script src="../datafeeds/binance-futures-datasource.js"></script>
+    <script src="../datafeeds/binance-spot-datasource.js"></script>
+    <script src="../datafeeds/datafeed-manager.js"></script>
+    <script src="title-updater.js"></script>
+    <script src="full-app.js"></script>
+</body>
+
+</html>
