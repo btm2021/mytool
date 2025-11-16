@@ -25,7 +25,7 @@ function createATRBot(PineJS) {
                 styles: {
                     plot_0: {
                         linestyle: 0,
-                        linewidth: 2,
+                        linewidth: 0,
                         plottype: 0,
                         trackPrice: false,
                         transparency: 0,
@@ -34,7 +34,7 @@ function createATRBot(PineJS) {
                     },
                     plot_1: {
                         linestyle: 0,
-                        linewidth: 2,
+                        linewidth: 0,
                         plottype: 0,
                         trackPrice: false,
                         transparency: 0,
@@ -43,7 +43,7 @@ function createATRBot(PineJS) {
                     },
                     plot_2: {
                         linestyle: 0,
-                        linewidth: 1,
+                        linewidth: 0,
                         plottype: 0,
                         trackPrice: false,
                         transparency: 100,
@@ -52,7 +52,7 @@ function createATRBot(PineJS) {
                     },
                     plot_3: {
                         linestyle: 0,
-                        linewidth: 1,
+                        linewidth: 0,
                         plottype: 0,
                         trackPrice: false,
                         transparency: 100,
@@ -63,12 +63,12 @@ function createATRBot(PineJS) {
                 filledAreasStyle: {
                     fillarea_0: {
                         color: "#26a69a",
-                        transparency: 85,
+                        transparency: 50,
                         visible: true
                     },
                     fillarea_1: {
                         color: "#ef5350",
-                        transparency: 85,
+                        transparency: 50,
                         visible: true
                     }
                 },
@@ -76,6 +76,7 @@ function createATRBot(PineJS) {
                     tf_atr_length: 14,
                     tf_atr_mult: 2.0,
                     source: "close",
+                    ma_type: "EMA",
                     ema_length: 30
                 }
             },
@@ -106,8 +107,15 @@ function createATRBot(PineJS) {
                     options: ["open", "high", "low", "close", "hl2", "hlc3", "ohlc4"]
                 },
                 {
+                    id: "ma_type",
+                    name: "MA Type",
+                    defval: "EMA",
+                    type: "text",
+                    options: ["EMA", "WMA", "VWMA", "HMA"]
+                },
+                {
                     id: "ema_length",
-                    name: "EMA Length",
+                    name: "MA Length",
                     defval: 30,
                     type: "integer",
                     min: 1,
@@ -117,7 +125,7 @@ function createATRBot(PineJS) {
 
             styles: {
                 plot_0: {
-                    title: "Trail 1 (EMA)",
+                    title: "Trail 1 (MA)",
                     histogramBase: 0,
                     joinPoints: true
                 },
@@ -169,12 +177,24 @@ function createATRBot(PineJS) {
 
                 // Variables to store previous values
                 this.trail2_prev = NaN;
-                this.ema_prev = NaN;
+                this.ma_prev = NaN;
                 this.trail1_prev_bar = NaN;
 
                 // Variables for ATR RMA calculation
                 this.atr_prev = NaN;
                 this.prev_close = NaN;
+
+                // Variables for WMA calculation
+                this.wma_buffer = [];
+
+                // Variables for VWMA calculation
+                this.vwma_buffer = [];
+                this.volume_buffer = [];
+
+                // Variables for HMA calculation
+                this.hma_wma_half = NaN;
+                this.hma_wma_full = NaN;
+                this.hma_buffer = [];
             };
 
             this.main = function (context, inputCallback) {
@@ -185,7 +205,8 @@ function createATRBot(PineJS) {
                 const atr_length = this._input(0);
                 const atr_mult = this._input(1);
                 const source_type = this._input(2);
-                const ema_length = this._input(3);
+                const ma_type = this._input(3);
+                const ma_length = this._input(4);
 
                 // Get price data
                 const high = PineJS.Std.high(this._context);
@@ -218,15 +239,130 @@ function createATRBot(PineJS) {
                         src = close;
                 }
 
-                // Calculate EMA (Trail1)
+                // Get volume for VWMA
+                const volume = PineJS.Std.volume(this._context);
+
+                // Calculate MA (Trail1) based on selected type
                 let trail1;
-                if (isNaN(this.ema_prev)) {
-                    // First bar - use source as initial value
-                    trail1 = src;
-                } else {
-                    // EMA formula: alpha * src + (1 - alpha) * prev_ema
-                    const alpha = 2.0 / (ema_length + 1);
-                    trail1 = alpha * src + (1 - alpha) * this.ema_prev;
+                
+                switch (ma_type) {
+                    case "EMA":
+                        // EMA calculation
+                        if (isNaN(this.ma_prev)) {
+                            trail1 = src;
+                        } else {
+                            const alpha = 2.0 / (ma_length + 1);
+                            trail1 = alpha * src + (1 - alpha) * this.ma_prev;
+                        }
+                        break;
+
+                    case "WMA":
+                        // WMA calculation
+                        this.wma_buffer.push(src);
+                        if (this.wma_buffer.length > ma_length) {
+                            this.wma_buffer.shift();
+                        }
+                        
+                        if (this.wma_buffer.length === ma_length) {
+                            let sum = 0;
+                            let weightSum = 0;
+                            for (let i = 0; i < ma_length; i++) {
+                                const weight = i + 1;
+                                sum += this.wma_buffer[i] * weight;
+                                weightSum += weight;
+                            }
+                            trail1 = sum / weightSum;
+                        } else {
+                            trail1 = src;
+                        }
+                        break;
+
+                    case "VWMA":
+                        // VWMA calculation
+                        this.vwma_buffer.push(src);
+                        this.volume_buffer.push(volume);
+                        if (this.vwma_buffer.length > ma_length) {
+                            this.vwma_buffer.shift();
+                            this.volume_buffer.shift();
+                        }
+                        
+                        if (this.vwma_buffer.length === ma_length) {
+                            let sum = 0;
+                            let volumeSum = 0;
+                            for (let i = 0; i < ma_length; i++) {
+                                sum += this.vwma_buffer[i] * this.volume_buffer[i];
+                                volumeSum += this.volume_buffer[i];
+                            }
+                            trail1 = volumeSum > 0 ? sum / volumeSum : src;
+                        } else {
+                            trail1 = src;
+                        }
+                        break;
+
+                    case "HMA":
+                        // HMA calculation: HMA = WMA(2*WMA(n/2) - WMA(n), sqrt(n))
+                        const halfLength = Math.floor(ma_length / 2);
+                        const sqrtLength = Math.floor(Math.sqrt(ma_length));
+                        
+                        this.hma_buffer.push(src);
+                        if (this.hma_buffer.length > ma_length) {
+                            this.hma_buffer.shift();
+                        }
+                        
+                        if (this.hma_buffer.length >= halfLength) {
+                            // Calculate WMA(n/2)
+                            let sum_half = 0;
+                            let weight_half = 0;
+                            for (let i = 0; i < halfLength; i++) {
+                                const idx = this.hma_buffer.length - halfLength + i;
+                                const weight = i + 1;
+                                sum_half += this.hma_buffer[idx] * weight;
+                                weight_half += weight;
+                            }
+                            const wma_half = sum_half / weight_half;
+                            
+                            // Calculate WMA(n)
+                            let sum_full = 0;
+                            let weight_full = 0;
+                            const fullLen = Math.min(this.hma_buffer.length, ma_length);
+                            for (let i = 0; i < fullLen; i++) {
+                                const idx = this.hma_buffer.length - fullLen + i;
+                                const weight = i + 1;
+                                sum_full += this.hma_buffer[idx] * weight;
+                                weight_full += weight;
+                            }
+                            const wma_full = sum_full / weight_full;
+                            
+                            // Calculate 2*WMA(n/2) - WMA(n)
+                            const raw_hma = 2 * wma_half - wma_full;
+                            
+                            // Store for final WMA calculation
+                            if (!this.hma_final_buffer) this.hma_final_buffer = [];
+                            this.hma_final_buffer.push(raw_hma);
+                            if (this.hma_final_buffer.length > sqrtLength) {
+                                this.hma_final_buffer.shift();
+                            }
+                            
+                            // Calculate final WMA(sqrt(n))
+                            if (this.hma_final_buffer.length === sqrtLength) {
+                                let sum_final = 0;
+                                let weight_final = 0;
+                                for (let i = 0; i < sqrtLength; i++) {
+                                    const weight = i + 1;
+                                    sum_final += this.hma_final_buffer[i] * weight;
+                                    weight_final += weight;
+                                }
+                                trail1 = sum_final / weight_final;
+                            } else {
+                                trail1 = raw_hma;
+                            }
+                        } else {
+                            trail1 = src;
+                        }
+                        break;
+
+                    default:
+                        trail1 = src;
                 }
 
                 // Calculate True Range
@@ -287,7 +423,7 @@ function createATRBot(PineJS) {
                 // Store values for next bar
                 this.trail1_prev_bar = trail1;
                 this.trail2_prev = trail2;
-                this.ema_prev = trail1;
+                this.ma_prev = trail1;
                 this.atr_prev = atr;
                 this.prev_close = close;
 

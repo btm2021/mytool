@@ -43,7 +43,7 @@ function createVSR(PineJS) {
                 filledAreasStyle: {
                     fillarea_0: {
                         color: "#FFEB3B",
-                        transparency: 90,
+                        transparency: 50,
                         visible: true
                     }
                 },
@@ -67,8 +67,8 @@ function createVSR(PineJS) {
                     name: "Volume Threshold",
                     defval: 5.0,
                     type: "float",
-                    min: 1.0,
-                    max: 20.0,
+                    min: 0.1,
+                    max: 50.0,
                     step: 0.1
                 }
             ],
